@@ -2451,6 +2451,15 @@ describe("hotspot report rendering", () => {
     assert.isFalse(renderHotspotReport(view).includes("Seam registry refresh"));
   });
 
+  it("renders a refresh problem with a backtick or pipe inert", () => {
+    const markdown = renderHotspotReport({
+      ...view,
+      report: { ...view.report, tree: null, seamRefreshProblems: ["a`b|c"] },
+    });
+    assert.include(markdown, '- `"a b c"`');
+    assert.isFalse(markdown.includes("b|c"));
+  });
+
   it("caps long impact lists", () => {
     const paths = Array.from({ length: 205 }, (_, index) => `pkg/${index}.ts`);
     const capped = renderHotspotReport({

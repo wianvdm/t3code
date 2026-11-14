@@ -115,16 +115,16 @@ After the sync PR resolves conflicts, `verify` stages the refresh (and refuses w
 
 ## PR guard
 
-`scripts/check-fork-boundaries.ts` (CI job `Fork Boundaries`) compares the PR head's registry and tree with the base. Policy and the checker itself come from the base; the head's registry is only decoded as JSON, so head code never runs. The job is advisory (`continue-on-error`, outside `Check`) until the first designated sync PR passes it; then it becomes required. A PR that edits `ci.yml` runs its own copy of the job, so the guard catches honest mistakes and makes registry growth reviewable, but is not a gate against that edit. For each PR except designated upstream-sync PRs (#50):
+`scripts/check-fork-boundaries.ts` (CI job `Fork Boundaries`) compares the PR head's registry and tree with the base. Policy and the checker itself come from the base; the head's registry is only decoded as JSON, so head code never runs. The job is advisory (`continue-on-error`, outside `Check`) until the first designated sync PR passes it; then it becomes required. Two limits keep it advisory: a PR that edits `ci.yml` runs its own copy of the job, and the job restores the shared CI dependency cache (`setup-ci-deps`), which an earlier run of the same PR can seed. Either can forge the result, so the guard catches honest mistakes and makes registry growth reviewable but is not a gate against a hostile PR. The job holds a read-only token and no secrets. An airtight guard needs a ruleset-required workflow that restores no cache. For each PR except designated upstream-sync PRs (#50):
 
 0. The head registry's `upstreamRef` must equal the base's. Only a sync merge moves it.
 1. A changed upstream-owned path with no `files` entry fails, and so does an entry whose file no longer differs from upstream.
-2. A file whose numstat delta exceeds its recorded `delta` fails, unless the PR raises the entry.
+2. A file whose numstat delta exceeds its recorded `delta` fails, unless the PR raises the entry. `legacy` entries are bootstrap-only: one that is new against the base, or whose delta grows, fails, so growth must come with seams.
 3. A deleted or renamed upstream-owned path fails.
 4. Anchors of touched entries and siblings must resolve at `upstreamRef` with matching fingerprints. Untouched entries are not re-checked.
-5. The check summary lists every entry the PR adds or raises, so each new seam is a visible maintainer decision.
+5. The check summary lists every entry the PR adds or raises, every new seam, and every other registry edit (a changed or removed seam, a seams entry converted to `legacy`, a changed sibling), so each is a visible maintainer decision.
 
-A designated sync PR skips checks 0-5 and instead runs the whole-registry check of `node scripts/seamRegistry.ts check` on its head. The exemption comes from the `changes` job's `upstream_sync` and `sync_designation_error` outputs plus the `sync` job's result, never from labels, title or branch. `vp run check:changed` runs the same checker on the working tree, without the exemption.
+A designated sync PR skips checks 0-5 and instead runs the whole-registry check of `node scripts/seamRegistry.ts check` on its head, and its head must be a merge commit whose second parent is the registry's `upstreamRef`. The exemption comes from the `changes` job's `upstream_sync` and `sync_designation_error` outputs plus the `sync` job's result, never from labels, title or branch. `vp run check:changed` runs the same checker on the working tree, without the exemption.
 
 ## Existing machinery
 

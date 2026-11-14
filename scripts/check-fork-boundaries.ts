@@ -37,7 +37,7 @@ export const DEFAULT_BASE_REF = "origin/main";
 
 const FULL_SHA = /^[0-9a-f]{40}$/;
 const WORKING_TREE_LABEL = "working tree";
-const EXEMPT_PR_NUMBER = 50;
+const SYNC_DESIGNATION_ISSUE = 50;
 
 export type ChangeStatus = "A" | "D" | "M";
 
@@ -53,6 +53,7 @@ export type BoundaryVerdict =
   | "STALE_ENTRY"
   | "DELTA_EXCEEDED"
   | "UPSTREAM_DELETED"
+  | "LEGACY_GROWN"
   | "ANCHOR_BROKEN"
   | "SYNC_REGISTRY_INCONSISTENT";
 
@@ -110,14 +111,15 @@ const git = Effect.fn("forkBoundaries.git")(function* (cwd: string, args: Readon
 const registryError = (error: SeamRegistryError): string => `fork-boundaries: ${error.message}`;
 
 export interface NameStatusRecord {
-  readonly status: "A" | "D" | "M" | "R";
+  readonly status: "A" | "D" | "M" | "R" | "T";
   readonly path: string;
   readonly upstreamPath?: string;
 }
 
-// `git diff --name-status -M -z` output: NUL-separated, renames carry two paths.
-// Any other status letter (copy, typechange, unmerged) is rejected: skipping it
-// would misread the path tokens that follow as further statuses.
+// `git diff --name-status -z` output: NUL-separated, a rename record carries two
+// paths (the checker diffs with --no-renames, so R is defence). Any other status
+// letter (copy, unmerged) is rejected: skipping it would misread the path tokens
+// that follow as further statuses.
 export function parseNameStatusZ(output: string): NameStatusRecord[] {
   const tokens = output.split("\0").filter((token) => token.length > 0);
   const records: NameStatusRecord[] = [];
@@ -130,13 +132,13 @@ export function parseNameStatusZ(output: string): NameStatusRecord[] {
       const path = tokens[++index];
       if (upstreamPath === undefined || path === undefined) break;
       records.push({ status: "R", path, upstreamPath });
-    } else if (letter === "A" || letter === "D" || letter === "M") {
+    } else if (letter === "A" || letter === "D" || letter === "M" || letter === "T") {
       const path = tokens[++index];
       if (path === undefined) break;
       records.push({ status: letter, path });
     } else {
       throw new Error(
-        `parseNameStatusZ: unsupported git name-status "${token}" at token ${index}; only A, D, M, and R records are supported`,
+        `parseNameStatusZ: unsupported git name-status "${token}" at token ${index}; only A, D, M, R, and T records are supported`,
       );
     }
   }
@@ -144,7 +146,8 @@ export function parseNameStatusZ(output: string): NameStatusRecord[] {
 }
 
 // --no-renames reports a rename as its old and new path; an R record is still
-// flattened so a rename of an upstream path fails on both of its halves.
+// flattened so a rename of an upstream path fails on both of its halves. A
+// typechange replaces the file, so it counts as a deletion of the path.
 export function collectChanges(diffOutput: string): BoundaryChange[] {
   const changes: BoundaryChange[] = [];
   const seen = new Set<string>();
@@ -158,7 +161,7 @@ export function collectChanges(diffOutput: string): BoundaryChange[] {
       add("D", record.upstreamPath ?? record.path);
       add("A", record.path);
     } else {
-      add(record.status, record.path);
+      add(record.status === "T" ? "D" : record.status, record.path);
     }
   }
   return changes;
@@ -237,20 +240,36 @@ export function siblingAnchorProblem(
     : `sibling fingerprint ${sibling.fingerprint} does not match upstream ${actual}`;
 }
 
+const grew = (before: Delta, after: Delta): boolean => after[0] > before[0] || after[1] > before[1];
+
 export interface PathFacts {
   readonly path: string;
   readonly change: ChangeStatus | undefined;
   readonly upstreamOwned: boolean;
   readonly entry: RegistryFile | undefined;
+  readonly baseEntry: RegistryFile | undefined;
   readonly delta: Delta | undefined;
   readonly anchorProblems: ReadonlyArray<string>;
 }
 
 const deltaText = ([added, removed]: Delta): string => `+${added} -${removed}`;
 
+const legacyGrowthProblem = (
+  entry: RegistryFile | undefined,
+  baseEntry: RegistryFile | undefined,
+): string | undefined => {
+  if (entry === undefined || !("legacy" in entry)) return undefined;
+  if (baseEntry === undefined) {
+    return "a new entry must record seams: legacy entries are bootstrap-only";
+  }
+  return grew(baseEntry.delta, entry.delta)
+    ? `legacy delta ${deltaText(entry.delta)} grows from the base ${deltaText(baseEntry.delta)}: record seams instead`
+    : undefined;
+};
+
 // Checks 1-4 for one touched path; a path collects every failure it earns.
 export function classifyPath(facts: PathFacts): Array<BoundaryFinding> {
-  const { path, change, upstreamOwned, entry, delta } = facts;
+  const { path, change, upstreamOwned, entry, baseEntry, delta } = facts;
   if (!upstreamOwned && entry === undefined) {
     return [{ path, verdict: "ALLOW_OWNED", detail: "absent at upstreamRef: ++ owned" }];
   }
@@ -276,6 +295,8 @@ export function classifyPath(facts: PathFacts): Array<BoundaryFinding> {
       );
     }
   }
+  const legacyProblem = legacyGrowthProblem(entry, baseEntry);
+  if (legacyProblem !== undefined) fail("LEGACY_GROWN", legacyProblem);
   for (const problem of facts.anchorProblems) fail("ANCHOR_BROKEN", problem);
 
   if (failures.length > 0) return failures;
@@ -290,7 +311,7 @@ export function classifyPath(facts: PathFacts): Array<BoundaryFinding> {
       ];
 }
 
-export type RegistryChangeKind = "added" | "raised" | "new seam" | "new sibling";
+export type RegistryChangeKind = "added" | "raised" | "new seam" | "new sibling" | "changed";
 
 export interface RegistryChange {
   readonly path: string;
@@ -298,10 +319,38 @@ export interface RegistryChange {
   readonly detail: string;
 }
 
-const grew = (before: Delta, after: Delta): boolean => after[0] > before[0] || after[1] > before[1];
+const seamsOf = (entry: RegistryFile | undefined): ReadonlyArray<Seam> =>
+  entry === undefined || "legacy" in entry ? [] : entry.seams;
 
-const seamIdsOf = (entry: RegistryFile | undefined): ReadonlySet<string> =>
-  new Set(entry === undefined || "legacy" in entry ? [] : entry.seams.map((seam) => seam.id));
+const SEAM_REVIEWED_FIELDS = ["feature", "mechanism", "anchor", "reason", "target"] as const;
+
+// The fingerprint is left out: check 4 holds it to the upstream text.
+const changedSeamFields = (before: Seam, after: Seam): Array<string> =>
+  SEAM_REVIEWED_FIELDS.filter((field) => !sameJson(before[field], after[field]));
+
+function seamChanges(
+  path: string,
+  before: ReadonlyArray<Seam>,
+  after: ReadonlyArray<Seam>,
+): Array<RegistryChange> {
+  const changes: Array<RegistryChange> = [];
+  const beforeById = new Map(before.map((seam) => [seam.id, seam]));
+  for (const seam of after) {
+    const previous = beforeById.get(seam.id);
+    if (previous === undefined) {
+      changes.push({ path, kind: "new seam", detail: `${seam.id} (${seam.mechanism})` });
+      continue;
+    }
+    const fields = changedSeamFields(previous, seam);
+    if (fields.length === 0) continue;
+    changes.push({ path, kind: "changed", detail: `${seam.id}: ${fields.join(", ")} changed` });
+  }
+  const afterIds = new Set(after.map((seam) => seam.id));
+  for (const seam of before.filter(({ id }) => !afterIds.has(id))) {
+    changes.push({ path, kind: "changed", detail: `${seam.id}: removed` });
+  }
+  return changes;
+}
 
 function entryChanges(
   path: string,
@@ -319,12 +368,13 @@ function entryChanges(
       detail: `${deltaText(before.delta)} -> ${deltaText(after.delta)}`,
     });
   }
-  if ("legacy" in after) return changes;
-  const knownSeams = seamIdsOf(before);
-  for (const seam of after.seams.filter(({ id }) => !knownSeams.has(id))) {
-    changes.push({ path, kind: "new seam", detail: `${seam.id} (${seam.mechanism})` });
+  if ("legacy" in after) {
+    if (seamsOf(before).length > 0) {
+      changes.push({ path, kind: "changed", detail: "seams -> legacy" });
+    }
+    return changes;
   }
-  return changes;
+  return [...changes, ...seamChanges(path, seamsOf(before), after.seams)];
 }
 
 const KIND_ORDER: Record<RegistryChangeKind, number> = {
@@ -332,26 +382,38 @@ const KIND_ORDER: Record<RegistryChangeKind, number> = {
   raised: 1,
   "new seam": 2,
   "new sibling": 3,
+  changed: 4,
 };
 
-// Check 5: every entry a PR adds or raises is a maintainer decision. Unchanged
-// and lowered entries are not listed.
+function siblingChanges(
+  baseSiblings: ReadonlyArray<Sibling>,
+  headSiblings: ReadonlyArray<Sibling>,
+): Array<RegistryChange> {
+  const baseByUpstream = new Map(baseSiblings.map((sibling) => [sibling.upstream, sibling]));
+  return headSiblings.flatMap((sibling): Array<RegistryChange> => {
+    const known = baseByUpstream.get(sibling.upstream);
+    if (known === undefined) {
+      const detail = `${sibling.plusplus} (${sibling.feature})`;
+      return [{ path: sibling.upstream, kind: "new sibling", detail }];
+    }
+    if (sameJson(known, sibling)) return [];
+    const detail = `${sibling.plusplus} (${sibling.feature}): record changed`;
+    return [{ path: sibling.upstream, kind: "changed", detail }];
+  });
+}
+
+// Check 5: every entry a PR adds, raises or edits is a maintainer decision.
+// Unchanged and lowered entries are not listed.
 export function summarizeRegistryChanges(
   baseRegistry: SeamRegistry,
   headRegistry: SeamRegistry,
 ): Array<RegistryChange> {
-  const changes = Object.keys(headRegistry.files).flatMap((path) =>
-    entryChanges(path, entryOf(baseRegistry, path), headRegistry.files[path]!),
-  );
-  const knownSiblings = new Set(baseRegistry.siblings.map((sibling) => sibling.upstream));
-  for (const sibling of headRegistry.siblings) {
-    if (knownSiblings.has(sibling.upstream)) continue;
-    changes.push({
-      path: sibling.upstream,
-      kind: "new sibling",
-      detail: `${sibling.plusplus} (${sibling.feature})`,
-    });
-  }
+  const changes = [
+    ...Object.keys(headRegistry.files).flatMap((path) =>
+      entryChanges(path, entryOf(baseRegistry, path), headRegistry.files[path]!),
+    ),
+    ...siblingChanges(baseRegistry.siblings, headRegistry.siblings),
+  ];
   return changes.sort(
     (a, b) => compareText(a.path, b.path) || KIND_ORDER[a.kind] - KIND_ORDER[b.kind],
   );
@@ -397,7 +459,9 @@ export function renderReport(run: BoundaryRun): string {
   const violations = run.findings.filter(isViolation);
   const allowed = run.findings.filter((finding) => !isViolation(finding));
   const mode =
-    run.mode === "exempt" ? `exempt (designated upstream-sync PR #${EXEMPT_PR_NUMBER})` : "checked";
+    run.mode === "exempt"
+      ? `exempt (designated upstream-sync PR, #${SYNC_DESIGNATION_ISSUE} designation)`
+      : "checked";
   const lines = [
     "## Fork boundaries",
     "",
@@ -405,7 +469,7 @@ export function renderReport(run: BoundaryRun): string {
     `- upstreamRef ${codeSpan(run.upstreamRef)}`,
     `- mode: ${mode}`,
     "",
-    `### Registry entries this PR adds or raises (${run.registryChanges.length})`,
+    `### Registry entries this PR adds, raises or changes (${run.registryChanges.length})`,
     "",
   ];
   if (run.registryChanges.length === 0) {
@@ -492,6 +556,34 @@ const loadHeadRegistry = Effect.fn("forkBoundaries.loadHeadRegistry")(function* 
   );
 });
 
+// The upstreamRef the registry names at a commit; undefined when it cannot be read.
+const upstreamRefAt = Effect.fn("forkBoundaries.upstreamRefAt")(function* (
+  cwd: string,
+  commit: string,
+) {
+  return yield* git(cwd, ["show", `${commit}:${SEAM_REGISTRY_PATH}`]).pipe(
+    Effect.mapError(String),
+    Effect.flatMap((text) => parseSeamRegistry(text).pipe(Effect.mapError(String))),
+    Effect.map((registry) => registry.upstreamRef),
+    Effect.orElseSucceed(() => undefined),
+  );
+});
+
+// A sync merge's second parent is the upstream commit the registry must name.
+const syncParentProblems = Effect.fn("forkBoundaries.syncParentProblems")(function* (
+  cwd: string,
+  headRef: string,
+  registry: SeamRegistry,
+) {
+  const parent = (yield* git(cwd, ["rev-parse", "--verify", "--quiet", `${headRef}^2`]).pipe(
+    Effect.orElseSucceed(() => ""),
+  )).trim();
+  if (parent === "") return [`${headRef} is not a merge commit, so it cannot be an upstream sync`];
+  return parent === registry.upstreamRef
+    ? []
+    : [`upstreamRef ${registry.upstreamRef} is not the merge's upstream parent ${parent}`];
+});
+
 const upstreamTextOf = (cwd: string, upstreamRef: string, path: string) =>
   readFileAt(cwd, upstreamRef, path).pipe(
     Effect.map(Option.getOrUndefined),
@@ -524,6 +616,7 @@ const classifyTouched = Effect.fn("forkBoundaries.classifyTouched")(function* (
         change,
         upstreamOwned: upstreamPaths.has(path),
         entry,
+        baseEntry: entryOf(baseRegistry, path),
         delta: deltas.get(path),
         anchorProblems: seams.length === 0 ? [] : seamAnchorProblems(path, upstreamText, seams),
       }),
@@ -601,11 +694,12 @@ export const checkForkBoundaries = Effect.fn("forkBoundaries.check")(function* (
   const headRegistry = headLoad.registry;
 
   if (exempt) {
-    const problems = yield* registryProblems({
-      cwd,
-      registry: headRegistry,
-      forkTree: headTree,
-    }).pipe(Effect.mapError(registryError));
+    const problems = [
+      ...(yield* syncParentProblems(cwd, headSha ?? "HEAD", headRegistry)),
+      ...(yield* registryProblems({ cwd, registry: headRegistry, forkTree: headTree }).pipe(
+        Effect.mapError(registryError),
+      )),
+    ];
     const findings = problems.map((detail) => ({
       path: SEAM_REGISTRY_PATH,
       verdict: "SYNC_REGISTRY_INCONSISTENT" as const,
@@ -615,7 +709,11 @@ export const checkForkBoundaries = Effect.fn("forkBoundaries.check")(function* (
   }
 
   if (headRegistry.upstreamRef !== baseRegistry.upstreamRef) {
-    const detail = `upstreamRef moves ${baseRegistry.upstreamRef} -> ${headRegistry.upstreamRef}; only a designated sync PR may move it`;
+    const forkPointRef = yield* upstreamRefAt(cwd, forkPoint);
+    const detail =
+      forkPointRef === headRegistry.upstreamRef
+        ? `the base moved upstreamRef ${forkPointRef} -> ${baseRegistry.upstreamRef} after this branch forked; rebase onto the base`
+        : `upstreamRef moves ${baseRegistry.upstreamRef} -> ${headRegistry.upstreamRef}; only a designated sync PR may move it`;
     return {
       ...run,
       findings: [{ path: SEAM_REGISTRY_PATH, verdict: "UPSTREAM_REF_MOVED", detail }],

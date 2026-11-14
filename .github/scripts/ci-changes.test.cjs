@@ -452,19 +452,31 @@ test("an inert docs diff runs nothing", () => {
   assert.equal(outputs.rust, false);
 });
 
-// The fork-boundary job is advisory until B12: it must carry
-// continue-on-error and stay out of Check's needs, so its result can never
-// gate a PR. The shared expected-job map mirrors Check's needs and stays
-// unaware of the job for the same reason.
+// The fork-boundary job is advisory until a designated sync PR (#50) passes it:
+// it must carry continue-on-error and stay out of Check's needs, so its result
+// can never gate a PR. The shared expected-job map mirrors Check's needs and
+// stays unaware of the job for the same reason.
 test("fork_boundaries is advisory and outside the Check gate", () => {
   const repoRoot = path.resolve(__dirname, "../..");
   const workflow = fs.readFileSync(path.join(repoRoot, ".github/workflows/ci.yml"), "utf8");
 
-  const job = workflow.match(/^ {2}fork_boundaries:\n(?:.*\n)*?^ {4}continue-on-error: true$/m);
-  assert.ok(job, "fork_boundaries job must set continue-on-error: true");
-  assert.ok(
-    !/fork_boundaries[\s\S]*?needs:/.test(job[0]),
-    "fork_boundaries must not gate on needs",
+  const jobStart = workflow.indexOf("\n  fork_boundaries:\n");
+  assert.ok(jobStart >= 0, "ci.yml must define fork_boundaries");
+  const jobHead = workflow.slice(jobStart, workflow.indexOf("\n    steps:", jobStart));
+  assert.match(
+    jobHead,
+    /^ {4}continue-on-error: true$/m,
+    "fork_boundaries must set continue-on-error",
+  );
+  const jobNeeds = jobHead.match(/^ {4}needs:\s*\[([^\]]*)\]/m);
+  assert.ok(jobNeeds, "fork_boundaries must declare needs");
+  assert.deepEqual(
+    jobNeeds[1]
+      .split(",")
+      .map((name) => name.trim())
+      .sort(),
+    ["changes", "sync"],
+    "fork_boundaries needs exactly changes and sync",
   );
 
   const check = workflow.slice(workflow.indexOf("\n  check:"));

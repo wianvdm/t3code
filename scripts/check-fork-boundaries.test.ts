@@ -31,6 +31,7 @@ import {
   fingerprintOf,
   locateRegion,
   serializeRegistry,
+  type Delta,
   type RegistryFile,
   type Seam,
   type SeamAnchor,
@@ -95,6 +96,8 @@ const baseFacts: PathFacts = {
   change: "M",
   upstreamOwned: true,
   entry: undefined,
+  // A legacy entry the base already carries, larger than any row's own.
+  baseEntry: legacy(9, 9),
   delta: undefined,
   anchorProblems: [],
 };
@@ -124,6 +127,36 @@ describe("classifyPath", () => {
       "a deleted, unregistered upstream path collects both failures",
       { change: "D", delta: [0, 3] },
       ["UPSTREAM_DELETED", "UNREGISTERED"],
+    ],
+    [
+      "a new legacy entry",
+      { entry: legacy(1, 1), baseEntry: undefined, delta: [1, 1] },
+      ["LEGACY_GROWN"],
+    ],
+    [
+      "a legacy delta that grows against the base",
+      { entry: legacy(4, 1), baseEntry: legacy(3, 1), delta: [4, 1] },
+      ["LEGACY_GROWN"],
+    ],
+    [
+      "a legacy delta that shrinks against the base",
+      { entry: legacy(2, 1), baseEntry: legacy(3, 1), delta: [2, 1] },
+      ["ALLOW_REGISTERED"],
+    ],
+    [
+      "a seams entry converted to legacy at the same delta",
+      { entry: legacy(1, 0), baseEntry: appEntry, delta: [1, 0] },
+      ["ALLOW_REGISTERED"],
+    ],
+    [
+      "a seams conversion to a larger legacy delta",
+      { entry: legacy(2, 0), baseEntry: appEntry, delta: [2, 0] },
+      ["LEGACY_GROWN"],
+    ],
+    [
+      "a new entry with seams",
+      { entry: appEntry, baseEntry: undefined, delta: [1, 0] },
+      ["ALLOW_REGISTERED"],
     ],
     [
       "a broken anchor on a registered path",
@@ -229,6 +262,32 @@ describe("summarizeRegistryChanges", () => {
     );
   });
 
+  it("lists edits that do not grow the registry: changed or removed seams, seams to legacy, changed siblings", () => {
+    const reanchored = seam("one", { text: "elsewhere" }, WRONG_FINGERPRINT);
+    const base = registryOf(
+      { "a.ts": oneSeam, "b.ts": twoSeams, "c.ts": oneSeam, "d.ts": oneSeam },
+      [sibling],
+    );
+    const head = registryOf(
+      {
+        "a.ts": { delta: [2, 0], seams: [reanchored] },
+        "b.ts": oneSeam,
+        "c.ts": legacy(2, 0),
+        "d.ts": oneSeam,
+      },
+      [{ ...sibling, plusplus: "docs/other.md" }],
+    );
+    assert.deepStrictEqual(
+      summarizeRegistryChanges(base, head).map(({ path, kind, detail }) => [path, kind, detail]),
+      [
+        ["a.ts", "changed", "demo.one: anchor changed"],
+        ["b.ts", "changed", "demo.two: removed"],
+        ["c.ts", "changed", "seams -> legacy"],
+        ["docs/guide.md", "changed", "docs/other.md (demo): record changed"],
+      ],
+    );
+  });
+
   it("lists every seam of an added entry and omits unchanged or lowered entries", () => {
     const base = registryOf({ "a.ts": legacy(5, 5), "b.ts": legacy(2, 2) });
     const head = registryOf({ "a.ts": legacy(1, 1), "b.ts": legacy(2, 2), "d.ts": twoSeams });
@@ -324,11 +383,13 @@ describe("parseNameStatusZ", () => {
     ]);
   });
 
-  it("rejects typechange and copy statuses instead of skipping them", () => {
-    assert.throws(
-      () => parseNameStatusZ("T\0scripts/tool.sh\0"),
-      /unsupported git name-status "T"/,
-    );
+  it("parses a typechange record", () => {
+    assert.deepStrictEqual(parseNameStatusZ("T\0scripts/tool.sh\0"), [
+      { status: "T", path: "scripts/tool.sh" },
+    ]);
+  });
+
+  it("rejects copy statuses instead of skipping them", () => {
     assert.throws(
       () => parseNameStatusZ("C075\0meta/app.xml\0meta/fork-app.xml\0"),
       /unsupported git name-status "C075"/,
@@ -337,13 +398,19 @@ describe("parseNameStatusZ", () => {
 
   it("rejects an unknown status rather than misreading the tokens that follow it", () => {
     assert.throws(
-      () => parseNameStatusZ("A\0docs/fork.md\0T\0Makefile\0A\0other.md\0"),
-      /unsupported git name-status "T"/,
+      () => parseNameStatusZ("A\0docs/fork.md\0U\0Makefile\0A\0other.md\0"),
+      /unsupported git name-status "U"/,
     );
   });
 });
 
 describe("collectChanges", () => {
+  it("counts a typechange as a deletion of the path", () => {
+    assert.deepStrictEqual(collectChanges("T\0scripts/tool.sh\0"), [
+      { status: "D", path: "scripts/tool.sh" },
+    ]);
+  });
+
   it("flattens renames and dedupes by path", () => {
     const changes = collectChanges(
       ["R090\0old/name.ts\0new/name.ts", "M\0docs/fork.md", "D\0gone.ts", "A\0docs/fork.md"].join(
@@ -377,7 +444,7 @@ describe("renderReport", () => {
     const report = renderReport(run);
     assert.include(report, `base \`${"a".repeat(40)}\``);
     assert.include(report, "mode: checked");
-    assert.include(report, "### Registry entries this PR adds or raises (1)");
+    assert.include(report, "### Registry entries this PR adds, raises or changes (1)");
     assert.include(report, "### Violations (1)");
     assert.include(report, "### Allowed (1)");
     assert.include(report, "<details>");
@@ -392,7 +459,7 @@ describe("renderReport", () => {
 
   it("marks an exempt run and skips the registry summary", () => {
     const report = renderReport({ ...run, mode: "exempt", registryChanges: [], findings: [] });
-    assert.include(report, "exempt (designated upstream-sync PR #50)");
+    assert.include(report, "exempt (designated upstream-sync PR, #50 designation)");
     assert.include(report, "(skipped for a designated sync PR)");
   });
 });
@@ -407,6 +474,9 @@ const emptyGitConfig = NodePath.join(
 NodeFS.writeFileSync(emptyGitConfig, "");
 const fixtureConfig = {
   "core.excludesFile": emptyGitConfig,
+  // The loosest stat match, so a test can force an index entry to look clean.
+  "core.checkStat": "minimal",
+  "core.trustctime": "false",
   "user.name": "Fixture",
   "user.email": "fixture@example.invalid",
 };
@@ -481,6 +551,12 @@ function boundaryFixture(registryOverride?: string) {
     base: git("rev-parse", "HEAD"),
     upstreamRef: git("rev-parse", "HEAD~1"),
     commit: commitAll,
+    // Re-parents HEAD as a merge whose second parent is \`parent\`, keeping the
+    // index and working tree.
+    mergeUpstream(parent: string) {
+      const merge = git("commit-tree", "HEAD^{tree}", "-p", "HEAD", "-p", parent, "-m", "sync");
+      git("reset", "--soft", merge);
+    },
     // Rewrites the working-tree registry: `files` entries replace or add keys,
     // a null drops one.
     writeRegistry(
@@ -550,6 +626,13 @@ const runOk = (root: string, baseRef: string, overrides: Partial<CheckOptions> =
 const runFail = (root: string, baseRef: string) => runCheck(root, baseRef).pipe(Effect.flip);
 
 const EDITED_MAIN = UPSTREAM_MAIN.replace("main = 1", "main = 2");
+const LONG_AGO_SECONDS = 978_307_200;
+const MAIN_PATH = "apps/server/src/main.ts";
+
+const mainEntry = (delta: Delta): RegistryFile => ({
+  delta,
+  seams: [seam("main", MAIN_ANCHOR, fingerprintAt("main.ts", UPSTREAM_MAIN, MAIN_ANCHOR))],
+});
 
 describe("checkForkBoundaries", () => {
   it.live("allows owned CRUD, registered edits within budget and untracked owned files", () =>
@@ -586,16 +669,46 @@ describe("checkForkBoundaries", () => {
           "apps/server/src/main.ts": ["UNREGISTERED"],
         });
 
-        // The PR carries the entry in its own registry and the edit passes.
-        project.writeRegistry({ "apps/server/src/main.ts": legacy(1, 1) });
+        // A new legacy entry is bootstrap-only: it cannot satisfy the guard.
+        project.writeRegistry({ [MAIN_PATH]: legacy(1, 1) });
+        const legacyEntry = yield* runCheck(project.root, project.base);
+        assert.deepStrictEqual(verdictsByPath(legacyEntry.findings), {
+          [MAIN_PATH]: ["LEGACY_GROWN"],
+          [SEAM_REGISTRY_PATH]: ["ALLOW_OWNED"],
+        });
+
+        // The PR carries a seams entry in its own registry and the edit passes.
+        project.writeRegistry({ [MAIN_PATH]: mainEntry([1, 1]) });
         const registered = yield* runOk(project.root, project.base);
         assert.deepStrictEqual(verdictsByPath(registered.findings), {
-          "apps/server/src/main.ts": ["ALLOW_REGISTERED"],
+          [MAIN_PATH]: ["ALLOW_REGISTERED"],
           [SEAM_REGISTRY_PATH]: ["ALLOW_OWNED"],
         });
         assert.deepStrictEqual(registered.registryChanges, [
-          { path: "apps/server/src/main.ts", kind: "added", detail: "legacy, delta +1 -1" },
+          { path: MAIN_PATH, kind: "added", detail: "seams, delta +1 -1" },
+          { path: MAIN_PATH, kind: "new seam", detail: "demo.main (hook)" },
         ]);
+      }),
+    ),
+  );
+
+  it.live("check 1: sees a same-size edit whose stat matches the index entry", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const project = yield* withFixture();
+        const mainPath = NodePath.join(project.root, "apps/server/src/main.ts");
+        // An entry older than any index file never counts as racy, so only a
+        // rehash can see the edit; pinned mtimes make that independent of timing.
+        NodeFS.utimesSync(mainPath, LONG_AGO_SECONDS, LONG_AGO_SECONDS);
+        project.git("update-index", "--refresh");
+        project.write("apps/server/src/main.ts", EDITED_MAIN);
+        NodeFS.utimesSync(mainPath, LONG_AGO_SECONDS, LONG_AGO_SECONDS);
+        assert.strictEqual(project.git("diff-files", "--name-only"), "");
+
+        const checked = yield* runCheck(project.root, project.base);
+        assert.deepStrictEqual(verdictsByPath(checked.findings), {
+          "apps/server/src/main.ts": ["UNREGISTERED"],
+        });
       }),
     ),
   );
@@ -660,6 +773,25 @@ describe("checkForkBoundaries", () => {
           "apps/server/src/main.ts": ["UPSTREAM_DELETED", "UNREGISTERED"],
           "apps/server/src/moved.ts": ["ALLOW_OWNED"],
         });
+      }),
+    ),
+  );
+
+  it.live("check 3: a typechange of an upstream file fails as a deletion", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const project = yield* withFixture();
+        const target = NodeChildProcess.execFileSync("git", ["hash-object", "-w", "--stdin"], {
+          cwd: project.root,
+          encoding: "utf8",
+          env,
+          input: "elsewhere",
+        }).trim();
+        project.git("update-index", "--cacheinfo", `120000,${target},${MAIN_PATH}`);
+        project.git("commit", "--quiet", "-m", "typechange");
+        const headSha = project.git("rev-parse", "HEAD");
+        const checked = yield* runCheck(project.root, project.base, { headSha });
+        assert.include(verdictsByPath(checked.findings)[MAIN_PATH] ?? [], "UPSTREAM_DELETED");
       }),
     ),
   );
@@ -750,6 +882,24 @@ describe("checkForkBoundaries", () => {
     ),
   );
 
+  it.live("check 0: a base that moved upstreamRef after the fork tells the author to rebase", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const project = yield* withFixture();
+        const branch = project.git("branch", "--show-current");
+        project.git("checkout", "--quiet", "-b", "base-moved");
+        project.writeRegistry({}, { upstreamRef: "b".repeat(40) });
+        const movedBase = project.commit("base moves upstreamRef");
+        project.git("checkout", "--quiet", branch);
+        const moved = yield* runCheck(project.root, movedBase);
+        assert.deepStrictEqual(verdictsByPath(moved.findings), {
+          [SEAM_REGISTRY_PATH]: ["UPSTREAM_REF_MOVED"],
+        });
+        assert.include(moved.findings[0]?.detail, "rebase onto the base");
+      }),
+    ),
+  );
+
   it.live("fails closed on a missing or invalid head registry", () =>
     Effect.scoped(
       Effect.gen(function* () {
@@ -772,9 +922,10 @@ describe("checkForkBoundaries", () => {
     Effect.scoped(
       Effect.gen(function* () {
         const project = yield* withFixture();
+        project.mergeUpstream(project.upstreamRef);
         // A consistent registry that deletes an upstream file: check 3 would fail it.
         project.git("rm", "-f", "--quiet", "apps/server/src/main.ts");
-        project.writeRegistry({ "apps/server/src/main.ts": legacy(0, 3) });
+        project.writeRegistry({ "apps/server/src/main.ts": mainEntry([0, 3]) });
         const checked = yield* runCheck(project.root, project.base);
         assert.deepStrictEqual(verdictsByPath(checked.findings)["apps/server/src/main.ts"], [
           "UPSTREAM_DELETED",
@@ -791,6 +942,29 @@ describe("checkForkBoundaries", () => {
           [SEAM_REGISTRY_PATH]: ["SYNC_REGISTRY_INCONSISTENT"],
         });
         assert.include(inconsistent.findings[0]?.detail, "apps/server/src/main.ts");
+      }),
+    ),
+  );
+
+  it.live("exempts only a merge whose second parent is the registry's upstreamRef", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const project = yield* withFixture();
+        const notMerge = yield* runCheck(project.root, project.base, { exempt: true });
+        assert.deepStrictEqual(verdictsByPath(notMerge.findings), {
+          [SEAM_REGISTRY_PATH]: ["SYNC_REGISTRY_INCONSISTENT"],
+        });
+        assert.include(notMerge.findings[0]?.detail, "not a merge commit");
+
+        const stray = project.git("commit-tree", "HEAD^{tree}", "-m", "stray");
+        project.mergeUpstream(stray);
+        const wrongParent = yield* runCheck(project.root, project.base, { exempt: true });
+        assert.include(wrongParent.findings[0]?.detail, "not the merge's upstream parent");
+
+        project.git("reset", "--soft", project.base);
+        project.mergeUpstream(project.upstreamRef);
+        const merged = yield* runCheck(project.root, project.base, { exempt: true });
+        assert.deepStrictEqual(merged.findings, []);
       }),
     ),
   );

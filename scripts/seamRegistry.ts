@@ -792,9 +792,10 @@ export const parseSyncHistory = Effect.fn("seamRegistry.parseHistory")(function*
   );
 });
 
-// Tree of the working directory (tracked and unignored files) built in a
-// throwaway copy of the index, so the repository's own index is never touched.
-// Equals HEAD^{tree} on a clean checkout.
+// Tree of the working directory (tracked and unignored files), built in a throwaway
+// index so the repository's own index is untouched. It starts from HEAD without stat
+// data: a copied index lets git skip rehashing a same-size edit made within the
+// timestamp granularity. Equals HEAD^{tree} on a clean checkout.
 export const snapshotWorkingTree = Effect.fn("seamRegistry.snapshotWorkingTree")(function* (
   cwd: string,
 ) {
@@ -807,19 +808,8 @@ export const snapshotWorkingTree = Effect.fn("seamRegistry.snapshotWorkingTree")
         (cause) => new SeamRegistryError({ message: `no temp directory: ${cause.message}` }),
       ),
     );
-  const indexPath = path.resolve(
-    cwd,
-    (yield* git(cwd, ["rev-parse", "--git-path", "index"])).trim(),
-  );
-  const snapshotIndex = path.join(tempDir, "index");
-  yield* fs
-    .copyFile(indexPath, snapshotIndex)
-    .pipe(
-      Effect.mapError(
-        (cause) => new SeamRegistryError({ message: `cannot copy the index: ${cause.message}` }),
-      ),
-    );
-  const env = { GIT_INDEX_FILE: snapshotIndex };
+  const env = { GIT_INDEX_FILE: path.join(tempDir, "index") };
+  yield* git(cwd, ["read-tree", "HEAD"], env);
   yield* git(cwd, ["add", "--all"], env);
   return (yield* git(cwd, ["write-tree"], env)).trim();
 }, Effect.scoped);
