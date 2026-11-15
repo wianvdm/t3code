@@ -115,6 +115,71 @@ describe("usage accounts that share an identity with a native login", () => {
   });
 });
 
+describe("usage accounts that merge with a native login of another provider", () => {
+  const pi = ProviderDriverKind.make("pi");
+  const codex = ProviderDriverKind.make("codex");
+  const piParent = provider({
+    instanceId: ProviderInstanceId.make("pi"),
+    driver: pi,
+    auth: { status: "authenticated", email: "pi@example.com" },
+    usageLimits: { checkedAt, windows: [window] },
+    usageAccounts: [
+      {
+        id: "main@example.com.json",
+        driver: codex,
+        email: "main@example.com",
+        usageLimits: {
+          checkedAt: "2026-09-03T12:00:00.000Z",
+          windows: [{ ...window, usedPercent: 15 }],
+        },
+      },
+    ],
+  });
+  const nativeCodex = provider({
+    instanceId: ProviderInstanceId.make("codex"),
+    driver: codex,
+    usageLimits: { checkedAt: "2026-09-03T10:00:00.000Z", windows: [window] },
+  });
+  const codexRedeem = (environmentId: string) => ({
+    environmentId,
+    input: { instanceId: "codex" },
+  });
+  const mergedRow = (accounts: ReturnType<typeof collectLimitAccounts>) =>
+    accounts.find((account) => account.driver === codex);
+
+  it.each([
+    ["before", [piParent, nativeCodex]],
+    ["after", [nativeCodex, piParent]],
+  ])(
+    "redeems through the native login listed %s the usage account's provider",
+    (_order, providers) => {
+      const merged = mergedRow(collectLimitAccounts(presentations(providers)));
+      expect(merged?.limits.windows[0]?.usedPercent).toBe(15);
+      expect(merged?.redeem).toEqual(codexRedeem("env-a"));
+    },
+  );
+
+  it("redeems through the native login of another environment", () => {
+    const accounts = collectLimitAccounts(
+      new Map([
+        [
+          EnvironmentId.make("env-a"),
+          { entry: { target: { label: "Laptop" } }, serverConfig: { providers: [piParent] } },
+        ],
+        [
+          EnvironmentId.make("env-b"),
+          { entry: { target: { label: "Desktop" } }, serverConfig: { providers: [nativeCodex] } },
+        ],
+      ]),
+    );
+    expect(mergedRow(accounts)?.redeem).toEqual(codexRedeem("env-b"));
+  });
+
+  it("offers no redeem when no native login shares the identity", () => {
+    expect(mergedRow(collectLimitAccounts(presentations([piParent])))?.redeem).toBeNull();
+  });
+});
+
 describe("usage accounts and coverage", () => {
   it("covers the parent's driver, not the driver the account reports", () => {
     const pi = ProviderDriverKind.make("pi");
@@ -182,6 +247,48 @@ describe("monetary-only usage accounts", () => {
     const report = collectProviderUsageLimits(native.instanceId, [native], [hub], now);
     expect(report?.accounts.map((account) => account.id)).toEqual(["oc", "hub:a.json"]);
     expect(report?.accounts[0]?.limits.windows).toEqual([]);
+  });
+
+  // R5: the hub row is judged against the older windowed login, not the fresher monetary-only winner.
+  it("drops the hub row of an identity whose older native login has windows", () => {
+    const opencode = ProviderDriverKind.make("opencode");
+    const login = (instanceId: string, usageLimits: ServerProvider["usageLimits"]) =>
+      provider({
+        instanceId: ProviderInstanceId.make(instanceId),
+        driver: opencode,
+        auth: { status: "authenticated", email: "a@example.com" },
+        usageLimits,
+      });
+    const monetary = login("oc", {
+      checkedAt: "2026-09-03T11:00:00.000Z",
+      windows: [],
+      monetaryUsage: { usedUsd: 2 },
+    });
+    const windowed = login("oc-windowed", {
+      checkedAt: "2026-09-03T10:00:00.000Z",
+      windows: [window],
+    });
+    const hub = {
+      id: UsageLimitSourceId.make("hub"),
+      kind: "cliproxy" as const,
+      label: "hub",
+      checkedAt,
+      accounts: [
+        {
+          id: "a.json",
+          driver: opencode,
+          email: "a@example.com",
+          usageLimits: { checkedAt, windows: [window] },
+        },
+      ],
+    };
+    const report = collectProviderUsageLimits(
+      monetary.instanceId,
+      [monetary, windowed],
+      [hub],
+      now,
+    );
+    expect(report?.accounts.map((account) => account.id)).toEqual(["oc"]);
   });
 
   it("returns report rows without the placeholder window and raises no notice", () => {

@@ -1,4 +1,5 @@
 import type {
+  EnvironmentId,
   ProviderInstanceId,
   ServerProvider,
   ServerProviderUsageLimits,
@@ -194,31 +195,74 @@ export function collectLimitNotices(presentations: LimitPresentations): readonly
 export function collectLimitAccounts(
   presentations: LimitPresentations,
 ): readonly upstream.LimitAccount[] {
-  const { view, syntheticParents } = expandPresentations(presentations, (_parent, account) => ({
+  const expanded = expandPresentations(presentations, (_parent, account) => ({
     displayName: account.email ? "" : accountIdLabel(account.id),
     driver: account.driver,
   }));
-  return upstream.collectLimitAccounts(withMonetaryPlaceholders(view)).map((account) => ({
+  const accounts = upstream.collectLimitAccounts(withMonetaryPlaceholders(expanded.view));
+  const nativeRedeem = nativeRedeemOf(presentations, expanded, accounts);
+  return accounts.map((account) => ({
     ...account,
-    redeem: nativeRedeem(account, syntheticParents),
+    redeem: nativeRedeem(account),
     limits: withoutMonetarySentinel(account.limits),
   }));
 }
 
-// Synthetic ids never leave here. A usage account that won a merged row redeems through the login
-// it merged into, unless it supplied the reset credits, which have no native redeem.
-function nativeRedeem(
-  account: upstream.LimitAccount,
-  syntheticParents: ReadonlyMap<string, ProviderInstanceId>,
-): upstream.LimitAccount["redeem"] {
-  const redeem = account.redeem;
-  if (!redeem || !("instanceId" in redeem.input)) return redeem;
-  const parentId = syntheticParents.get(redeem.input.instanceId);
-  if (parentId === undefined) return redeem;
-  const mergedIntoParent = account.key === `${redeem.environmentId}:${parentId}`;
-  return mergedIntoParent && !account.limits.resetCredits
-    ? { environmentId: redeem.environmentId, input: { instanceId: parentId } }
-    : null;
+const usageAccountEnvironment = (instanceId: string) =>
+  `plusplus.usage-account:${instanceId}` as EnvironmentId;
+
+// Synthetic ids never leave here. A usage account that won a merged row redeems through the
+// native login in that row, whatever provider holds it; reset credits it supplied have no native
+// redeem. `natives` is the aggregation without usage accounts, `membership` gives each its own
+// environment so its row names it.
+function nativeRedeemOf(
+  presentations: LimitPresentations,
+  expanded: ReturnType<typeof expandPresentations>,
+  accounts: readonly upstream.LimitAccount[],
+) {
+  const syntheticId = (account: upstream.LimitAccount): string | null => {
+    const input = account.redeem?.input;
+    if (!input || !("instanceId" in input)) return null;
+    return expanded.syntheticParents.has(input.instanceId) ? input.instanceId : null;
+  };
+  const needsNative = accounts.some(
+    (account) => syntheticId(account) !== null && !account.limits.resetCredits,
+  );
+  const natives = needsNative
+    ? upstream.collectLimitAccounts(withMonetaryPlaceholders(presentations))
+    : [];
+  const membership = needsNative
+    ? upstream.collectLimitAccounts(
+        withMonetaryPlaceholders(withUsageAccountEnvironments(presentations, expanded)),
+      )
+    : [];
+  return (account: upstream.LimitAccount): upstream.LimitAccount["redeem"] => {
+    const id = syntheticId(account);
+    if (id === null) return account.redeem;
+    if (account.limits.resetCredits) return null;
+    const environmentId = usageAccountEnvironment(id);
+    const row = membership.find((candidate) =>
+      candidate.environments.some((environment) => environment.environmentId === environmentId),
+    );
+    return natives.find((candidate) => candidate.key === row?.key)?.redeem ?? null;
+  };
+}
+
+function withUsageAccountEnvironments(
+  presentations: LimitPresentations,
+  expanded: ReturnType<typeof expandPresentations>,
+): LimitPresentations {
+  const withAccounts = new Map(presentations);
+  for (const presentation of expanded.view.values()) {
+    for (const provider of presentation.serverConfig?.providers ?? []) {
+      if (!expanded.syntheticParents.has(provider.instanceId)) continue;
+      withAccounts.set(usageAccountEnvironment(provider.instanceId), {
+        entry: presentation.entry,
+        serverConfig: { providers: [provider] },
+      });
+    }
+  }
+  return withAccounts;
 }
 
 function usageAccountRows(
