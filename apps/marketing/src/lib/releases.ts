@@ -1,10 +1,13 @@
-import { FORK_REPOSITORY_SLUG } from "./site";
-
-const REPO = FORK_REPOSITORY_SLUG;
+const REPO = "pingdotgg/t3code";
 
 export const RELEASES_URL = `https://github.com/${REPO}/releases`;
+export const NIGHTLY_RELEASES_URL = `${RELEASES_URL}?q=nightly&expanded=true`;
 
 const LATEST_API_URL = `https://api.github.com/repos/${REPO}/releases/latest`;
+// GitHub's latest endpoint excludes prereleases; the newest nightly comes from the ordered release list.
+const LIST_API_URL = `https://api.github.com/repos/${REPO}/releases?per_page=10`;
+
+export type ReleaseChannel = "stable" | "nightly";
 
 export interface ReleaseAsset {
   name: string;
@@ -18,16 +21,32 @@ export interface Release {
   assets: ReleaseAsset[];
 }
 
-const CACHE_KEY = "t3code-stable-release";
+function cacheKey(channel: ReleaseChannel) {
+  return `t3code-${channel}-release`;
+}
 
-export async function fetchLatestRelease(): Promise<Release> {
-  const cached = sessionStorage.getItem(CACHE_KEY);
+async function fetchStable(): Promise<Release> {
+  return fetch(LATEST_API_URL).then((r) => r.json());
+}
+
+async function fetchNightly(): Promise<Release> {
+  const list: Release[] = await fetch(LIST_API_URL).then((r) => r.json());
+  const nightly = Array.isArray(list)
+    ? list.find((release) => release.tag_name?.includes("-nightly."))
+    : undefined;
+  if (!nightly) throw new Error("No nightly release in the latest page");
+  return nightly;
+}
+
+export async function fetchLatestRelease(channel: ReleaseChannel = "stable"): Promise<Release> {
+  const key = cacheKey(channel);
+  const cached = sessionStorage.getItem(key);
   if (cached) return JSON.parse(cached);
 
-  const data: Release = await fetch(LATEST_API_URL).then((r) => r.json());
+  const data = channel === "nightly" ? await fetchNightly() : await fetchStable();
 
   if (data?.assets) {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    sessionStorage.setItem(key, JSON.stringify(data));
   }
 
   return data;

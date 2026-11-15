@@ -28,6 +28,10 @@
     "usage-vendor-icons": {
       "title": "Model vendor icons on Usage",
       "issue": 82
+    },
+    "fork-docs": {
+      "title": "++ install and FAQ pages",
+      "issue": 92
     }
   },
   "files": {
@@ -225,7 +229,7 @@
       "legacy": true
     },
     "README.md": {
-      "delta": [11, 62],
+      "delta": [13, 64],
       "legacy": true
     },
     "apps/desktop/package.json": {
@@ -375,50 +379,6 @@
     },
     "apps/desktop/src/wsl/DesktopWslBackend.ts": {
       "delta": [2, 1],
-      "legacy": true
-    },
-    "apps/marketing/astro.config.mjs": {
-      "delta": [21, 2],
-      "legacy": true
-    },
-    "apps/marketing/src/layouts/Layout.astro": {
-      "delta": [26, 53],
-      "legacy": true
-    },
-    "apps/marketing/src/lib/releases.ts": {
-      "delta": [8, 27],
-      "legacy": true
-    },
-    "apps/marketing/src/lib/site.ts": {
-      "delta": [7, 5],
-      "legacy": true
-    },
-    "apps/marketing/src/pages/95.astro": {
-      "delta": [15, 17],
-      "legacy": true
-    },
-    "apps/marketing/src/pages/download.astro": {
-      "delta": [50, 277],
-      "legacy": true
-    },
-    "apps/marketing/src/pages/index.astro": {
-      "delta": [23, 55],
-      "legacy": true
-    },
-    "apps/marketing/src/pages/privacy-policy.astro": {
-      "delta": [62, 2],
-      "legacy": true
-    },
-    "apps/marketing/src/pages/security-policy.astro": {
-      "delta": [50, 0],
-      "legacy": true
-    },
-    "apps/marketing/src/pages/terms-of-service.astro": {
-      "delta": [62, 2],
-      "legacy": true
-    },
-    "apps/marketing/src/styles/retro.css": {
-      "delta": [0, 33],
       "legacy": true
     },
     "apps/mobile/package.json": {
@@ -1189,12 +1149,34 @@
       "legacy": true
     },
     "docs/user/faq.md": {
-      "delta": [5, 6],
-      "legacy": true
+      "delta": [2, 0],
+      "seams": [
+        {
+          "id": "fork-docs.faq-pointer",
+          "feature": "fork-docs",
+          "mechanism": "config",
+          "anchor": {
+            "text": "# FAQ"
+          },
+          "reason": "Pointer line to the ++ FAQ page, so fork readers skip upstream's answers.",
+          "fingerprint": "sha256:6e7eb2b647daa8aa"
+        }
+      ]
     },
     "docs/user/install.md": {
-      "delta": [90, 73],
-      "legacy": true
+      "delta": [2, 0],
+      "seams": [
+        {
+          "id": "fork-docs.install-pointer",
+          "feature": "fork-docs",
+          "mechanism": "config",
+          "anchor": {
+            "text": "# Install T3 Code"
+          },
+          "reason": "Pointer line to the ++ install page, so fork readers skip upstream's installers.",
+          "fingerprint": "sha256:82de0a33abde9d19"
+        }
+      ]
     },
     "docs/user/remote-access.md": {
       "delta": [4, 4],
@@ -1774,6 +1756,18 @@
       "upstream": "packages/shared/src/usageLimits.ts",
       "plusplus": "packages/plusplus-extensions/src/usageReporting.ts",
       "fingerprint": "sha256:1e7498bd7bc3be96"
+    },
+    {
+      "feature": "fork-docs",
+      "upstream": "docs/user/install.md",
+      "plusplus": "plusplus/docs/install.md",
+      "fingerprint": "sha256:fdb5534a5723977d"
+    },
+    {
+      "feature": "fork-docs",
+      "upstream": "docs/user/faq.md",
+      "plusplus": "plusplus/docs/faq.md",
+      "fingerprint": "sha256:bf2fd39bbdcc61b0"
     }
   ]
 }
