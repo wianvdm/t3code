@@ -131,12 +131,17 @@ describe("classifyPath", () => {
     [
       "a new legacy entry",
       { entry: legacy(1, 1), baseEntry: undefined, delta: [1, 1] },
-      ["LEGACY_GROWN"],
+      ["LEGACY_ADDED"],
     ],
     [
-      "a legacy delta that grows against the base",
+      "an existing legacy entry raised with its delta",
       { entry: legacy(4, 1), baseEntry: legacy(3, 1), delta: [4, 1] },
-      ["LEGACY_GROWN"],
+      ["ALLOW_REGISTERED"],
+    ],
+    [
+      "an existing legacy delta that grows without the entry being raised",
+      { entry: legacy(3, 1), baseEntry: legacy(3, 1), delta: [4, 1] },
+      ["DELTA_EXCEEDED"],
     ],
     [
       "a legacy delta that shrinks against the base",
@@ -144,14 +149,9 @@ describe("classifyPath", () => {
       ["ALLOW_REGISTERED"],
     ],
     [
-      "a seams entry converted to legacy at the same delta",
+      "a seams entry converted to legacy",
       { entry: legacy(1, 0), baseEntry: appEntry, delta: [1, 0] },
-      ["ALLOW_REGISTERED"],
-    ],
-    [
-      "a seams conversion to a larger legacy delta",
-      { entry: legacy(2, 0), baseEntry: appEntry, delta: [2, 0] },
-      ["LEGACY_GROWN"],
+      ["LEGACY_ADDED"],
     ],
     [
       "a new entry with seams",
@@ -669,11 +669,11 @@ describe("checkForkBoundaries", () => {
           "apps/server/src/main.ts": ["UNREGISTERED"],
         });
 
-        // A new legacy entry is bootstrap-only: it cannot satisfy the guard.
+        // A PR may not add a legacy entry: it cannot satisfy the guard.
         project.writeRegistry({ [MAIN_PATH]: legacy(1, 1) });
         const legacyEntry = yield* runCheck(project.root, project.base);
         assert.deepStrictEqual(verdictsByPath(legacyEntry.findings), {
-          [MAIN_PATH]: ["LEGACY_GROWN"],
+          [MAIN_PATH]: ["LEGACY_ADDED"],
           [SEAM_REGISTRY_PATH]: ["ALLOW_OWNED"],
         });
 

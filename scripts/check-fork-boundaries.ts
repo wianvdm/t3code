@@ -53,7 +53,7 @@ export type BoundaryVerdict =
   | "STALE_ENTRY"
   | "DELTA_EXCEEDED"
   | "UPSTREAM_DELETED"
-  | "LEGACY_GROWN"
+  | "LEGACY_ADDED"
   | "ANCHOR_BROKEN"
   | "SYNC_REGISTRY_INCONSISTENT";
 
@@ -254,7 +254,7 @@ export interface PathFacts {
 
 const deltaText = ([added, removed]: Delta): string => `+${added} -${removed}`;
 
-const legacyGrowthProblem = (
+const legacyAddedProblem = (
   entry: RegistryFile | undefined,
   baseEntry: RegistryFile | undefined,
 ): string | undefined => {
@@ -262,9 +262,9 @@ const legacyGrowthProblem = (
   if (baseEntry === undefined) {
     return "a new entry must record seams: legacy entries are bootstrap-only";
   }
-  return grew(baseEntry.delta, entry.delta)
-    ? `legacy delta ${deltaText(entry.delta)} grows from the base ${deltaText(baseEntry.delta)}: record seams instead`
-    : undefined;
+  return "legacy" in baseEntry
+    ? undefined
+    : "an entry with seams may not convert to legacy: that drops its anchors";
 };
 
 // Checks 1-4 for one touched path; a path collects every failure it earns.
@@ -295,8 +295,8 @@ export function classifyPath(facts: PathFacts): Array<BoundaryFinding> {
       );
     }
   }
-  const legacyProblem = legacyGrowthProblem(entry, baseEntry);
-  if (legacyProblem !== undefined) fail("LEGACY_GROWN", legacyProblem);
+  const legacyProblem = legacyAddedProblem(entry, baseEntry);
+  if (legacyProblem !== undefined) fail("LEGACY_ADDED", legacyProblem);
   for (const problem of facts.anchorProblems) fail("ANCHOR_BROKEN", problem);
 
   if (failures.length > 0) return failures;

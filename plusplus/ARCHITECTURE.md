@@ -14,15 +14,15 @@ A path is **upstream-owned** when it exists at the registry's `upstreamRef` (the
 
 Allowed, each with a registry entry:
 
-| Mechanism   | What it is                                                                                      | When                                                                                                                         |
-| :---------- | :---------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
-| `hook`      | One added import plus one added call, argument, spread or return wrap. Upstream lines untouched | Default for code                                                                                                             |
-| `mount`     | One typed ++ JSX mount (#82) or one sidecar field (#80)                                         | Web UI and contracts                                                                                                         |
-| `config`    | One entry in a manifest or config (workspace, tsconfig path, knip entry, pointer line in a doc) | Wiring only                                                                                                                  |
-| `override`  | Replace one upstream statement or expression with a ++ call                                     | Only when an addition cannot do it. `reason` says why. Includes in-place bug fixes, which are dropped once upstream fixes it |
-| `swap`      | Build-time alias that resolves an upstream module to a ++ module                                | Only when a whole module must differ. The alias line is its own `config` seam                                                |
-| `generated` | File produced by a command (`agentContextBudget.json`)                                          | Never hand-merged: take upstream, regenerate                                                                                 |
-| `legacy`    | Fork delta that predates the registry, recorded by size only                                    | Bootstrap only. May shrink, never grow                                                                                       |
+| Mechanism   | What it is                                                                                      | When                                                                                                                           |
+| :---------- | :---------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------- |
+| `hook`      | One added import plus one added call, argument, spread or return wrap. Upstream lines untouched | Default for code                                                                                                               |
+| `mount`     | One typed ++ JSX mount (#82) or one sidecar field (#80)                                         | Web UI and contracts                                                                                                           |
+| `config`    | One entry in a manifest or config (workspace, tsconfig path, knip entry, pointer line in a doc) | Wiring only                                                                                                                    |
+| `override`  | Replace one upstream statement or expression with a ++ call                                     | Only when an addition cannot do it. `reason` says why. Includes in-place bug fixes, which are dropped once upstream fixes it   |
+| `swap`      | Build-time alias that resolves an upstream module to a ++ module                                | Only when a whole module must differ. The alias line is its own `config` seam                                                  |
+| `generated` | File produced by a command (`agentContextBudget.json`)                                          | Never hand-merged: take upstream, regenerate                                                                                   |
+| `legacy`    | Fork delta that predates the registry, recorded by size only                                    | Bootstrap only. May not be added by a PR; may grow only when the PR raises its recorded size, which the guard lists for review |
 
 Never:
 
@@ -119,7 +119,7 @@ After the sync PR resolves conflicts, `verify` stages the refresh (and refuses w
 
 0. The head registry's `upstreamRef` must equal the base's. Only a sync merge moves it.
 1. A changed upstream-owned path with no `files` entry fails, and so does an entry whose file no longer differs from upstream.
-2. A file whose numstat delta exceeds its recorded `delta` fails, unless the PR raises the entry. `legacy` entries are bootstrap-only: one that is new against the base, or whose delta grows, fails, so growth must come with seams.
+2. A file whose numstat delta exceeds its recorded `delta` fails, unless the PR raises the entry. `legacy` entries are bootstrap-only: a PR may not add one, nor convert a seams entry to one. An existing one may grow when the PR raises its `delta`, and check 5 lists it as raised.
 3. A deleted or renamed upstream-owned path fails.
 4. Anchors of touched entries and siblings must resolve at `upstreamRef` with matching fingerprints. Untouched entries are not re-checked.
 5. The check summary lists every entry the PR adds or raises, every new seam, and every other registry edit (a changed or removed seam, a seams entry converted to `legacy`, a changed sibling), so each is a visible maintainer decision.
