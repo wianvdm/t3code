@@ -1178,30 +1178,28 @@ export const validateUpstreamSyncMerge = Effect.fn("upstream-sync.validateMerge"
     });
   }
 
-  // The same integrity checks verify runs on the pending merge, applied to
-  // both parents of the published head.
-  for (const parent of identity.parents) {
-    const patch = yield* git(cwd, [
-      "diff",
-      "--no-color",
-      "--no-ext-diff",
-      "--no-textconv",
-      "--unified=0",
-      parent,
-      identity.commit,
-      "--",
-    ]);
-    const markers = findAddedConflictMarkers(patch);
-    if (markers.length > 0) {
-      return yield* new UpstreamSyncError({
-        message: `Conflict markers were added against parent ${parent}:\n${indentLines(markers)}`,
-      });
-    }
-    const checkArgs = ["diff", "--no-color", "--check", parent, identity.commit, "--"];
-    const check = yield* runGit(cwd, checkArgs);
-    if (check.exitCode !== 0) {
-      return yield* new GitCommandError({ args: checkArgs, ...check });
-    }
+  // Upstream parent only, as verify does: the fork parent's diff includes upstream's
+  // own vendored whitespace and marker-like lines.
+  const patch = yield* git(cwd, [
+    "diff",
+    "--no-color",
+    "--no-ext-diff",
+    "--no-textconv",
+    "--unified=0",
+    upstreamSha,
+    identity.commit,
+    "--",
+  ]);
+  const markers = findAddedConflictMarkers(patch);
+  if (markers.length > 0) {
+    return yield* new UpstreamSyncError({
+      message: `Conflict markers were added against ${tag} (${upstreamSha}):\n${indentLines(markers)}`,
+    });
+  }
+  const checkArgs = ["diff", "--no-color", "--check", upstreamSha, identity.commit, "--"];
+  const check = yield* runGit(cwd, checkArgs);
+  if (check.exitCode !== 0) {
+    return yield* new GitCommandError({ args: checkArgs, ...check });
   }
 
   yield* Console.log(

@@ -2581,6 +2581,38 @@ it.live("validate-merge accepts the real two-parent sync merge", () =>
   ).pipe(Effect.provide(NodeServices.layer)),
 );
 
+it.live("validate-merge checks whitespace against the upstream side only", () =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      // Upstream ships trailing whitespace, as vendored patches do.
+      const { fixture, spawner, fs, path, headSha } = yield* syncPrFixture({
+        extraUpstreamFiles: { "vendored.patch": "context \n" },
+      });
+      const metadata = {
+        cwd: fixture.cwd,
+        baseSha: fixture.forkHead,
+        baseRepo: "WianVDM/t3code",
+        baseRef: "main",
+        headRepo: "WianVDM/t3code",
+        headRef: `sync/upstream-${TAG}`,
+      };
+      const validate = (prNumber: number, sha: string) =>
+        withSpawner(spawner)(validateUpstreamSyncMerge({ ...metadata, prNumber, headSha: sha }));
+
+      assert.equal((yield* validate(7, headSha)).headSha, headSha);
+
+      // The resolution adds whitespace on top of upstream: rejected.
+      yield* fs.writeFileString(path.join(fixture.cwd, "resolution.txt"), "added \n");
+      yield* fixture.git(["add", "-A"]);
+      yield* fixture.git(["commit", "--amend", "--no-edit"]);
+      const dirtyHead = (yield* fixture.git(["rev-parse", "HEAD"])).trim();
+      yield* fixture.git(["push", fixture.originLocalUrl, `${dirtyHead}:refs/pull/11/head`]);
+      const error = yield* Effect.flip(validate(11, dirtyHead));
+      assert.instanceOf(error, GitCommandError);
+    }),
+  ).pipe(Effect.provide(NodeServices.layer)),
+);
+
 it.live(
   "validate-merge rejects squashed, swapped, octopus, stale, mismatched, and moved-tag merges",
   () =>
