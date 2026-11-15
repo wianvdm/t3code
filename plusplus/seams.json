@@ -10,6 +10,10 @@
       "title": "++ contract sidecar",
       "issue": 80
     },
+    "fork-cli": {
+      "title": "Fork CLI command names",
+      "issue": 95
+    },
     "generated": {
       "title": "Regenerated files"
     },
@@ -437,14 +441,6 @@
       "delta": [1, 0],
       "legacy": true
     },
-    "apps/server/scripts/cli.ts": {
-      "delta": [2, 42],
-      "legacy": true
-    },
-    "apps/server/scripts/cliErrors.ts": {
-      "delta": [0, 11],
-      "legacy": true
-    },
     "apps/server/src/auth/EnvironmentAuth.test.ts": {
       "delta": [2, 0],
       "legacy": true
@@ -466,12 +462,35 @@
       "legacy": true
     },
     "apps/server/src/cli/pair.test.ts": {
-      "delta": [6, 1],
-      "legacy": true
+      "delta": [1, 1],
+      "seams": [
+        {
+          "id": "fork-cli.pair-protocol-hint-test",
+          "feature": "fork-cli",
+          "mechanism": "override",
+          "anchor": {
+            "text": "\"t3@0.0.45 pair\""
+          },
+          "reason": "The assertion follows the overridden hint text and guards it against an upstream restore.",
+          "fingerprint": "sha256:74781e6d1234d2e6"
+        }
+      ]
     },
     "apps/server/src/cli/pair.ts": {
-      "delta": [2, 2],
-      "legacy": true
+      "delta": [2, 1],
+      "seams": [
+        {
+          "id": "fork-cli.pair-protocol-hint",
+          "feature": "fork-cli",
+          "mechanism": "override",
+          "anchor": {
+            "symbol": "IncompatibleServerProtocolError",
+            "text": "Pair with the matching CLI instead:"
+          },
+          "reason": "The hint names the fork's plain command, and an added line cannot replace the upstream hint text.",
+          "fingerprint": "sha256:b83aa9705522cb87"
+        }
+      ]
     },
     "apps/server/src/cli/update.test.ts": {
       "delta": [9, 4],
