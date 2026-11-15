@@ -1,5 +1,5 @@
 import { formatUsd } from "@t3tools/shared/usageFormat";
-import { readMonetaryUsage, type LimitAccount } from "@t3tools/shared/usageLimits";
+import { readMonetaryUsage, type LimitAccount } from "@t3tools/plusplus-extensions/usageReporting";
 
 export type MonetaryUsage = NonNullable<LimitAccount["limits"]["monetaryUsage"]>;
 

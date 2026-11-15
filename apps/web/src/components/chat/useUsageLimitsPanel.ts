@@ -4,7 +4,10 @@ import type {
   ServerProvider,
   UsageLimitSourceSnapshots,
 } from "@t3tools/contracts";
-import { collectProviderUsageLimits, hasProviderUsageLimits } from "@t3tools/shared/usageLimits";
+import {
+  collectProviderUsageLimits,
+  hasProviderUsageLimits,
+} from "@t3tools/plusplus-extensions/usageReporting";
 import { useState } from "react";
 import { useStableCallback } from "../../hooks/useStableCallback";
 import { toastManager } from "../ui/toast";

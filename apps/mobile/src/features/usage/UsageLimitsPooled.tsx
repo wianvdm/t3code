@@ -16,7 +16,7 @@ import {
   type LimitAccount,
   type LimitPool,
   type LimitPoolWindow,
-} from "@t3tools/shared/usageLimits";
+} from "@t3tools/plusplus-extensions/usageReporting";
 import { Fragment, type ReactNode, useId, useState } from "react";
 import { Linking, Pressable, View } from "react-native";
 import { ScreenScrollView as ScrollView } from "../../components/ui/ScreenScrollView";
