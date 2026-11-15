@@ -1232,21 +1232,21 @@ it.live("dry-run merges on a detached ref and mutates no branch, tag, or remote"
       const mergeBase = (yield* git(["rev-parse", `${fixture.forkHead}^`])).trim();
       const githubOutputPath = path.join(fixture.root, "github-output.txt");
 
-      process.env.GITHUB_OUTPUT = githubOutputPath;
-      let report: DryRunReport;
-      try {
-        report = yield* withSpawner(spawner)(
-          dryRunUpstreamSync({
-            tag: TAG,
-            cwd: fixture.cwd,
-            ...paths,
-            githubOutput: true,
-            windowsPackages: ["scripts"],
-          }),
-        );
-      } finally {
-        delete process.env.GITHUB_OUTPUT;
-      }
+      const report = yield* withSpawner(spawner)(
+        dryRunUpstreamSync({
+          tag: TAG,
+          cwd: fixture.cwd,
+          ...paths,
+          githubOutput: true,
+          windowsPackages: ["scripts"],
+        }),
+      ).pipe(
+        Effect.provide(
+          ConfigProvider.layer(
+            ConfigProvider.fromEnv({ env: { GITHUB_OUTPUT: githubOutputPath } }),
+          ),
+        ),
+      );
 
       assert.equal(report.schemaVersion, 2);
       assert.equal(report.status, "clean");

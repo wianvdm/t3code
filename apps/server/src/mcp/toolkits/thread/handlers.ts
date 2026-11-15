@@ -100,7 +100,7 @@ const handoverCommandId = Effect.fn("mcp.handoverCommandId")(function* (
   key: string,
 ) {
   const crypto = yield* Digest.Digest;
-  // @effect-diagnostics-next-line preferSchemaOverJson:off - a JSON pair keeps the source thread apart from the key.
+  // @effect-diagnostics-next-line globalJsonInEffect:off - a JSON pair keeps the source thread apart from the key.
   const bytes = new TextEncoder().encode(JSON.stringify([sourceThreadId, key]));
   const digest = yield* crypto.digest(Digest.sha256, bytes).pipe(Effect.mapError(unavailable));
   return CommandId.make(`mcp:handover:${Hex.encode(digest)}`);
@@ -161,7 +161,7 @@ export const layer = McpToolAccess.toLayer(ThreadToolkit, {
       return {
         matches: matches.map((match) => ({
           ...match,
-          link: McpInvocationContext.threadLinkFor(scope, match.threadId),
+          link: McpInvocationContext.threadLinkFor(scope, match.threadId, match.title),
         })),
       };
     }),

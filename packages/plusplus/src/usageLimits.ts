@@ -162,23 +162,35 @@ export function reconcileProviderUsageSnapshot(input: {
       });
   const workspaceId =
     usageLimits === probedSnapshot.usageLimits ? undefined : published.auth.workspaceId;
-  const probedAccounts = readUsageAccounts(probedSnapshot);
-  const publishedAccounts = readUsageAccounts(published);
-  // Sign-out, uninstall, and account switches still drop the accounts.
-  const retainedAccounts =
-    !switchedAccount &&
-    probedSnapshot.installed &&
-    probedSnapshot.auth.status === "authenticated" &&
-    (probedAccounts?.length ?? 0) === 0 &&
-    (publishedAccounts?.length ?? 0) > 0
-      ? publishedAccounts
-      : undefined;
   const withWorkspace =
     workspaceId && !probedSnapshot.auth.workspaceId
       ? { ...probedSnapshot, auth: { ...probedSnapshot.auth, workspaceId } }
       : probedSnapshot;
-  return snapshotWithUsageLimits(
-    retainedAccounts ? withUsageAccounts(withWorkspace, retainedAccounts) : withWorkspace,
-    usageLimits,
-  );
+  return retainPublishedUsageAccounts({
+    published,
+    probed: probedSnapshot,
+    switchedAccount,
+    snapshot: snapshotWithUsageLimits(withWorkspace, usageLimits),
+  });
+}
+
+/**
+ * Keeps the last-good usage accounts when an authenticated probe of the same
+ * account lists none. Sign-out, uninstall, and account switches still drop them.
+ */
+export function retainPublishedUsageAccounts(input: {
+  readonly published: ServerProvider;
+  readonly probed: ServerProvider;
+  readonly switchedAccount: boolean;
+  readonly snapshot: ServerProvider;
+}): ServerProvider {
+  const probedAccounts = readUsageAccounts(input.probed);
+  const publishedAccounts = readUsageAccounts(input.published);
+  const retain =
+    !input.switchedAccount &&
+    input.probed.installed &&
+    input.probed.auth.status === "authenticated" &&
+    (probedAccounts?.length ?? 0) === 0 &&
+    (publishedAccounts?.length ?? 0) > 0;
+  return retain ? withUsageAccounts(input.snapshot, publishedAccounts) : input.snapshot;
 }

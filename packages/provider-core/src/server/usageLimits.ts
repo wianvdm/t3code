@@ -9,6 +9,6 @@ export {
   clampPercent,
   makeUnavailableUsageLimits,
   makeUsageLimits,
-  reconcileProviderUsageSnapshot,
+  retainPublishedUsageAccounts,
   resolveUsageLimitsAfterProbe,
 } from "@t3tools/plusplus/usageLimits";

@@ -46,6 +46,7 @@ const packages = [
 
 const GATES = [
   "build",
+  "desktop_launch",
   "release_smoke",
   "rust",
   "sync_designation_error",
@@ -237,26 +238,30 @@ test("registry packages stay out of the Windows scope when the closure runs", ()
 });
 
 // The same invariant against the real workspace: the Windows closure is
-// exactly the Electron distribution surface, and full CI runs all eight
-// selected packages (the closure plus scripts).
+// exactly the Electron distribution surface, and full CI runs the ten selected
+// packages (the closure plus scripts, minus POSIX-only suites).
 test("the real desktop closure is exactly the distribution surface", () => {
   assert.deepEqual([...desktopClosure(readWorkspace())].sort(), [
     "@t3tools/client-runtime",
     "@t3tools/contracts",
     "@t3tools/desktop",
     "@t3tools/plusplus",
+    "@t3tools/provider-core",
+    "@t3tools/secret-provider-core",
+    "@t3tools/secret-provider-definitions",
+    "@t3tools/secret-provider-onepassword",
     "@t3tools/shared",
     "@t3tools/ssh",
     "@t3tools/tailscale",
   ]);
 });
 
-test("a full run selects the eight-package Windows surface", () => {
+test("a full run selects the ten-package Windows surface", () => {
   const { outputs } = decide([], readWorkspace(), true);
   assert.equal(outputs.windows, true);
   assert.equal(
     outputs.windows_packages,
-    "apps/desktop packages/client-runtime packages/contracts packages/plusplus packages/shared packages/ssh packages/tailscale scripts",
+    "apps/desktop packages/client-runtime packages/contracts packages/plusplus packages/provider-core packages/secret-provider-core packages/secret-provider-onepassword packages/shared packages/tailscale scripts",
   );
 });
 
