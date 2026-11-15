@@ -13,7 +13,7 @@ import {
   type LimitPoolWindow,
   paceRemainingPercent,
   remainingPercent,
-} from "@t3tools/shared/usageLimits";
+} from "@t3tools/plusplus-extensions/usageReporting";
 import { formatUsd } from "@t3tools/shared/usageFormat";
 import type { ProviderDriverKind } from "@t3tools/contracts";
 import type { Popover as PopoverPrimitive } from "@base-ui/react/popover";

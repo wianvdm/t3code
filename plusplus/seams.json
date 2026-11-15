@@ -21,6 +21,10 @@
       "title": "++ workspace wiring",
       "issue": 30
     },
+    "usage-limits": {
+      "title": "Usage accounts and monetary usage on usage limits",
+      "issue": 94
+    },
     "usage-vendor-icons": {
       "title": "Model vendor icons on Usage",
       "issue": 82
@@ -417,6 +421,21 @@
       "delta": [0, 33],
       "legacy": true
     },
+    "apps/mobile/package.json": {
+      "delta": [1, 0],
+      "seams": [
+        {
+          "id": "usage-limits.mobile-dependency",
+          "feature": "usage-limits",
+          "mechanism": "config",
+          "anchor": {
+            "text": "\"@t3tools/shared\": \"workspace:*\""
+          },
+          "reason": "Web and mobile import the ++ usage wrappers from the extensions package.",
+          "fingerprint": "sha256:8c4a50e449d678ef"
+        }
+      ]
+    },
     "apps/mobile/src/features/connection/pairing.test.ts": {
       "delta": [8, 0],
       "legacy": true
@@ -429,16 +448,76 @@
       "delta": [7, 5],
       "legacy": true
     },
+    "apps/mobile/src/features/threads/ThreadComposer.tsx": {
+      "delta": [1, 1],
+      "seams": [
+        {
+          "id": "usage-limits.thread-composer-import",
+          "feature": "usage-limits",
+          "mechanism": "override",
+          "anchor": {
+            "text": "from \"@t3tools/shared/usageLimits\""
+          },
+          "reason": "Call sites need the ++ variants that count usage accounts and monetary usage; only the module specifier changes.",
+          "fingerprint": "sha256:928d30a520193800"
+        }
+      ]
+    },
+    "apps/mobile/src/features/threads/ThreadDetailScreen.tsx": {
+      "delta": [1, 1],
+      "seams": [
+        {
+          "id": "usage-limits.thread-detail-screen-import",
+          "feature": "usage-limits",
+          "mechanism": "override",
+          "anchor": {
+            "text": "from \"@t3tools/shared/usageLimits\""
+          },
+          "reason": "Call sites need the ++ variants that count usage accounts and monetary usage; only the module specifier changes.",
+          "fingerprint": "sha256:b0bc51454f5ebda0"
+        }
+      ]
+    },
+    "apps/mobile/src/features/usage/ChatGptUsageSummary.tsx": {
+      "delta": [4, 1],
+      "seams": [
+        {
+          "id": "usage-limits.chat-gpt-usage-summary-import",
+          "feature": "usage-limits",
+          "mechanism": "override",
+          "anchor": {
+            "text": "from \"@t3tools/shared/usageLimits\""
+          },
+          "reason": "Call sites need the ++ variants that count usage accounts and monetary usage; only the module specifier changes.",
+          "fingerprint": "sha256:50d8c0b0da8a5990"
+        }
+      ]
+    },
     "apps/mobile/src/features/usage/UsageLimitsPooled.tsx": {
-      "delta": [34, 4],
+      "delta": [35, 5],
       "legacy": true
     },
     "apps/mobile/src/features/usage/UsageLimitsSection.tsx": {
-      "delta": [21, 0],
+      "delta": [22, 1],
       "legacy": true
     },
+    "apps/mobile/src/widgets/subscriptionUsageSnapshot.ts": {
+      "delta": [1, 1],
+      "seams": [
+        {
+          "id": "usage-limits.subscription-usage-snapshot-import",
+          "feature": "usage-limits",
+          "mechanism": "override",
+          "anchor": {
+            "text": "from \"@t3tools/shared/usageLimits\""
+          },
+          "reason": "Call sites need the ++ variants that count usage accounts and monetary usage; only the module specifier changes.",
+          "fingerprint": "sha256:6e1cdebe0be4153a"
+        }
+      ]
+    },
     "apps/server/package.json": {
-      "delta": [1, 0],
+      "delta": [2, 0],
       "legacy": true
     },
     "apps/server/src/auth/EnvironmentAuth.test.ts": {
@@ -825,8 +904,23 @@
       "legacy": true
     },
     "apps/server/src/ws.ts": {
-      "delta": [3, 0],
+      "delta": [4, 1],
       "legacy": true
+    },
+    "apps/web/package.json": {
+      "delta": [1, 0],
+      "seams": [
+        {
+          "id": "usage-limits.web-dependency",
+          "feature": "usage-limits",
+          "mechanism": "config",
+          "anchor": {
+            "text": "\"@t3tools/contracts\": \"workspace:*\""
+          },
+          "reason": "Web and mobile import the ++ usage wrappers from the extensions package.",
+          "fingerprint": "sha256:314bf907595f4b7b"
+        }
+      ]
     },
     "apps/web/src/components/AppSidebarLayout.tsx": {
       "delta": [2, 0],
@@ -856,6 +950,21 @@
       "delta": [10, 4],
       "legacy": true
     },
+    "apps/web/src/components/chat/ComposerUsageLimits.tsx": {
+      "delta": [1, 1],
+      "seams": [
+        {
+          "id": "usage-limits.composer-usage-limits-import",
+          "feature": "usage-limits",
+          "mechanism": "override",
+          "anchor": {
+            "text": "from \"@t3tools/shared/usageLimits\""
+          },
+          "reason": "Call sites need the ++ variants that count usage accounts and monetary usage; only the module specifier changes.",
+          "fingerprint": "sha256:e36ef55b401418a8"
+        }
+      ]
+    },
     "apps/web/src/components/chat/OpenInPicker.browser.test.tsx": {
       "delta": [32, 17],
       "legacy": true
@@ -872,6 +981,21 @@
       "delta": [13, 0],
       "legacy": true
     },
+    "apps/web/src/components/chat/ThreadDetailsUsage.tsx": {
+      "delta": [1, 1],
+      "seams": [
+        {
+          "id": "usage-limits.thread-details-usage-import",
+          "feature": "usage-limits",
+          "mechanism": "override",
+          "anchor": {
+            "text": "from \"@t3tools/shared/usageLimits\""
+          },
+          "reason": "Call sites need the ++ variants that count usage accounts and monetary usage; only the module specifier changes.",
+          "fingerprint": "sha256:4ed1ddd93c421888"
+        }
+      ]
+    },
     "apps/web/src/components/chat/useComposerProviderModel.ts": {
       "delta": [12, 87],
       "legacy": true
@@ -879,6 +1003,21 @@
     "apps/web/src/components/chat/useThreadLifecycle.tsx": {
       "delta": [2, 0],
       "legacy": true
+    },
+    "apps/web/src/components/chat/useUsageLimitsPanel.ts": {
+      "delta": [4, 1],
+      "seams": [
+        {
+          "id": "usage-limits.use-usage-limits-panel-import",
+          "feature": "usage-limits",
+          "mechanism": "override",
+          "anchor": {
+            "text": "from \"@t3tools/shared/usageLimits\""
+          },
+          "reason": "Call sites need the ++ variants that count usage accounts and monetary usage; only the module specifier changes.",
+          "fingerprint": "sha256:6496527ede6dd1e3"
+        }
+      ]
     },
     "apps/web/src/components/desktopUpdate.logic.test.ts": {
       "delta": [3, 3],
@@ -949,7 +1088,7 @@
       "legacy": true
     },
     "apps/web/src/components/usage/UsageLimitsPooled.tsx": {
-      "delta": [42, 9],
+      "delta": [43, 10],
       "legacy": true
     },
     "apps/web/src/components/usage/UsagePage.tsx": {
@@ -1094,7 +1233,7 @@
       "legacy": true
     },
     "knip.jsonc": {
-      "delta": [35, 1],
+      "delta": [16, 1],
       "legacy": true
     },
     "package.json": {
@@ -1272,10 +1411,6 @@
       "delta": [14, 120],
       "legacy": true
     },
-    "packages/provider-cursor/package.json": {
-      "delta": [1, 0],
-      "legacy": true
-    },
     "packages/provider-cursor/src/server/adapter.ts": {
       "delta": [11, 1],
       "legacy": true
@@ -1290,14 +1425,6 @@
     },
     "packages/provider-cursor/src/server/skills.ts": {
       "delta": [32, 3],
-      "legacy": true
-    },
-    "packages/provider-cursor/src/server/usageLimits.test.ts": {
-      "delta": [1, 50],
-      "legacy": true
-    },
-    "packages/provider-cursor/src/server/usageLimits.ts": {
-      "delta": [11, 37],
       "legacy": true
     },
     "packages/provider-grok/package.json": {
@@ -1517,14 +1644,6 @@
       "delta": [23, 0],
       "legacy": true
     },
-    "packages/shared/src/usageLimits.test.ts": {
-      "delta": [0, 1508],
-      "legacy": true
-    },
-    "packages/shared/src/usageLimits.ts": {
-      "delta": [46, 879],
-      "legacy": true
-    },
     "packages/source-control-core/src/server/driver.ts": {
       "delta": [2, 0],
       "legacy": true
@@ -1567,7 +1686,7 @@
       "reason": "AUR packaging publishes pingdotgg's t3code-bin packages under credentials the fork does not hold. Deletions are intentional."
     },
     "pnpm-lock.yaml": {
-      "delta": [43, 0],
+      "delta": [71, 0],
       "legacy": true
     },
     "pnpm-workspace.yaml": {
@@ -1665,5 +1784,12 @@
       "legacy": true
     }
   },
-  "siblings": []
+  "siblings": [
+    {
+      "feature": "usage-limits",
+      "upstream": "packages/shared/src/usageLimits.ts",
+      "plusplus": "packages/plusplus-extensions/src/usageReporting.ts",
+      "fingerprint": "sha256:1e7498bd7bc3be96"
+    }
+  ]
 }

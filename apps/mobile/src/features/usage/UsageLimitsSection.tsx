@@ -19,7 +19,7 @@ import {
   paceRemainingPercent,
   readMonetaryUsage,
   remainingPercent,
-} from "@t3tools/shared/usageLimits";
+} from "@t3tools/plusplus-extensions/usageReporting";
 import { formatUsd } from "@t3tools/shared/usageFormat";
 import { type ReactNode, useContext, useRef, useState } from "react";
 import { Atom } from "effect/reactivity";

@@ -35,10 +35,6 @@
       "types": "./src/usageLimits.ts",
       "import": "./src/usageLimits.ts"
     },
-    "./usageReporting": {
-      "types": "./src/usageReporting.ts",
-      "import": "./src/usageReporting.ts"
-    },
     "./usagePricing": {
       "types": "./src/usagePricing.ts",
       "import": "./src/usagePricing.ts"
@@ -62,10 +58,6 @@
     "./claudeUsageLimits": {
       "types": "./src/claudeUsageLimits.ts",
       "import": "./src/claudeUsageLimits.ts"
-    },
-    "./cursorUsageLimits": {
-      "types": "./src/cursorUsageLimits.ts",
-      "import": "./src/cursorUsageLimits.ts"
     },
     "./grokUsageLimits": {
       "types": "./src/grokUsageLimits.ts",
