@@ -14,6 +14,7 @@ import {
   collectChanges,
   designationFromEnv,
   isDesignatedSyncPr,
+  isExemptRun,
   isViolation,
   parseArguments,
   parseNameStatusZ,
@@ -98,6 +99,7 @@ const baseFacts: PathFacts = {
   entry: undefined,
   // A legacy entry the base already carries, larger than any row's own.
   baseEntry: legacy(9, 9),
+  forkPointEntry: undefined,
   delta: undefined,
   anchorProblems: [],
 };
@@ -117,7 +119,12 @@ describe("classifyPath", () => {
       ["DELTA_EXCEEDED"],
     ],
     ["equal to the budget", { entry: legacy(4, 1), delta: [4, 1] }, ["ALLOW_REGISTERED"]],
-    ["below the budget", { entry: legacy(4, 1), delta: [2, 0] }, ["ALLOW_REGISTERED"]],
+    ["below the budget", { entry: legacy(4, 1), delta: [2, 0] }, ["DELTA_MISMATCH"]],
+    [
+      "above in one component, below in the other",
+      { entry: legacy(4, 3), delta: [5, 1] },
+      ["DELTA_EXCEEDED"],
+    ],
     [
       "a deleted upstream path",
       { change: "D", entry: legacy(0, 3), delta: [0, 3] },
@@ -154,6 +161,11 @@ describe("classifyPath", () => {
       ["LEGACY_ADDED"],
     ],
     [
+      "a branch's untouched legacy entry the base has since replaced",
+      { entry: legacy(1, 0), baseEntry: appEntry, forkPointEntry: legacy(1, 0), delta: [1, 0] },
+      ["LEGACY_ADDED"],
+    ],
+    [
       "a new entry with seams",
       { entry: appEntry, baseEntry: undefined, delta: [1, 0] },
       ["ALLOW_REGISTERED"],
@@ -175,6 +187,25 @@ describe("classifyPath", () => {
       findings.map((finding) => finding.verdict),
       expected,
     );
+  });
+
+  it("tells a stale branch to rebase when the base changed its legacy entry", () => {
+    const stale = classifyPath({
+      ...baseFacts,
+      entry: legacy(1, 0),
+      baseEntry: undefined,
+      forkPointEntry: legacy(1, 0),
+      delta: [1, 0],
+    });
+    assert.include(stale[0]?.detail, "rebase onto the base");
+    const added = classifyPath({
+      ...baseFacts,
+      entry: legacy(1, 0),
+      baseEntry: undefined,
+      forkPointEntry: undefined,
+      delta: [1, 0],
+    });
+    assert.include(added[0]?.detail, "bootstrap-only");
   });
 
   it("shows actual against recorded for an exceeded delta", () => {
@@ -215,6 +246,7 @@ describe("seamAnchorProblems", () => {
 });
 
 describe("summarizeRegistryChanges", () => {
+  const NO_DELTAS = new Map<string, Delta>();
   const sibling: Sibling = {
     feature: "demo",
     upstream: "docs/guide.md",
@@ -251,7 +283,11 @@ describe("summarizeRegistryChanges", () => {
       [sibling],
     );
     assert.deepStrictEqual(
-      summarizeRegistryChanges(base, head).map(({ path, kind, detail }) => [path, kind, detail]),
+      summarizeRegistryChanges(base, head, NO_DELTAS).map(({ path, kind, detail }) => [
+        path,
+        kind,
+        detail,
+      ]),
       [
         ["a.ts", "raised", "+1 -1 -> +2 -1"],
         ["b.ts", "raised", "+1 -1 -> +1 -2"],
@@ -278,7 +314,11 @@ describe("summarizeRegistryChanges", () => {
       [{ ...sibling, plusplus: "docs/other.md" }],
     );
     assert.deepStrictEqual(
-      summarizeRegistryChanges(base, head).map(({ path, kind, detail }) => [path, kind, detail]),
+      summarizeRegistryChanges(base, head, NO_DELTAS).map(({ path, kind, detail }) => [
+        path,
+        kind,
+        detail,
+      ]),
       [
         ["a.ts", "changed", "demo.one: anchor changed"],
         ["b.ts", "changed", "demo.two: removed"],
@@ -288,11 +328,44 @@ describe("summarizeRegistryChanges", () => {
     );
   });
 
+  it("shows the file's actual delta on added and raised rows", () => {
+    const base = registryOf({ "a.ts": legacy(1, 1) });
+    const head = registryOf({ "a.ts": legacy(9, 1), "b.ts": legacy(9, 9) });
+    const actual = new Map<string, Delta>([
+      ["a.ts", [2, 1]],
+      ["b.ts", [3, 0]],
+    ]);
+    assert.deepStrictEqual(
+      summarizeRegistryChanges(base, head, actual).map(({ path, kind, detail }) => [
+        path,
+        kind,
+        detail,
+      ]),
+      [
+        ["a.ts", "raised", "+1 -1 -> +2 -1"],
+        ["b.ts", "added", "legacy, delta +3 -0"],
+      ],
+    );
+  });
+
+  it("lists a sibling removed from the head", () => {
+    const base = registryOf({}, [sibling]);
+    const head = registryOf({});
+    assert.deepStrictEqual(
+      summarizeRegistryChanges(base, head, NO_DELTAS).map(({ path, kind, detail }) => [
+        path,
+        kind,
+        detail,
+      ]),
+      [["docs/guide.md", "changed", "docs/fork.md (demo): removed"]],
+    );
+  });
+
   it("lists every seam of an added entry and omits unchanged or lowered entries", () => {
     const base = registryOf({ "a.ts": legacy(5, 5), "b.ts": legacy(2, 2) });
     const head = registryOf({ "a.ts": legacy(1, 1), "b.ts": legacy(2, 2), "d.ts": twoSeams });
     assert.deepStrictEqual(
-      summarizeRegistryChanges(base, head).map(({ path, kind }) => `${path} ${kind}`),
+      summarizeRegistryChanges(base, head, NO_DELTAS).map(({ path, kind }) => `${path} ${kind}`),
       ["d.ts added", "d.ts new seam", "d.ts new seam"],
     );
   });
@@ -330,6 +403,16 @@ describe("isDesignatedSyncPr", () => {
   ];
   it.each(rows)("%s", (_name, upstreamSync, designationError, syncMerge, expected) => {
     assert.strictEqual(isDesignatedSyncPr({ upstreamSync, designationError, syncMerge }), expected);
+  });
+
+  it("exempts only a run with --head", () => {
+    const env = {
+      UPSTREAM_SYNC: "true",
+      SYNC_DESIGNATION_ERROR: "false",
+      SYNC_MERGE_RESULT: "success",
+    };
+    assert.isTrue(isExemptRun("a".repeat(40), env));
+    assert.isFalse(isExemptRun(undefined, env));
   });
 
   it("reads only the three designation variables from the environment", () => {
@@ -745,6 +828,14 @@ describe("checkForkBoundaries", () => {
           "apps/web/src/App.tsx": ["DELTA_EXCEEDED"],
         });
         assert.include(exceeded.findings[0]?.detail, "+2 -0");
+
+        // Over-raising leaves slack later edits could grow into unlisted.
+        project.writeRegistry({ "apps/web/src/App.tsx": { ...appEntry, delta: [5, 0] } });
+        const overRaised = yield* runCheck(project.root, project.base);
+        assert.deepStrictEqual(verdictsByPath(overRaised.findings), {
+          "apps/web/src/App.tsx": ["DELTA_MISMATCH"],
+          [SEAM_REGISTRY_PATH]: ["ALLOW_OWNED"],
+        });
 
         project.writeRegistry({ "apps/web/src/App.tsx": { ...appEntry, delta: [2, 0] } });
         const raised = yield* runOk(project.root, project.base);

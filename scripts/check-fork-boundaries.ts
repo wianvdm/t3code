@@ -52,6 +52,7 @@ export type BoundaryVerdict =
   | "UNREGISTERED"
   | "STALE_ENTRY"
   | "DELTA_EXCEEDED"
+  | "DELTA_MISMATCH"
   | "UPSTREAM_DELETED"
   | "LEGACY_ADDED"
   | "ANCHOR_BROKEN"
@@ -242,23 +243,22 @@ export function siblingAnchorProblem(
 
 const grew = (before: Delta, after: Delta): boolean => after[0] > before[0] || after[1] > before[1];
 
+const sameDelta = (a: Delta, b: Delta): boolean => a[0] === b[0] && a[1] === b[1];
+
 export interface PathFacts {
   readonly path: string;
   readonly change: ChangeStatus | undefined;
   readonly upstreamOwned: boolean;
   readonly entry: RegistryFile | undefined;
   readonly baseEntry: RegistryFile | undefined;
+  readonly forkPointEntry: RegistryFile | undefined;
   readonly delta: Delta | undefined;
   readonly anchorProblems: ReadonlyArray<string>;
 }
 
 const deltaText = ([added, removed]: Delta): string => `+${added} -${removed}`;
 
-const legacyAddedProblem = (
-  entry: RegistryFile | undefined,
-  baseEntry: RegistryFile | undefined,
-): string | undefined => {
-  if (entry === undefined || !("legacy" in entry)) return undefined;
+const legacyShapeProblem = (baseEntry: RegistryFile | undefined): string | undefined => {
   if (baseEntry === undefined) {
     return "a new entry must record seams: legacy entries are bootstrap-only";
   }
@@ -267,9 +267,23 @@ const legacyAddedProblem = (
     : "an entry with seams may not convert to legacy: that drops its anchors";
 };
 
+// An entry the branch never edited differs from the base only because the base moved on.
+const legacyAddedProblem = (
+  entry: RegistryFile | undefined,
+  baseEntry: RegistryFile | undefined,
+  forkPointEntry: RegistryFile | undefined,
+): string | undefined => {
+  if (entry === undefined || !("legacy" in entry)) return undefined;
+  const problem = legacyShapeProblem(baseEntry);
+  if (problem !== undefined && sameJson(entry, forkPointEntry)) {
+    return "the base changed this entry after this branch forked; rebase onto the base";
+  }
+  return problem;
+};
+
 // Checks 1-4 for one touched path; a path collects every failure it earns.
 export function classifyPath(facts: PathFacts): Array<BoundaryFinding> {
-  const { path, change, upstreamOwned, entry, baseEntry, delta } = facts;
+  const { path, change, upstreamOwned, entry, baseEntry, forkPointEntry, delta } = facts;
   if (!upstreamOwned && entry === undefined) {
     return [{ path, verdict: "ALLOW_OWNED", detail: "absent at upstreamRef: ++ owned" }];
   }
@@ -293,9 +307,14 @@ export function classifyPath(facts: PathFacts): Array<BoundaryFinding> {
         "DELTA_EXCEEDED",
         `delta ${deltaText(delta)} exceeds the recorded ${deltaText(entry.delta)}; raise the entry to accept it`,
       );
+    } else if (!sameDelta(delta, entry.delta)) {
+      fail(
+        "DELTA_MISMATCH",
+        `delta ${deltaText(delta)} is below the recorded ${deltaText(entry.delta)}; set the entry to the actual delta`,
+      );
     }
   }
-  const legacyProblem = legacyAddedProblem(entry, baseEntry);
+  const legacyProblem = legacyAddedProblem(entry, baseEntry, forkPointEntry);
   if (legacyProblem !== undefined) fail("LEGACY_ADDED", legacyProblem);
   for (const problem of facts.anchorProblems) fail("ANCHOR_BROKEN", problem);
 
@@ -306,7 +325,7 @@ export function classifyPath(facts: PathFacts): Array<BoundaryFinding> {
         {
           path,
           verdict: "ALLOW_REGISTERED",
-          detail: `within the recorded ${deltaText(entry.delta)}`,
+          detail: `matches the recorded ${deltaText(entry.delta)}`,
         },
       ];
 }
@@ -352,20 +371,23 @@ function seamChanges(
   return changes;
 }
 
+// Rows show the file's actual delta: a recorded figure that differs fails check 2.
 function entryChanges(
   path: string,
   before: RegistryFile | undefined,
   after: RegistryFile,
+  actualDelta: Delta | undefined,
 ): Array<RegistryChange> {
   const changes: Array<RegistryChange> = [];
+  const shown = actualDelta ?? after.delta;
   if (before === undefined) {
     const shape = "legacy" in after ? "legacy" : "seams";
-    changes.push({ path, kind: "added", detail: `${shape}, delta ${deltaText(after.delta)}` });
-  } else if (grew(before.delta, after.delta)) {
+    changes.push({ path, kind: "added", detail: `${shape}, delta ${deltaText(shown)}` });
+  } else if (grew(before.delta, shown)) {
     changes.push({
       path,
       kind: "raised",
-      detail: `${deltaText(before.delta)} -> ${deltaText(after.delta)}`,
+      detail: `${deltaText(before.delta)} -> ${deltaText(shown)}`,
     });
   }
   if ("legacy" in after) {
@@ -390,7 +412,7 @@ function siblingChanges(
   headSiblings: ReadonlyArray<Sibling>,
 ): Array<RegistryChange> {
   const baseByUpstream = new Map(baseSiblings.map((sibling) => [sibling.upstream, sibling]));
-  return headSiblings.flatMap((sibling): Array<RegistryChange> => {
+  const changed = headSiblings.flatMap((sibling): Array<RegistryChange> => {
     const known = baseByUpstream.get(sibling.upstream);
     if (known === undefined) {
       const detail = `${sibling.plusplus} (${sibling.feature})`;
@@ -400,6 +422,14 @@ function siblingChanges(
     const detail = `${sibling.plusplus} (${sibling.feature}): record changed`;
     return [{ path: sibling.upstream, kind: "changed", detail }];
   });
+  const headUpstreams = new Set(headSiblings.map((sibling) => sibling.upstream));
+  const removed = baseSiblings
+    .filter((sibling) => !headUpstreams.has(sibling.upstream))
+    .map((sibling): RegistryChange => {
+      const detail = `${sibling.plusplus} (${sibling.feature}): removed`;
+      return { path: sibling.upstream, kind: "changed", detail };
+    });
+  return [...changed, ...removed];
 }
 
 // Check 5: every entry a PR adds, raises or edits is a maintainer decision.
@@ -407,10 +437,16 @@ function siblingChanges(
 export function summarizeRegistryChanges(
   baseRegistry: SeamRegistry,
   headRegistry: SeamRegistry,
+  actualDeltas: ReadonlyMap<string, Delta>,
 ): Array<RegistryChange> {
   const changes = [
     ...Object.keys(headRegistry.files).flatMap((path) =>
-      entryChanges(path, entryOf(baseRegistry, path), headRegistry.files[path]!),
+      entryChanges(
+        path,
+        entryOf(baseRegistry, path),
+        headRegistry.files[path]!,
+        actualDeltas.get(path),
+      ),
     ),
     ...siblingChanges(baseRegistry.siblings, headRegistry.siblings),
   ];
@@ -442,6 +478,13 @@ export const designationFromEnv = (
   designationError: env["SYNC_DESIGNATION_ERROR"],
   syncMerge: env["SYNC_MERGE_RESULT"],
 });
+
+// Only CI (--head) runs the sync job whose results the designation reads; a local
+// run has none, so it never exempts.
+export const isExemptRun = (
+  headSha: string | undefined,
+  env: Readonly<Record<string, string | undefined>>,
+): boolean => headSha !== undefined && isDesignatedSyncPr(designationFromEnv(env));
 
 export interface BoundaryRun {
   readonly base: string;
@@ -556,15 +599,11 @@ const loadHeadRegistry = Effect.fn("forkBoundaries.loadHeadRegistry")(function* 
   );
 });
 
-// The upstreamRef the registry names at a commit; undefined when it cannot be read.
-const upstreamRefAt = Effect.fn("forkBoundaries.upstreamRefAt")(function* (
-  cwd: string,
-  commit: string,
-) {
+// The registry at a commit; undefined when it cannot be read.
+const registryAt = Effect.fn("forkBoundaries.registryAt")(function* (cwd: string, commit: string) {
   return yield* git(cwd, ["show", `${commit}:${SEAM_REGISTRY_PATH}`]).pipe(
     Effect.mapError(String),
     Effect.flatMap((text) => parseSeamRegistry(text).pipe(Effect.mapError(String))),
-    Effect.map((registry) => registry.upstreamRef),
     Effect.orElseSucceed(() => undefined),
   );
 });
@@ -596,6 +635,7 @@ interface RegistryContext {
   readonly upstreamPaths: ReadonlySet<string>;
   readonly deltas: ReadonlyMap<string, Delta>;
   readonly baseRegistry: SeamRegistry;
+  readonly forkPointRegistry: SeamRegistry | undefined;
   readonly headRegistry: SeamRegistry;
 }
 
@@ -603,7 +643,8 @@ const classifyTouched = Effect.fn("forkBoundaries.classifyTouched")(function* (
   context: RegistryContext,
   changes: ReadonlyArray<BoundaryChange>,
 ) {
-  const { cwd, upstreamRef, upstreamPaths, deltas, baseRegistry, headRegistry } = context;
+  const { cwd, upstreamRef, upstreamPaths, deltas, baseRegistry, forkPointRegistry, headRegistry } =
+    context;
   const findings: Array<BoundaryFinding> = [];
   for (const [path, change] of touchedPaths(changes, baseRegistry, headRegistry)) {
     const entry = entryOf(headRegistry, path);
@@ -617,6 +658,7 @@ const classifyTouched = Effect.fn("forkBoundaries.classifyTouched")(function* (
         upstreamOwned: upstreamPaths.has(path),
         entry,
         baseEntry: entryOf(baseRegistry, path),
+        forkPointEntry: forkPointRegistry && entryOf(forkPointRegistry, path),
         delta: deltas.get(path),
         anchorProblems: seams.length === 0 ? [] : seamAnchorProblems(path, upstreamText, seams),
       }),
@@ -709,7 +751,7 @@ export const checkForkBoundaries = Effect.fn("forkBoundaries.check")(function* (
   }
 
   if (headRegistry.upstreamRef !== baseRegistry.upstreamRef) {
-    const forkPointRef = yield* upstreamRefAt(cwd, forkPoint);
+    const forkPointRef = (yield* registryAt(cwd, forkPoint))?.upstreamRef;
     const detail =
       forkPointRef === headRegistry.upstreamRef
         ? `the base moved upstreamRef ${forkPointRef} -> ${baseRegistry.upstreamRef} after this branch forked; rebase onto the base`
@@ -723,22 +765,25 @@ export const checkForkBoundaries = Effect.fn("forkBoundaries.check")(function* (
   const changes = collectChanges(
     yield* git(cwd, ["diff", "--name-status", "--no-renames", "-z", forkPoint, headTree]),
   );
+  const upstreamPaths = yield* treePaths(cwd, baseRegistry.upstreamRef);
+  const deltas = yield* forkDeltas(cwd, baseRegistry.upstreamRef, headTree).pipe(
+    Effect.mapError(registryError),
+  );
   const findings = yield* classifyTouched(
     {
       cwd,
       upstreamRef: baseRegistry.upstreamRef,
-      upstreamPaths: yield* treePaths(cwd, baseRegistry.upstreamRef),
-      deltas: yield* forkDeltas(cwd, baseRegistry.upstreamRef, headTree).pipe(
-        Effect.mapError(registryError),
-      ),
+      upstreamPaths,
+      deltas,
       baseRegistry,
+      forkPointRegistry: yield* registryAt(cwd, forkPoint),
       headRegistry,
     },
     changes,
   );
   return {
     ...run,
-    registryChanges: summarizeRegistryChanges(baseRegistry, headRegistry),
+    registryChanges: summarizeRegistryChanges(baseRegistry, headRegistry, deltas),
     findings: sortFindings(findings),
   } satisfies BoundaryRun;
 });
@@ -783,7 +828,7 @@ if (import.meta.main) {
     const run = yield* checkForkBoundaries(cwd, {
       baseRef: parsed.baseRef,
       headSha: parsed.headSha,
-      exempt: isDesignatedSyncPr(designationFromEnv(process.env)),
+      exempt: isExemptRun(parsed.headSha, process.env),
     });
     const report = renderReport(run);
     yield* Console.log(report);
