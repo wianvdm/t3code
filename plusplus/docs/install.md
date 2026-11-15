@@ -94,7 +94,7 @@ t3 import-old-fork --source ~/.t3-fork/userdata/statev2.sqlite --base-dir /path/
 
 The manual command copies the database as-is when the destination is empty. It
 never overwrites an existing database, so it is also how you set up a second
-server from old-fork history.
+server from old-fork history. Stop any server using that directory first.
 
 ### From an archive
 
