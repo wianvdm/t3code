@@ -129,7 +129,7 @@ function ownersOf(file, packages) {
   return extra.length > 0 ? extra : null;
 }
 
-// Advisory and deliberately outside Check; issue #39 will make it a separately required status.
+// Advisory and outside Check until a designated sync PR passes it (plusplus/ARCHITECTURE.md, "PR guard").
 const SEPARATELY_REQUIRED_JOBS = ["fork_boundaries"];
 
 // The Check job's contract: every required CI job except `check` itself, and the

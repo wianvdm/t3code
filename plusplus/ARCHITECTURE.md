@@ -14,15 +14,15 @@ A path is **upstream-owned** when it exists at the registry's `upstreamRef` (the
 
 Allowed, each with a registry entry:
 
-| Mechanism   | What it is                                                                                      | When                                                                                                                         |
-| :---------- | :---------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
-| `hook`      | One added import plus one added call, argument, spread or return wrap. Upstream lines untouched | Default for code                                                                                                             |
-| `mount`     | One typed ++ JSX mount (#82) or one sidecar field (#80)                                         | Web UI and contracts                                                                                                         |
-| `config`    | One entry in a manifest or config (workspace, tsconfig path, knip entry, pointer line in a doc) | Wiring only                                                                                                                  |
-| `override`  | Replace one upstream statement or expression with a ++ call                                     | Only when an addition cannot do it. `reason` says why. Includes in-place bug fixes, which are dropped once upstream fixes it |
-| `swap`      | Build-time alias that resolves an upstream module to a ++ module                                | Only when a whole module must differ. The alias line is its own `config` seam                                                |
-| `generated` | File produced by a command (`agentContextBudget.json`)                                          | Never hand-merged: take upstream, regenerate                                                                                 |
-| `legacy`    | Fork delta that predates the registry, recorded by size only                                    | Bootstrap only. May shrink, never grow                                                                                       |
+| Mechanism   | What it is                                                                                      | When                                                                                                                           |
+| :---------- | :---------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------- |
+| `hook`      | One added import plus one added call, argument, spread or return wrap. Upstream lines untouched | Default for code                                                                                                               |
+| `mount`     | One typed ++ JSX mount (#82) or one sidecar field (#80)                                         | Web UI and contracts                                                                                                           |
+| `config`    | One entry in a manifest or config (workspace, tsconfig path, knip entry, pointer line in a doc) | Wiring only                                                                                                                    |
+| `override`  | Replace one upstream statement or expression with a ++ call                                     | Only when an addition cannot do it. `reason` says why. Includes in-place bug fixes, which are dropped once upstream fixes it   |
+| `swap`      | Build-time alias that resolves an upstream module to a ++ module                                | Only when a whole module must differ. The alias line is its own `config` seam                                                  |
+| `generated` | File produced by a command (`agentContextBudget.json`)                                          | Never hand-merged: take upstream, regenerate                                                                                   |
+| `legacy`    | Fork delta that predates the registry, recorded by size only                                    | Bootstrap only. May not be added by a PR; may grow only when the PR raises its recorded size, which the guard lists for review |
 
 Never:
 
@@ -103,7 +103,7 @@ The fingerprint covers only the upstream region the hook depends on, so unrelate
 | `key`             | Dotted key path in JSON or YAML (`scripts.knip:check`, `jobs.release`). Region = the serialized JSON value, or for YAML the key line plus its indented block and any block sequence at the key's own indent. JSON paths split on `.`, so a key that contains a dot cannot be anchored (`missing`), and a duplicated JSON key resolves to its last value. YAML support covers block mappings only; flow mappings, anchors and aliases locate as `missing` |
 | `file`            | Whole file (swaps, siblings, whole-file seams such as `.github/SECURITY.md`)                                                                                                                                                                                                                                                                                                                                                                             |
 
-Normalize (LF endings, trailing whitespace stripped, outer blank lines dropped), hash with SHA-256, store the first 16 hex chars. Not found gives `missing`; more than one match gives `ambiguous`. Both fail `node scripts/seamRegistry.ts check` and block the sync refresh until the anchor is fixed. The planned guard (#39) will fail them in CI too.
+Normalize (LF endings, trailing whitespace stripped, outer blank lines dropped), hash with SHA-256, store the first 16 hex chars. Not found gives `missing`; more than one match gives `ambiguous`. Both fail `node scripts/seamRegistry.ts check` and block the sync refresh until the anchor is fixed.
 
 ## Per-merge report
 
@@ -113,25 +113,28 @@ Then: legacy files U touches (by path, with conflict flag), conflict paths and h
 
 After the sync PR resolves conflicts, `verify` stages the refresh (and refuses while an anchor or a fork delta cannot be refreshed) and `finish` re-runs it and commits the merge. The refresh sets `upstreamRef` to the merged commit, recomputes every fingerprint and delta, and appends paths, hunks and affected features to `plusplus/sync-history.json`. The `seams.json` diff in the sync PR is the record of what was adapted or dropped.
 
-## PR guard (planned in #39)
+## PR guard
 
-Not enforced yet: `scripts/check-fork-boundaries.ts` (CI job `Fork Boundaries`) is advisory and only classifies changed paths against the registry. #39 adds the checks below. For each PR except designated upstream-sync PRs (#50):
+`scripts/check-fork-boundaries.ts` (CI job `Fork Boundaries`) compares the PR head's registry and tree with the base. Policy and the checker itself come from the base; the head's registry is only decoded as JSON, so head code never runs. The job is advisory (`continue-on-error`, outside `Check`) until the first designated sync PR passes it; then it becomes required. Three limits keep it advisory: a PR that edits `ci.yml` runs its own copy of the job; the job restores the shared CI dependency cache (`setup-ci-deps`), which an earlier run of the same PR can seed; and the `changes` job runs `ci-changes` and `upstream-sync-pr.cjs` from the PR merge checkout, so a same-repo branch can forge the `upstream_sync` and `sync_designation_error` outputs. The trusted-base `sync` job still requires a same-repo `sync/upstream-v*` head and an exact [base, tag] merge, so the exemption still needs a maintainer-pushed merge. Any of the three can forge the result, so the guard catches honest mistakes and makes registry growth reviewable but is not a gate against a hostile PR. The job holds a read-only token and no secrets. An airtight guard needs a ruleset-required workflow that restores no cache. For each PR except designated upstream-sync PRs (#50):
 
-1. A changed upstream-owned path with no `files` entry fails.
-2. A file whose numstat delta exceeds its recorded `delta` fails, unless the PR raises the entry.
+0. The head registry's `upstreamRef` must equal the base's. Only a sync merge moves it.
+1. A changed upstream-owned path with no `files` entry fails, and so does an entry whose file no longer differs from upstream.
+2. A touched file's recorded `delta` must equal its numstat delta: a higher actual delta fails (raise the entry), and so does a recorded delta above the actual one, which would leave slack for later growth. `legacy` entries are bootstrap-only: a PR may not add one, nor convert a seams entry to one. An existing one may grow when the PR raises its `delta` to the actual figure, and check 5 lists it as raised.
 3. A deleted or renamed upstream-owned path fails.
-4. Anchors of touched entries must resolve at `upstreamRef` with matching fingerprints.
-5. The check summary lists every entry the PR adds or raises, so each new seam is a visible maintainer decision.
+4. Anchors of touched entries and siblings must resolve at `upstreamRef` with matching fingerprints. Untouched entries are not re-checked.
+5. The check summary lists every entry the PR adds or raises, every new seam, and every other registry edit (a changed or removed seam, a seams entry converted to `legacy`, a changed sibling), so each is a visible maintainer decision.
+
+A designated sync PR skips checks 0-5 and instead runs the whole-registry check of `node scripts/seamRegistry.ts check` on its head, and its head must be a merge commit whose second parent is the registry's `upstreamRef`. The exemption comes from the `changes` job's `upstream_sync` and `sync_designation_error` outputs plus the `sync` job's result, never from labels, title or branch. `vp run check:changed` runs the same checker on the working tree, without the exemption (the checker exempts only a run given `--head`).
 
 ## Existing machinery
 
-| Thing                                                                                    | Fate                                                                                                                                                                                          |
-| :--------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The retired path inventory and its validator (+test)                                     | Gone. `conflictHistory` moved to `plusplus/sync-history.json`; `exceptions` became `reason` text on legacy entries. Path categories are replaced by the git ownership rule                    |
-| `scripts/check-fork-boundaries.ts`                                                       | Keep the file, CI job name, git plumbing and fail-closed handling. Replace the "imports and JSX only" thin-seam verdicts with the registry checks above. Its TS parsing is reused for anchors |
-| `scripts/upstream-sync.ts`, dry-run and sync-PR workflows                                | Keep. Report section replaces `classifyPath` from `pr-ownership-label.cjs`; `finish` gains the refresh                                                                                        |
-| `.github/scripts/pr-ownership-label.cjs`                                                 | Keep the labels; derive "touches upstream" from the git rule and features from the registry; delete its 33-entry seam list                                                                    |
-| `packages/plusplus`, `apps/web/src/plusplus`, #80 sidecar, #82 mounts, `forkIdentity.ts` | Keep. They are the ++ side of the seams                                                                                                                                                       |
+| Thing                                                                                    | Fate                                                                                                                                                                       |
+| :--------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The retired path inventory and its validator (+test)                                     | Gone. `conflictHistory` moved to `plusplus/sync-history.json`; `exceptions` became `reason` text on legacy entries. Path categories are replaced by the git ownership rule |
+| `scripts/check-fork-boundaries.ts`                                                       | Enforces the PR guard above. Anchors come from `seamRegistry.ts`, so it parses no TypeScript itself                                                                        |
+| `scripts/upstream-sync.ts`, dry-run and sync-PR workflows                                | Keep. Report section replaces `classifyPath` from `pr-ownership-label.cjs`; `finish` gains the refresh                                                                     |
+| `.github/scripts/pr-ownership-label.cjs`                                                 | Keep the labels; derive "touches upstream" from the git rule and features from the registry; delete its 33-entry seam list                                                 |
+| `packages/plusplus`, `apps/web/src/plusplus`, #80 sidecar, #82 mounts, `forkIdentity.ts` | Keep. They are the ++ side of the seams                                                                                                                                    |
 
 ## Current conflict classes (benchmark ade473018d)
 

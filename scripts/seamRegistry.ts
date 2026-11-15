@@ -792,9 +792,10 @@ export const parseSyncHistory = Effect.fn("seamRegistry.parseHistory")(function*
   );
 });
 
-// Tree of the working directory (tracked and unignored files) built in a
-// throwaway copy of the index, so the repository's own index is never touched.
-// Equals HEAD^{tree} on a clean checkout.
+// Tree of the working directory (tracked and unignored files), built in a throwaway
+// index so the repository's own index is untouched. It starts from HEAD without stat
+// data: a copied index lets git skip rehashing a same-size edit made within the
+// timestamp granularity. Equals HEAD^{tree} on a clean checkout.
 export const snapshotWorkingTree = Effect.fn("seamRegistry.snapshotWorkingTree")(function* (
   cwd: string,
 ) {
@@ -807,19 +808,8 @@ export const snapshotWorkingTree = Effect.fn("seamRegistry.snapshotWorkingTree")
         (cause) => new SeamRegistryError({ message: `no temp directory: ${cause.message}` }),
       ),
     );
-  const indexPath = path.resolve(
-    cwd,
-    (yield* git(cwd, ["rev-parse", "--git-path", "index"])).trim(),
-  );
-  const snapshotIndex = path.join(tempDir, "index");
-  yield* fs
-    .copyFile(indexPath, snapshotIndex)
-    .pipe(
-      Effect.mapError(
-        (cause) => new SeamRegistryError({ message: `cannot copy the index: ${cause.message}` }),
-      ),
-    );
-  const env = { GIT_INDEX_FILE: snapshotIndex };
+  const env = { GIT_INDEX_FILE: path.join(tempDir, "index") };
+  yield* git(cwd, ["read-tree", "HEAD"], env);
   yield* git(cwd, ["add", "--all"], env);
   return (yield* git(cwd, ["write-tree"], env)).trim();
 }, Effect.scoped);
@@ -884,21 +874,30 @@ export const bootstrapRegistry = Effect.fn("seamRegistry.bootstrap")(function* (
 
 // Registry keys must equal the fork's modified and deleted upstream paths, and
 // every anchor must resolve at upstreamRef with its stored fingerprint.
-export const checkRegistry = Effect.fn("seamRegistry.check")(function* (root: string) {
-  const registry = yield* loadRegistryFile(root);
-  const forkTree = yield* snapshotWorkingTree(root);
+export const registryProblems = Effect.fn("seamRegistry.problems")(function* (input: {
+  readonly cwd: string;
+  readonly registry: SeamRegistry;
+  readonly forkTree: string;
+}) {
+  const { cwd, registry, forkTree } = input;
   const refreshed = yield* refreshRegistry({
-    cwd: root,
+    cwd,
     registry,
     upstreamRef: registry.upstreamRef,
     forkTree,
   });
-  const problems = [
+  return [
     ...refreshed.unregistered.map((path) => `unregistered fork delta: ${path}`),
     ...refreshed.dropped.map((path) => `registry entry without a fork delta: ${path}`),
     ...refreshed.broken,
     ...fingerprintMismatches(registry, refreshed.registry),
   ];
+});
+
+export const checkRegistry = Effect.fn("seamRegistry.check")(function* (root: string) {
+  const registry = yield* loadRegistryFile(root);
+  const forkTree = yield* snapshotWorkingTree(root);
+  const problems = yield* registryProblems({ cwd: root, registry, forkTree });
   if (problems.length > 0) {
     return yield* new SeamRegistryError({
       message: `seam registry check failed:\n  ${problems.join("\n  ")}`,
