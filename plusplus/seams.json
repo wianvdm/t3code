@@ -437,14 +437,6 @@
       "delta": [1, 0],
       "legacy": true
     },
-    "apps/server/scripts/cli.ts": {
-      "delta": [2, 42],
-      "legacy": true
-    },
-    "apps/server/scripts/cliErrors.ts": {
-      "delta": [0, 11],
-      "legacy": true
-    },
     "apps/server/src/auth/EnvironmentAuth.test.ts": {
       "delta": [2, 0],
       "legacy": true
@@ -463,14 +455,6 @@
     },
     "apps/server/src/cli/config.ts": {
       "delta": [47, 0],
-      "legacy": true
-    },
-    "apps/server/src/cli/pair.test.ts": {
-      "delta": [6, 1],
-      "legacy": true
-    },
-    "apps/server/src/cli/pair.ts": {
-      "delta": [2, 2],
       "legacy": true
     },
     "apps/server/src/cli/update.test.ts": {
