@@ -43,11 +43,6 @@ install the nightly train, or `T3CODE_VERSION` to pin an exact version.
 | Import an old fork's history                     | `t3 import-old-fork --source <path-to-old-statev2.sqlite>`                            |
 | Remove it again                                  | `t3 uninstall`                                                                        |
 
-`import-old-fork` copies an old fork's V2 database into this installation only
-when the destination database does not exist yet; it never overwrites existing
-state. Stop any running server first, and pass `--base-dir` to import into a
-different T3 home.
-
 Run `t3 help` or `t3 --help` for the full reference. To start in a new working
 directory, use an explicit path such as `t3 ./my-project`. A bare directory name
 is accepted only if it already exists.
@@ -60,7 +55,7 @@ for an independent server.
 
 On first start, if `~/.t3-fork` exists, T3 Code merges it into `~/.t3`. This
 runs once for the default home and only when no `--base-dir` is set; an explicit
-data directory or dev URL never triggers it.
+data directory never triggers it.
 
 What you get:
 
@@ -77,11 +72,9 @@ Stop every T3 Code server and the desktop app on both homes before the first
 start. A server still running against either home blocks the merge; running two
 servers over the same data is never safe.
 
-The merge records its progress in `~/.t3/userdata/old-fork-import-plus-plus-v1.json`.
-When it finishes, the marker stops any further attempt. A blocked merge stops
-too and is not retried on later starts, even after you fix the cause. A merge
-that finds another process still working reports busy and waits for the next
-start.
+The merge runs once. A blocked merge is not retried automatically, even after
+you fix the cause. A merge that finds another process still working reports busy
+and waits for the next start.
 
 To retry a blocked merge, stop both servers, then run:
 
@@ -150,7 +143,7 @@ the app installs its own updates from the same releases; see
 
 The desktop app includes the `t3` command-line tool. To run it from any
 terminal, open **Settings → About** and choose **Install** next to
-**t3 command**. On Linux it adds a `t3` link to a folder on your
+**t3 command**. On macOS and Linux it adds a `t3` link to a folder on your
 `PATH`; on Windows it adds the app's command folder to your `PATH`. Open a new
 terminal afterwards. **Remove** takes it off again.
 

@@ -12,6 +12,8 @@ launch T3 Code and configure providers afterwards.
 
 ## Command line
 
+> Using the T3 Code ++ fork? Use the [++ command-line install](../../plusplus/docs/install.md#command-line) instead: the installers below fetch upstream releases, not the fork's.
+
 ```bash
 curl -fsSL https://t3.codes/install.sh | sh
 ```

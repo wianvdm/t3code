@@ -1,4 +1,4 @@
-> Using the T3 Code ++ fork? The [++ FAQ](../../plusplus/docs/faq.md) replaces the answers below on remote, phone, voice input, and platforms.
+> Using the T3 Code ++ fork? The [++ FAQ](../../plusplus/docs/faq.md) replaces the answers below on why T3 Code, remote, phone, voice input, and platforms.
 
 # FAQ
 

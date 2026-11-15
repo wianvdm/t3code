@@ -1164,7 +1164,7 @@
       ]
     },
     "docs/user/install.md": {
-      "delta": [2, 0],
+      "delta": [4, 0],
       "seams": [
         {
           "id": "fork-docs.install-pointer",
@@ -1175,6 +1175,16 @@
           },
           "reason": "Pointer line to the ++ install page, so fork readers skip upstream's installers.",
           "fingerprint": "sha256:82de0a33abde9d19"
+        },
+        {
+          "id": "fork-docs.install-command-line-pointer",
+          "feature": "fork-docs",
+          "mechanism": "config",
+          "anchor": {
+            "text": "## Command line"
+          },
+          "reason": "Pointer line under the command-line heading, so inbound #command-line links warn fork readers before upstream's installers.",
+          "fingerprint": "sha256:e0dfde9a1c38047d"
         }
       ]
     },
