@@ -21,9 +21,8 @@
 /.github/pull_request_template.md @WianVDM
 
 # Release configuration
-/.github/workflows/release.yml @WianVDM
-/.github/workflows/release-desktop.yml @WianVDM
-/.github/workflows/fork-release.yml @WianVDM
+/.github/workflows/plusplus-release.yml @WianVDM
+/.github/workflows/plusplus-release-desktop.yml @WianVDM
 /scripts/build-desktop-artifact.ts @WianVDM
 /scripts/build-release-metadata.ts @WianVDM
 /scripts/resolve-previous-release-tag.ts @WianVDM

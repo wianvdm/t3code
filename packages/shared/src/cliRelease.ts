@@ -32,7 +32,7 @@ export const CLI_RELEASE_CHECKSUMS_FILE = "SHA256SUMS";
 export const CLI_RELEASE_METADATA_FILE = "release-metadata.json";
 export const CLI_RELEASE_BASE_URL_ENV = "T3CODE_RELEASE_BASE_URL";
 
-// Keep archive keys aligned with the cli_archive rows in release.yml, plus the darwin-arm64 archive
+// Keep archive keys aligned with the cli_archive rows in plusplus-release.yml, plus the darwin-arm64 archive
 // offered as a manual macOS download. Node single-executables do not support darwin-x64 and segfault
 // at startup, and the ARM64 Linux and Windows builds publish no CLI archive.
 const CLI_ARCHIVE_PLATFORM_KEYS = ["linux-x64", "win32-x64", "darwin-arm64"] as const;

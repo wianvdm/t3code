@@ -6,7 +6,7 @@
 # or unexpected outcome. The run is report-only: conflicts and failed
 # verification are findings in the ++ impact report, and only a report that
 # cannot be computed fails it. The real sync flow stays the manual one
-# documented in docs/operations/release.md.
+# documented in plusplus/docs/release.md.
 name: Upstream Sync Dry Run
 
 on:

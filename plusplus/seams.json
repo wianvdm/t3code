@@ -32,6 +32,10 @@
     "fork-docs": {
       "title": "++ install and FAQ pages",
       "issue": 92
+    },
+    "release": {
+      "title": "++ release pipeline and runbook",
+      "issue": 93
     }
   },
   "files": {
@@ -93,21 +97,6 @@
     ".github/scripts/ci-changes.d.cts": {
       "delta": [18, 1],
       "legacy": true
-    },
-    ".github/scripts/relay-state-output.test.cjs": {
-      "delta": [0, 76],
-      "legacy": true,
-      "reason": "These three preview tests assert on upstream release.yml steps that the fork's release seam does not provide; they cannot pass without out-of-scope release changes. They stay deleted until the release seam is reconciled (#93). The scripts and workflows they cover are restored."
-    },
-    ".github/scripts/stage-preview-bundle.test.py": {
-      "delta": [0, 97],
-      "legacy": true,
-      "reason": "These three preview tests assert on upstream release.yml steps that the fork's release seam does not provide; they cannot pass without out-of-scope release changes. They stay deleted until the release seam is reconciled (#93). The scripts and workflows they cover are restored."
-    },
-    ".github/scripts/vercel-deployment-output.test.cjs": {
-      "delta": [0, 87],
-      "legacy": true,
-      "reason": "These three preview tests assert on upstream release.yml steps that the fork's release seam does not provide; they cannot pass without out-of-scope release changes. They stay deleted until the release seam is reconciled (#93). The scripts and workflows they cover are restored."
     },
     ".github/workflows/agent-context-budget.yml": {
       "delta": [8, 2],
@@ -177,14 +166,6 @@
     },
     ".github/workflows/relay-preview.yml": {
       "delta": [1, 3],
-      "legacy": true
-    },
-    ".github/workflows/release-desktop.yml": {
-      "delta": [16, 169],
-      "legacy": true
-    },
-    ".github/workflows/release.yml": {
-      "delta": [278, 1066],
       "legacy": true
     },
     ".github/workflows/web-preview.yml": {
@@ -1144,10 +1125,6 @@
       "delta": [3, 2],
       "legacy": true
     },
-    "docs/operations/release.md": {
-      "delta": [462, 673],
-      "legacy": true
-    },
     "docs/user/faq.md": {
       "delta": [2, 0],
       "seams": [
@@ -1778,6 +1755,24 @@
       "upstream": "docs/user/faq.md",
       "plusplus": "plusplus/docs/faq.md",
       "fingerprint": "sha256:bf2fd39bbdcc61b0"
+    },
+    {
+      "feature": "release",
+      "upstream": ".github/workflows/release.yml",
+      "plusplus": ".github/workflows/plusplus-release.yml",
+      "fingerprint": "sha256:685fa7b9edaac1b5"
+    },
+    {
+      "feature": "release",
+      "upstream": ".github/workflows/release-desktop.yml",
+      "plusplus": ".github/workflows/plusplus-release-desktop.yml",
+      "fingerprint": "sha256:8f22cf780bb93b74"
+    },
+    {
+      "feature": "release",
+      "upstream": "docs/operations/release.md",
+      "plusplus": "plusplus/docs/release.md",
+      "fingerprint": "sha256:0e6ab3967fdedbc9"
     }
   ]
 }
