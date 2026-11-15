@@ -88,7 +88,6 @@ export function resolveComposerProviderModelSelection(input: ComposerProviderMod
     models: selectedProviderModels,
     promptInjectionState,
     modelOptions: modelState.modelOptions?.[selectedInstanceId],
-    planModeEnabled: settings.planModeEnabled,
   });
   return {
     providerInstanceEntries,

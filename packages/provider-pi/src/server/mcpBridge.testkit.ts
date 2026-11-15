@@ -149,6 +149,7 @@ export async function loadMcpBridge(
       },
       getCommands: () => options.commands ?? [],
       getMcpServers: () => options.mcpServers ?? [],
+      registerCommand: () => {},
       registerTool: (tool: RegisteredTool) => {
         if (options.allowsTool && !options.allowsTool(tool.name)) return;
         const index = tools.findIndex((current) => current.name === tool.name);

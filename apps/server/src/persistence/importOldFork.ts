@@ -5,6 +5,7 @@ import * as NodeSqlite from "node:sqlite";
 
 import { isWindowsRenameLock, writeFileStringAtomically } from "@t3tools/shared/atomicWrite";
 import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
+import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -158,10 +159,19 @@ export const importOldForkDatabase = Effect.fn("importOldForkDatabase")(function
             prefix: `.v2-import-${process.pid}-`,
           });
           const snapshotPath = path.join(temporaryDirectory, "snapshot.sqlite");
-          yield* Effect.tryPromise(() => backupDatabase(source, snapshotPath));
-          yield* Effect.try(() => clearLiveState(snapshotPath));
+          yield* Effect.tryPromise({
+            try: () => backupDatabase(source, snapshotPath),
+            catch: (cause) => new Cause.UnknownError(cause),
+          });
+          yield* Effect.try({
+            try: () => clearLiveState(snapshotPath),
+            catch: (cause) => new Cause.UnknownError(cause),
+          });
           // The copy inherits the source's index pages, so repair them before anything reads it.
-          yield* Effect.try(() => rebuildIndexesAndVerify(snapshotPath));
+          yield* Effect.try({
+            try: () => rebuildIndexesAndVerify(snapshotPath),
+            catch: (cause) => new Cause.UnknownError(cause),
+          });
           // Publish only a complete snapshot, without replacing an existing database.
           yield* fs.link(snapshotPath, destination).pipe(
             Effect.catchIf(
@@ -683,15 +693,18 @@ const destinationReadError = (databasePath: string, error: unknown) => {
 /** Fails while any other connection holds the database, even without a runtime-state file. */
 const assertNoOtherConnection = Effect.fn("mergeOldForkDatabase.assertNoOtherConnection")(
   function* (databasePath: string) {
-    yield* Effect.try(() => {
-      const database = new NodeSqlite.DatabaseSync(databasePath);
-      try {
-        database.exec("PRAGMA busy_timeout = 0;");
-        database.exec("BEGIN EXCLUSIVE;");
-        database.exec("COMMIT;");
-      } finally {
-        database.close();
-      }
+    yield* Effect.try({
+      try: () => {
+        const database = new NodeSqlite.DatabaseSync(databasePath);
+        try {
+          database.exec("PRAGMA busy_timeout = 0;");
+          database.exec("BEGIN EXCLUSIVE;");
+          database.exec("COMMIT;");
+        } finally {
+          database.close();
+        }
+      },
+      catch: (cause) => new Cause.UnknownError(cause),
     }).pipe(Effect.mapError((error) => destinationReadError(databasePath, error)));
   },
 );
@@ -1047,11 +1060,15 @@ export const mergeOldForkDatabase = Effect.fn("mergeOldForkDatabase")(function* 
           const snapshotPath = path.join(temporaryDirectory, "source-snapshot.sqlite");
           const candidatePath = path.join(temporaryDirectory, "candidate.sqlite");
           // Every later step reads the snapshot, so the source file itself is never written.
-          yield* Effect.tryPromise(() => backupDatabase(sourcePath, snapshotPath));
+          yield* Effect.tryPromise({
+            try: () => backupDatabase(sourcePath, snapshotPath),
+            catch: (cause) => new Cause.UnknownError(cause),
+          });
           yield* assertNoOtherConnection(destinationPath);
-          yield* Effect.tryPromise(() => backupDatabase(destinationPath, candidatePath)).pipe(
-            Effect.mapError((error) => destinationReadError(destinationPath, error)),
-          );
+          yield* Effect.tryPromise({
+            try: () => backupDatabase(destinationPath, candidatePath),
+            catch: (cause) => new Cause.UnknownError(cause),
+          }).pipe(Effect.mapError((error) => destinationReadError(destinationPath, error)));
           yield* runMigrations().pipe(
             Effect.provide(NodeSqliteClient.layer({ filename: snapshotPath })),
           );

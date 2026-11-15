@@ -1,4 +1,5 @@
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
+import * as SecretResolver from "@t3tools/secret-provider-core/server/SecretResolver";
 import * as SourceControlProviderRegistry from "../sourceControl/SourceControlProviderRegistry.ts";
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -48,6 +49,7 @@ import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
 import * as VcsProcess from "../vcs/VcsProcess.ts";
+import * as VcsStatusBroadcaster from "../vcs/VcsStatusBroadcaster.ts";
 import { CodexProviderCapabilitiesV2 } from "./Adapters/CodexAdapterV2.ts";
 import * as EffectOutbox from "./EffectOutbox.ts";
 import * as EventSink from "./EventSink.ts";
@@ -173,8 +175,10 @@ const layerHandoverTest = Layer.mergeAll(
         get: () => Effect.succeed(null),
       }),
       Layer.mock(ProviderRegistry.ProviderRegistry)({}),
+      Layer.mock(SecretResolver.SecretResolver)({}),
       Layer.mock(TerminalManager.TerminalManager)({}),
       Layer.mock(TextGeneration.TextGeneration)({}),
+      Layer.mock(VcsStatusBroadcaster.VcsStatusBroadcaster)({}),
       Layer.mock(WorktreeSetupTracker.WorktreeSetupTracker)({}),
     ),
   ),

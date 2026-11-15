@@ -12,6 +12,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 // @effect-diagnostics-next-line nodeBuiltinImport:off - Version output must flush before Electron exits, without acquiring the runtime.
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
+import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -100,7 +101,9 @@ const layerDesktopEnvironment = Layer.unwrap(
     const desktopVariant = yield* DesktopVariant.resolveDesktopVariant({
       isPackaged: metadata.isPackaged,
       appPath: metadata.appPath,
-      envVariant: process.env[DesktopVariant.DESKTOP_VARIANT_ENV_VAR],
+      envVariant: Option.getOrUndefined(
+        yield* Config.String(DesktopVariant.DESKTOP_VARIANT_ENV_VAR).pipe(Config.option),
+      ),
     });
     return DesktopEnvironment.layer({
       dirname: __dirname,
@@ -146,7 +149,7 @@ const layerElectron = Layer.mergeAll(
   ElectronTheme.layer,
   ElectronUpdater.layer,
   ElectronWindow.layer,
-  DesktopIpc.layer(Electron.ipcMain),
+  DesktopIpc.layer(Electron.ipcMain).pipe(Layer.provide(ElectronWindow.layer)),
 );
 
 const layerDesktopFoundation = Layer.mergeAll(
