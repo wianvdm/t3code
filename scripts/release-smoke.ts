@@ -49,6 +49,7 @@ const workspaceFiles = [
   "packages/client-runtime/package.json",
   "packages/contracts/package.json",
   "packages/plusplus/package.json",
+  "packages/plusplus-extensions/package.json",
   "packages/shared/package.json",
   "packages/ssh/package.json",
   "packages/tailscale/package.json",

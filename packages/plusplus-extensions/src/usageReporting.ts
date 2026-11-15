@@ -33,7 +33,10 @@ const MONETARY_ONLY_WINDOW: ServerProviderUsageWindow = {
 
 type ServerConfig = NonNullable<NonNullable<ReturnType<LimitPresentations["get"]>>["serverConfig"]>;
 
-type SyntheticName = (parent: ServerProvider, account: UsageLimitSourceAccount) => string;
+type SyntheticIdentity = (
+  parent: ServerProvider,
+  account: UsageLimitSourceAccount,
+) => Pick<ServerProvider, "displayName" | "driver">;
 
 // Upstream account ids are credential file names, so the `.json` suffix is not part of the name.
 function accountIdLabel(id: string): string {
@@ -49,14 +52,13 @@ function accountLabel(account: UsageLimitSourceAccount): string {
 function usageAccountProvider(
   parent: ServerProvider,
   account: UsageLimitSourceAccount,
-  displayName: string,
+  identity: Pick<ServerProvider, "displayName" | "driver">,
 ): ServerProvider {
   const { plusplus: _carrier, usageAccounts: _legacy, ...rest } = parent;
   return {
     ...rest,
     instanceId: `${parent.instanceId}:${account.id}` as ProviderInstanceId,
-    driver: account.driver,
-    displayName,
+    ...identity,
     auth: {
       ...parent.auth,
       email: account.email,
@@ -67,21 +69,21 @@ function usageAccountProvider(
   };
 }
 
-function expandUsageAccounts(providers: readonly ServerProvider[], name: SyntheticName) {
-  const syntheticIds = new Set<string>();
+function expandUsageAccounts(providers: readonly ServerProvider[], identity: SyntheticIdentity) {
+  const syntheticParents = new Map<string, ProviderInstanceId>();
   const accountsByProvider = providers.map((provider) => readUsageAccounts(provider) ?? []);
   if (accountsByProvider.every((accounts) => accounts.length === 0)) {
-    return { providers, syntheticIds };
+    return { providers, syntheticParents };
   }
   const expanded = providers.flatMap((parent, index) => [
     parent,
     ...accountsByProvider[index]!.map((account) => {
-      const synthetic = usageAccountProvider(parent, account, name(parent, account));
-      syntheticIds.add(synthetic.instanceId);
+      const synthetic = usageAccountProvider(parent, account, identity(parent, account));
+      syntheticParents.set(synthetic.instanceId, parent.instanceId);
       return synthetic;
     }),
   ]);
-  return { providers: expanded, syntheticIds };
+  return { providers: expanded, syntheticParents };
 }
 
 function withMonetarySentinel(limits: ServerProviderUsageLimits): ServerProviderUsageLimits {
@@ -129,14 +131,14 @@ function mapServerConfigs(
   );
 }
 
-function expandPresentations(presentations: LimitPresentations, name: SyntheticName) {
-  const syntheticIds = new Set<string>();
+function expandPresentations(presentations: LimitPresentations, identity: SyntheticIdentity) {
+  const syntheticParents = new Map<string, ProviderInstanceId>();
   const view = mapServerConfigs(presentations, (serverConfig) => {
-    const expanded = expandUsageAccounts(serverConfig.providers, name);
-    for (const id of expanded.syntheticIds) syntheticIds.add(id);
+    const expanded = expandUsageAccounts(serverConfig.providers, identity);
+    for (const [id, parentId] of expanded.syntheticParents) syntheticParents.set(id, parentId);
     return { ...serverConfig, providers: expanded.providers };
   });
-  return { view, syntheticIds };
+  return { view, syntheticParents };
 }
 
 function withMonetaryPlaceholders(presentations: LimitPresentations): LimitPresentations {
@@ -148,12 +150,18 @@ function withMonetaryPlaceholders(presentations: LimitPresentations): LimitPrese
   }));
 }
 
+// A usage account covers its parent's driver, whatever driver the account itself reports.
+const coverageIdentity: SyntheticIdentity = (parent, account) => ({
+  displayName: account.id,
+  driver: parent.driver,
+});
+
 export function hasProviderUsageLimits(
   driver: ServerProvider["driver"],
   providers: readonly ServerProvider[],
   sources: UsageLimitSourceSnapshots,
 ): boolean {
-  const expanded = expandUsageAccounts(providers, (_parent, account) => account.id);
+  const expanded = expandUsageAccounts(providers, coverageIdentity);
   return upstream.hasProviderUsageLimits(driver, expanded.providers, sources);
 }
 
@@ -161,45 +169,56 @@ export function withUsageLimitsCommands(
   providers: readonly ServerProvider[],
   sources: UsageLimitSourceSnapshots,
 ): ServerProvider[] {
-  const expanded = expandUsageAccounts(providers, (_parent, account) => account.id);
+  const expanded = expandUsageAccounts(providers, coverageIdentity);
   return upstream
     .withUsageLimitsCommands(expanded.providers, sources)
-    .filter((provider) => !expanded.syntheticIds.has(provider.instanceId));
+    .filter((provider) => !expanded.syntheticParents.has(provider.instanceId));
 }
 
 export function collectExternalUsageLinks(presentations: LimitPresentations) {
-  const { view } = expandPresentations(
-    presentations,
-    (parent, account) => `${parent.displayName ?? parent.instanceId} · ${accountLabel(account)}`,
-  );
+  const { view } = expandPresentations(presentations, (parent, account) => ({
+    displayName: `${parent.displayName ?? parent.instanceId} · ${accountLabel(account)}`,
+    driver: account.driver,
+  }));
   return upstream.collectExternalUsageLinks(view);
 }
 
 export function collectLimitNotices(presentations: LimitPresentations): readonly string[] {
-  const { view } = expandPresentations(
-    presentations,
-    (parent, account) =>
-      `${parent.displayName?.trim() || String(parent.driver)} · ${accountLabel(account)}`,
-  );
+  const { view } = expandPresentations(presentations, (parent, account) => ({
+    displayName: `${parent.displayName?.trim() || String(parent.driver)} · ${accountLabel(account)}`,
+    driver: account.driver,
+  }));
   return [...new Set(upstream.collectLimitNotices(withMonetaryPlaceholders(view)))];
 }
 
 export function collectLimitAccounts(
   presentations: LimitPresentations,
 ): readonly upstream.LimitAccount[] {
-  const { view, syntheticIds } = expandPresentations(presentations, (_parent, account) =>
-    account.email ? "" : accountIdLabel(account.id),
-  );
+  const { view, syntheticParents } = expandPresentations(presentations, (_parent, account) => ({
+    displayName: account.email ? "" : accountIdLabel(account.id),
+    driver: account.driver,
+  }));
   return upstream.collectLimitAccounts(withMonetaryPlaceholders(view)).map((account) => ({
     ...account,
-    redeem:
-      account.redeem &&
-      "instanceId" in account.redeem.input &&
-      syntheticIds.has(account.redeem.input.instanceId)
-        ? null
-        : account.redeem,
+    redeem: nativeRedeem(account, syntheticParents),
     limits: withoutMonetarySentinel(account.limits),
   }));
+}
+
+// Synthetic ids never leave here. A usage account that won a merged row redeems through the login
+// it merged into, unless it supplied the reset credits, which have no native redeem.
+function nativeRedeem(
+  account: upstream.LimitAccount,
+  syntheticParents: ReadonlyMap<string, ProviderInstanceId>,
+): upstream.LimitAccount["redeem"] {
+  const redeem = account.redeem;
+  if (!redeem || !("instanceId" in redeem.input)) return redeem;
+  const parentId = syntheticParents.get(redeem.input.instanceId);
+  if (parentId === undefined) return redeem;
+  const mergedIntoParent = account.key === `${redeem.environmentId}:${parentId}`;
+  return mergedIntoParent && !account.limits.resetCredits
+    ? { environmentId: redeem.environmentId, input: { instanceId: parentId } }
+    : null;
 }
 
 function usageAccountRows(
@@ -239,25 +258,38 @@ export function collectProviderUsageLimits(
 ): UsageLimitsReport | null {
   const selected = providers.find((provider) => provider.instanceId === instanceId);
   if (!selected || !hasProviderUsageLimits(selected.driver, providers, sources)) return null;
-  // Upstream finds no coverage when the selected driver reports only usage accounts.
-  const report = upstream.collectProviderUsageLimits(
-    instanceId,
-    monetaryProviders(providers),
-    monetarySources(sources),
-    now,
-  ) ?? { createdAt: DateTime.formatIso(DateTime.makeUnsafe(now)), accounts: [], notices: [] };
-  const accounts = report.accounts.map((account) => ({
-    ...account,
-    limits: withoutMonetarySentinel(account.limits),
-  }));
+  const sourcesWithSentinel = monetarySources(sources);
+  const report = upstreamReport(instanceId, monetaryProviders(providers), sourcesWithSentinel, now);
+  // The sentinel window makes upstream drop a hub row that shares a login with a monetary-only
+  // native one. Hub rows come from a run that leaves those native limits as they are.
+  const hubReport = providers.some(
+    (provider) => provider.usageLimits && isMonetaryOnlyUsage(provider.usageLimits),
+  )
+    ? upstreamReport(instanceId, providers, sourcesWithSentinel, now)
+    : report;
+  const nativeRows = report.accounts.filter((account) => account.instanceId !== undefined);
+  const hubRows = hubReport.accounts.filter((account) => account.instanceId === undefined);
   // Usage-account rows follow the native logins, ahead of CLI Proxy rows.
-  const nativeCount = accounts.findLastIndex((account) => account.instanceId !== undefined) + 1;
   return {
     ...report,
-    accounts: [
-      ...accounts.slice(0, nativeCount),
-      ...usageAccountRows(providers, selected.driver),
-      ...accounts.slice(nativeCount),
-    ],
+    accounts: [...nativeRows, ...usageAccountRows(providers, selected.driver), ...hubRows].map(
+      (account) => ({ ...account, limits: withoutMonetarySentinel(account.limits) }),
+    ),
   };
+}
+
+// Upstream finds no coverage when the selected driver reports only usage accounts.
+function upstreamReport(
+  instanceId: ProviderInstanceId,
+  providers: readonly ServerProvider[],
+  sources: UsageLimitSourceSnapshots,
+  now: number,
+): UsageLimitsReport {
+  return (
+    upstream.collectProviderUsageLimits(instanceId, providers, sources, now) ?? {
+      createdAt: DateTime.formatIso(DateTime.makeUnsafe(now)),
+      accounts: [],
+      notices: [],
+    }
+  );
 }

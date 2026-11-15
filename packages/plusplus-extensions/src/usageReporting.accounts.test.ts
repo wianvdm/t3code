@@ -3,6 +3,7 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ServerProvider,
+  UsageLimitSourceId,
 } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -10,6 +11,7 @@ import {
   collectLimitAccounts,
   collectLimitNotices,
   collectProviderUsageLimits,
+  hasProviderUsageLimits,
 } from "./usageReporting.ts";
 
 const now = Date.parse("2026-09-03T12:00:00.000Z");
@@ -74,7 +76,7 @@ describe("usage accounts that share an identity with a native login", () => {
     });
   });
 
-  it("never exposes the synthetic instance id as a redeem target", () => {
+  it("redeems through the native login when the fresher usage account took over the row", () => {
     const [merged] = collectLimitAccounts(
       presentations([
         provider({
@@ -84,7 +86,52 @@ describe("usage accounts that share an identity with a native login", () => {
       ]),
     );
     expect(merged?.limits.windows[0]?.usedPercent).toBe(15);
+    expect(merged?.redeem).toEqual({
+      environmentId: "env-a",
+      input: { instanceId: "claude" },
+    });
+  });
+
+  it("never exposes the synthetic instance id when the usage account supplies the credits", () => {
+    const [merged] = collectLimitAccounts(
+      presentations([
+        provider({
+          usageLimits: { checkedAt, windows: [window] },
+          usageAccounts: [
+            {
+              ...usageAccount("2026-09-03T12:00:00.000Z"),
+              usageLimits: {
+                checkedAt: "2026-09-03T12:00:00.000Z",
+                windows: [window],
+                resetCredits: { availableCount: 1, nextCreditId: "credit-1" },
+              },
+            },
+          ],
+        }),
+      ]),
+    );
+    expect(merged?.limits.resetCredits?.availableCount).toBe(1);
     expect(merged?.redeem).toBeNull();
+  });
+});
+
+describe("usage accounts and coverage", () => {
+  it("covers the parent's driver, not the driver the account reports", () => {
+    const pi = ProviderDriverKind.make("pi");
+    const opencode = ProviderDriverKind.make("opencode");
+    const parent = provider({
+      instanceId: ProviderInstanceId.make("pi"),
+      driver: pi,
+      usageAccounts: [
+        {
+          id: "oc.json",
+          driver: opencode,
+          usageLimits: { checkedAt, windows: [window] },
+        },
+      ],
+    });
+    expect(hasProviderUsageLimits(pi, [parent], [])).toBe(true);
+    expect(hasProviderUsageLimits(opencode, [parent], [])).toBe(false);
   });
 });
 
@@ -108,6 +155,33 @@ describe("monetary-only usage accounts", () => {
     ]);
     expect(accounts[1]?.limits.windows).toEqual([]);
     expect(accounts[1]?.limits.monetaryUsage).toEqual({ usedUsd: 1.25 });
+  });
+
+  it("keeps the hub row of a monetary-only native login", () => {
+    const opencode = ProviderDriverKind.make("opencode");
+    const native = provider({
+      instanceId: ProviderInstanceId.make("oc"),
+      driver: opencode,
+      auth: { status: "authenticated", email: "a@example.com" },
+      usageLimits: { checkedAt, windows: [], monetaryUsage: { usedUsd: 2 } },
+    });
+    const hub = {
+      id: UsageLimitSourceId.make("hub"),
+      kind: "cliproxy" as const,
+      label: "hub",
+      checkedAt,
+      accounts: [
+        {
+          id: "a.json",
+          driver: opencode,
+          email: "a@example.com",
+          usageLimits: { checkedAt, windows: [window] },
+        },
+      ],
+    };
+    const report = collectProviderUsageLimits(native.instanceId, [native], [hub], now);
+    expect(report?.accounts.map((account) => account.id)).toEqual(["oc", "hub:a.json"]);
+    expect(report?.accounts[0]?.limits.windows).toEqual([]);
   });
 
   it("returns report rows without the placeholder window and raises no notice", () => {

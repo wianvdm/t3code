@@ -1760,7 +1760,7 @@
       "reason": "Discord release notifications post to pingdotgg's Discord webhook, which the fork does not hold. Deletions are intentional."
     },
     "scripts/release-smoke.ts": {
-      "delta": [405, 339],
+      "delta": [406, 339],
       "legacy": true
     },
     "scripts/resolve-previous-release-tag.test.ts": {
