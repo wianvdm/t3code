@@ -879,10 +879,6 @@
       "delta": [6, 1],
       "legacy": true
     },
-    "apps/server/src/terminal/Manager.test.ts": {
-      "delta": [155, 1],
-      "legacy": true
-    },
     "apps/server/src/terminal/Manager.ts": {
       "delta": [15, 0],
       "legacy": true
@@ -1483,10 +1479,6 @@
       "delta": [1, 0],
       "legacy": true
     },
-    "packages/provider-pi/src/server/adapter.test.ts": {
-      "delta": [49, 0],
-      "legacy": true
-    },
     "packages/provider-pi/src/server/adapter.ts": {
       "delta": [46, 3],
       "legacy": true
@@ -1509,10 +1501,6 @@
     },
     "packages/provider-pi/src/server/mcpExtensionSource.ts": {
       "delta": [205, 6],
-      "legacy": true
-    },
-    "packages/provider-pi/src/server/mcpInjection.test.ts": {
-      "delta": [179, 1],
       "legacy": true
     },
     "packages/provider-pi/src/server/mcpInjection.ts": {
@@ -1634,10 +1622,6 @@
     },
     "packages/shared/src/remote.ts": {
       "delta": [6, 5],
-      "legacy": true
-    },
-    "packages/shared/src/serverSettings.test.ts": {
-      "delta": [86, 0],
       "legacy": true
     },
     "packages/shared/src/serverSettings.ts": {
