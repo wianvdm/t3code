@@ -332,7 +332,7 @@ for (const [name, files, full] of [
   ["an unresolvable diff", null, false],
   ["a full run", [], true],
   ["a manifest change", ["packages/shared/package.json"], false],
-  ["an unrecognized release workflow", [".github/workflows/release.yml"], false],
+  ["an unrecognized release workflow", [".github/workflows/plusplus-release.yml"], false],
 ]) {
   test(`${name} runs every job`, () => {
     const { affected, outputs } = decide(files, packages, full);

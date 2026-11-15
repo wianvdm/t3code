@@ -209,8 +209,8 @@ test("an empty stable version still fails when no nightly is published", async (
 // and a manual macOS arm64 DMG download. Mac x64 and Windows/Linux arm64 stay unbuilt.
 
 const WORKFLOWS_DIR = path.join(__dirname, "..", "workflows");
-const RELEASE_WORKFLOW = "release.yml";
-const DESKTOP_WORKFLOW = "release-desktop.yml";
+const RELEASE_WORKFLOW = "plusplus-release.yml";
+const DESKTOP_WORKFLOW = "plusplus-release-desktop.yml";
 const KEY_LINE = /^([A-Za-z0-9_.-]+):(?:\s+(.*))?$/;
 const HOSTED_RUNNER = /^(ubuntu|windows|macos)-(latest|\d)/i;
 
@@ -456,17 +456,17 @@ const release = loadWorkflow(RELEASE_WORKFLOW);
 
 test("release only runs when a maintainer dispatches it", () => {
   const on = nodeByKey(release.root, "on");
-  assert.ok(on, "release.yml must declare triggers");
+  assert.ok(on, "plusplus-release.yml must declare triggers");
   const automatic = children(release.lines, on)
     .map((node) => node.key)
     .filter((key) => key !== "workflow_dispatch");
-  assert.deepEqual(automatic, [], "release.yml must not run on schedules or tag pushes");
+  assert.deepEqual(automatic, [], "plusplus-release.yml must not run on schedules or tag pushes");
   assert.doesNotMatch(release.source, /^\s*cron:/m);
 });
 
 test("manual dispatch offers exactly the stable, nightly and preview channels", () => {
   const dispatch = triggerNode(release, "workflow_dispatch");
-  assert.ok(dispatch, "release.yml must support workflow_dispatch");
+  assert.ok(dispatch, "plusplus-release.yml must support workflow_dispatch");
   const inputs = child(release.lines, dispatch, "inputs");
   assert.ok(inputs, "manual dispatch must declare inputs");
   const channel = child(release.lines, inputs, "channel");
@@ -609,7 +609,7 @@ test("the macOS target is one arm64 job that ships a DMG and a CLI archive", () 
   assert.equal(
     mac.with.platform,
     "mac",
-    `${mac.id} must call release-desktop.yml for platform mac`,
+    `${mac.id} must call plusplus-release-desktop.yml for platform mac`,
   );
   assert.equal(mac.with.target, "dmg", `${mac.id} must build the DMG installer`);
   assert.equal(mac.with.arch, "arm64", `${mac.id} must build arm64 only`);
@@ -645,7 +645,7 @@ test("release graph ships exactly the three free desktop targets", () => {
   );
 });
 
-test("release-desktop.yml collects the DMG the macOS target builds", () => {
+test("plusplus-release-desktop.yml collects the DMG the macOS target builds", () => {
   const desktop = loadWorkflow(DESKTOP_WORKFLOW);
   const collecting = jobsOf(desktop)
     .flatMap((job) => stepTexts(desktop, job.id))
@@ -653,7 +653,7 @@ test("release-desktop.yml collects the DMG the macOS target builds", () => {
       (step) =>
         /patterns=\(/.test(step.text) && /"release\/\*\.(?:zip|AppImage|exe)"/.test(step.text),
     );
-  assert.ok(collecting, "release-desktop.yml must collect its installers for publishing");
+  assert.ok(collecting, "plusplus-release-desktop.yml must collect its installers for publishing");
   assert.match(collecting.text, /release\/\*\.dmg/, "the macOS DMG must reach the release assets");
 });
 
@@ -662,7 +662,7 @@ test("the Linux launch check runs the ++ AppImage binary, not the stock t3code",
   const launch = jobsOf(desktop)
     .flatMap((job) => stepTexts(desktop, job.id))
     .find((step) => /Launch check/.test(step.text));
-  assert.ok(launch, "release-desktop.yml must launch the packaged app");
+  assert.ok(launch, "plusplus-release-desktop.yml must launch the packaged app");
   assert.match(
     launch.text,
     /--executable "\$RUNNER_TEMP\/squashfs-root\/t3codeplusplus"/,
@@ -679,7 +679,7 @@ test("releases publish a GitHub Release with checksums", () => {
   const publishing = jobsOf(release).find((job) =>
     /action-gh-release|gh release (create|edit|upload)/.test(job.text),
   );
-  assert.ok(publishing, "release.yml must publish a GitHub Release");
+  assert.ok(publishing, "plusplus-release.yml must publish a GitHub Release");
   assert.match(publishing.text, /sha256sum/, "checksums must be computed with sha256sum");
   assert.match(publishing.text, /SHA256SUMS/, "the GitHub Release must carry SHA256SUMS");
   assert.match(
@@ -691,7 +691,7 @@ test("releases publish a GitHub Release with checksums", () => {
 
 test("publishing waits on the protected release environment and attests the assets", () => {
   const publishing = jobsOf(release).find((job) => /action-gh-release/.test(job.text));
-  assert.ok(publishing, "release.yml must publish a GitHub Release");
+  assert.ok(publishing, "plusplus-release.yml must publish a GitHub Release");
   assert.match(
     publishing.text,
     /environment:\s*\$\{\{[^\n]*== 'preview' && 'preview' \|\| 'release'/,
@@ -727,21 +727,21 @@ test("stable releases stamp the plusplus desktop variant in both build steps", (
   const bundle = stepTexts(release, "build_bundle").find((step) =>
     /Build JS bundle/.test(step.text),
   );
-  assert.ok(bundle, "release.yml must build the JS bundle");
+  assert.ok(bundle, "plusplus-release.yml must build the JS bundle");
   assert.match(bundle.text, /^\s+T3CODE_DESKTOP_VARIANT: plusplus$/m);
 
   const desktop = loadWorkflow(DESKTOP_WORKFLOW);
   const artifact = jobsOf(desktop)
     .flatMap((job) => stepTexts(desktop, job.id))
     .find((step) => /Build desktop artifact/.test(step.text));
-  assert.ok(artifact, "release-desktop.yml must build the desktop artifact");
+  assert.ok(artifact, "plusplus-release-desktop.yml must build the desktop artifact");
   assert.match(artifact.text, /^\s+--skip-build$/m, "the artifact build must reuse the JS bundle");
   assert.match(artifact.text, /^\s+T3CODE_DESKTOP_VARIANT: plusplus$/m);
 });
 
 test("verify_ci requires Check and Agent Context Budget on the resolved commit", () => {
   const verify = jobsOf(release).find((job) => job.id === "verify_ci");
-  assert.ok(verify, "release.yml must declare a verify_ci job");
+  assert.ok(verify, "plusplus-release.yml must declare a verify_ci job");
   assert.ok(
     verify.needs.includes("resolve_commit"),
     "verify_ci must evaluate the commit resolve_commit picked",
@@ -795,7 +795,7 @@ function evaluateJobCondition(condition, results) {
 
 test("preflight proceeds when verify_ci succeeded or was skipped, and blocks on failure", () => {
   const preflight = jobsOf(release).find((job) => job.id === "preflight");
-  assert.ok(preflight, "release.yml must declare a preflight job");
+  assert.ok(preflight, "plusplus-release.yml must declare a preflight job");
   const condition = preflight.field("if")?.value ?? "";
   assert.match(
     condition,
@@ -823,7 +823,7 @@ test("preflight proceeds when verify_ci succeeded or was skipped, and blocks on 
 
 test("stable dispatches refuse to republish a commit that already shipped as stable", () => {
   const resolve = jobsOf(release).find((job) => job.id === "resolve_commit");
-  assert.ok(resolve, "release.yml must resolve the release commit");
+  assert.ok(resolve, "plusplus-release.yml must resolve the release commit");
   assert.match(
     resolve.text,
     /listReleases/,
@@ -849,7 +849,7 @@ test("stable dispatches refuse to republish a commit that already shipped as sta
 
 test("stable releases keep unique version tags", () => {
   const resolve = jobsOf(release).find((job) => job.id === "resolve_commit");
-  assert.ok(resolve, "release.yml must resolve the release commit");
+  assert.ok(resolve, "plusplus-release.yml must resolve the release commit");
   assert.match(
     resolve.text,
     /tag_name/,
@@ -872,7 +872,7 @@ const publishing = jobsOf(release).find((job) =>
 );
 
 function publishingSteps() {
-  assert.ok(publishing, "release.yml must publish a GitHub Release");
+  assert.ok(publishing, "plusplus-release.yml must publish a GitHub Release");
   return stepTexts(release, publishing.id);
 }
 
@@ -1011,7 +1011,7 @@ test("the release never publishes a macOS updater feed", () => {
     updaterEntries.length > 0 && updaterEntries.every((entry) => !entry.includes("*"));
   assert.ok(
     guard || namedUpdaterEntries,
-    "macOS ships a manual download: release.yml must refuse latest-mac.yml/nightly-mac.yml, or list updater manifests by name instead of *.yml",
+    "macOS ships a manual download: plusplus-release.yml must refuse latest-mac.yml/nightly-mac.yml, or list updater manifests by name instead of *.yml",
   );
   assert.doesNotMatch(
     listing.text,

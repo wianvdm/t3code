@@ -82,7 +82,7 @@ const workspaceFiles = [
 ] as const;
 
 // Windows x64, Linux x64, and the macOS arm64 manual download are the shipped
-// targets; see the cli_archive rows in release.yml.
+// targets; see the cli_archive rows in plusplus-release.yml.
 const cliTargets = [
   { platform: "linux", arch: "x64", platformKey: "linux-x64" },
   { platform: "win", arch: "x64", platformKey: "win32-x64" },
@@ -248,7 +248,7 @@ export const verifyReleaseAssets = Effect.fn("verifyReleaseAssets")(function* ({
     }
   }
 
-  // release.yml publishes the metadata on every channel; it is release
+  // plusplus-release.yml publishes the metadata on every channel; it is release
   // information, not updater metadata, so preview ships it too.
   const metadataText = yield* fs.readFileString(path.join(assetsPath, CLI_RELEASE_METADATA_FILE));
   if (Option.isNone(decodeReleaseMetadata(`v${version}`, metadataText))) {
@@ -313,7 +313,7 @@ function writeCliArchiveFixtures(targetRoot: string): string {
     digests.set(archiveName, NodeCrypto.createHash("sha256").update(bytes).digest("hex"));
   }
 
-  // Same layout `sha256sum "${archives[@]}"` writes in release.yml.
+  // Same layout `sha256sum "${archives[@]}"` writes in plusplus-release.yml.
   const sumsPath = NodePath.resolve(assetDirectory, CLI_RELEASE_CHECKSUMS_FILE);
   NodeFS.writeFileSync(
     sumsPath,

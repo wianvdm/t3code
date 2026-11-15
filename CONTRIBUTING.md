@@ -73,7 +73,7 @@ details matter. Attach evidence to the PR; do not commit PR-only screenshots or 
 - Upstream syncs land as their own PR from a branch that carries only the upstream changes. Land local
   fixes separately so the next sync stays clean.
 - Release, versioning, and publishing steps are in
-  [docs/operations/release.md](docs/operations/release.md).
+  [plusplus/docs/release.md](plusplus/docs/release.md).
 
 ## Documentation
 

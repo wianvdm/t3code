@@ -2815,7 +2815,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   const updateChannel = resolveDesktopUpdateChannel(version);
   // Missing publish config infers a GitHub feed from tokens; staging has no repository, so manifest generation would crash.
   buildConfig.publish = null;
-  // Unsigned mac builds ship no updater feed (see release.yml); electron-updater would fail its signature check.
+  // Unsigned mac builds ship no updater feed (see plusplus-release.yml); electron-updater would fail its signature check.
   if (!isDesktopPreviewVersion(version) && (platform !== "mac" || signed)) {
     const publishConfig = yield* resolveForkGitHubPublishConfig(updateChannel, variant);
     if (publishConfig) {

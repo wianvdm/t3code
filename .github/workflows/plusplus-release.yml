@@ -1,0 +1,693 @@
+name: "++ Release"
+
+# Manual only. A maintainer dispatches every release: stable, nightly, and
+# preview. No schedules and no tag triggers, so a fork never publishes by
+# accident and every run is deliberate.
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Release channel"
+        required: false
+        default: preview
+        type: choice
+        options:
+          - preview
+          - stable
+          - nightly
+      version:
+        description: "Stable version override (for example 0.1.5-plusplus.1: upstream base plus its ++ revision). Defaults to the version the latest nightly previewed."
+        required: false
+        type: string
+
+# Serialize nightlies and previews so overlapping runs cannot build the same
+# commit twice or publish out of order. Stable dispatches get their own group
+# so a nightly never blocks them. Running publishers are never canceled, and
+# queue: max keeps every pending run instead of the default newest-wins single
+# slot, so a queued stable dispatch can never be silently dropped.
+concurrency:
+  group: plusplus-release-${{ (inputs.channel == 'nightly' || inputs.channel == 'preview') && 'nightly' || 'stable' }}
+  cancel-in-progress: false
+  queue: max
+
+permissions:
+  # The Windows desktop job reads this run's artifact list to wait for the
+  # Linux CLI archive it embeds (see plusplus-release-desktop.yml).
+  actions: read
+  contents: read
+  id-token: none
+
+jobs:
+  # Picks the commit every later job builds. Nightly and preview dispatches
+  # build the triggering commit. A manual stable release builds the commit of
+  # the latest published nightly, or the dispatched commit when a ++ version
+  # is given, and refuses commits or tags a published stable already shipped.
+  resolve_commit:
+    name: Resolve release commit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      ref: ${{ steps.resolve.outputs.ref }}
+      nightly_version: ${{ steps.resolve.outputs.nightly_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/scripts
+
+      - id: resolve
+        name: Resolve release commit
+        uses: actions/github-script@v8
+        env:
+          DISPATCH_CHANNEL: ${{ inputs.channel }}
+          DISPATCH_VERSION: ${{ inputs.version }}
+        with:
+          script: |
+            const {
+              assertCommitOnDefaultBranch,
+              assertReleaseSource,
+              resolveStableCommit,
+            } = require('./.github/scripts/check-nightly-release.cjs');
+
+            const releaseChannel = process.env.DISPATCH_CHANNEL || 'preview';
+
+            await assertReleaseSource({ github, context, releaseChannel });
+
+            if (releaseChannel === 'stable') {
+              const explicitVersion = (process.env.DISPATCH_VERSION || '').trim();
+              const resolved = await resolveStableCommit({ github, context, core, explicitVersion });
+
+              if (resolved.tag) {
+                await assertCommitOnDefaultBranch({ github, context, sha: resolved.sha });
+                core.notice(`Stable release builds ${resolved.sha}, the commit shipped by ${resolved.tag}.`);
+              } else {
+                core.notice(`Stable release builds the dispatched commit ${resolved.sha} as ${explicitVersion}.`);
+              }
+
+              // A stable re-dispatch must never overwrite what already shipped:
+              // reject both a published stable on the same commit and a
+              // published release under the same tag. Drafts and prereleases
+              // (nightly, preview) never block.
+              const stableTag = explicitVersion
+                ? `v${explicitVersion.replace(/^v/, '')}`
+                : `v${resolved.version}-plusplus.1`;
+              const releases = await github.paginate(github.rest.repos.listReleases, {
+                ...context.repo,
+                per_page: 100,
+              });
+              const publishedStable = releases.filter(
+                (release) => !release.draft && !release.prerelease,
+              );
+              const sameCommit = publishedStable.find(
+                (release) => release.target_commitish === resolved.sha,
+              );
+              if (sameCommit) {
+                throw new Error(
+                  `${resolved.sha} already shipped as stable release ${sameCommit.tag_name}; pass a newer commit or version.`,
+                );
+              }
+              const sameTag = publishedStable.find((release) => release.tag_name === stableTag);
+              if (sameTag) {
+                throw new Error(`Stable tag ${stableTag} is already published; pass a new ++ revision.`);
+              }
+
+              core.setOutput('ref', resolved.sha);
+              core.setOutput('nightly_version', resolved.version || '');
+            } else {
+              core.setOutput('ref', context.sha);
+            }
+
+  verify_ci:
+    name: Verify resolved commit CI
+    # Publication gate: review CI must already be green on exactly the commit
+    # resolve_commit picked. Requires the aggregate `Check` run and the
+    # Agent Context Budget workflow's `Agent context budget` run to have
+    # completed with conclusion success; pending, failed, or missing runs fail
+    # instead of waiting. Preview dispatches exercise unreleased branches that
+    # have never seen CI, so only they skip this gate.
+    needs: [resolve_commit]
+    if: ${{ inputs.channel != 'preview' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      checks: read
+      contents: read
+    steps:
+      - name: Require green required checks
+        uses: actions/github-script@v8
+        env:
+          RELEASE_REF: ${{ needs.resolve_commit.outputs.ref }}
+        with:
+          script: |
+            const sha = process.env.RELEASE_REF;
+            const required = ['Check', 'Agent context budget'];
+            const checkRuns = await github.paginate(github.rest.checks.listForRef, {
+              ...context.repo,
+              ref: sha,
+              filter: 'latest',
+            });
+            const failures = [];
+            for (const name of required) {
+              const run = checkRuns.find((candidate) => candidate.name === name);
+              if (!run) {
+                failures.push(`${name}: missing on ${sha}`);
+              } else if (run.status !== 'completed') {
+                failures.push(`${name}: still ${run.status}`);
+              } else if (run.conclusion !== 'success') {
+                failures.push(`${name}: conclusion ${run.conclusion}`);
+              }
+            }
+            if (failures.length > 0) {
+              core.setFailed(`Required CI is not green on ${sha}: ${failures.join('; ')}`);
+            }
+
+  preflight:
+    name: Preflight
+    needs: [resolve_commit, verify_ci]
+    # A skipped verify_ci is the preview path, which has no CI gate to pass; a
+    # failed one still blocks. Job-level `needs` results default to skipping the
+    # dependent job, so the condition has to admit `skipped` explicitly.
+    if: ${{ !cancelled() && needs.resolve_commit.result == 'success' && (needs.verify_ci.result == 'success' || needs.verify_ci.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      release_channel: ${{ steps.release_meta.outputs.release_channel }}
+      version: ${{ steps.release_meta.outputs.version }}
+      tag: ${{ steps.release_meta.outputs.tag }}
+      release_name: ${{ steps.release_meta.outputs.name }}
+      previous_tag: ${{ steps.previous_tag.outputs.previous_tag }}
+      is_prerelease: ${{ steps.release_meta.outputs.is_prerelease }}
+      make_latest: ${{ steps.release_meta.outputs.make_latest }}
+      ref: ${{ needs.resolve_commit.outputs.ref }}
+      clerk_publishable_key: ${{ steps.public_config.outputs.clerk_publishable_key }}
+      clerk_jwt_template: ${{ steps.public_config.outputs.clerk_jwt_template }}
+      clerk_cli_oauth_client_id: ${{ steps.public_config.outputs.clerk_cli_oauth_client_id }}
+      relay_url: ${{ steps.public_config.outputs.relay_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve_commit.outputs.ref }}
+          fetch-depth: 0
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup dependencies
+        uses: ./.github/actions/setup-ci-deps
+        env:
+          pnpm_config_cache_dir: ${{ runner.temp }}/pnpm-metadata
+
+      - id: release_meta
+        name: Resolve release version
+        shell: bash
+        env:
+          DISPATCH_CHANNEL: ${{ github.event.inputs.channel }}
+          DISPATCH_VERSION: ${{ github.event.inputs.version }}
+          NIGHTLY_VERSION: ${{ needs.resolve_commit.outputs.nightly_version }}
+          NIGHTLY_DATE: ${{ github.run_started_at }}
+          NIGHTLY_SHA: ${{ needs.resolve_commit.outputs.ref }}
+          NIGHTLY_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          if [[ "${DISPATCH_CHANNEL:-preview}" == "nightly" ]]; then
+            nightly_date="$(date -u -d "$NIGHTLY_DATE" +%Y%m%d)"
+
+            node scripts/resolve-nightly-release.ts \
+              --date "$nightly_date" \
+              --run-number "$NIGHTLY_RUN_NUMBER" \
+              --sha "$NIGHTLY_SHA" \
+              --github-output
+
+            echo "release_channel=nightly" >> "$GITHUB_OUTPUT"
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "make_latest=false" >> "$GITHUB_OUTPUT"
+          elif [[ "${DISPATCH_CHANNEL:-preview}" == "preview" ]]; then
+            # Manual-only test train: exercises the whole release flow for a
+            # commit end users must never receive. Same versioning as nightly
+            # under its own prerelease identifier. A preview release is
+            # reachable only by asking for it: its desktop builds carry no
+            # update feed, and no updater manifest is attached to the release,
+            # so neither stable nor nightly installs can ever be offered one.
+            nightly_date="$(date -u -d "$NIGHTLY_DATE" +%Y%m%d)"
+
+            node scripts/resolve-nightly-release.ts \
+              --channel preview \
+              --date "$nightly_date" \
+              --run-number "$NIGHTLY_RUN_NUMBER" \
+              --sha "$NIGHTLY_SHA" \
+              --github-output
+
+            echo "release_channel=preview" >> "$GITHUB_OUTPUT"
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "make_latest=false" >> "$GITHUB_OUTPUT"
+          else
+            if [[ -n "$DISPATCH_VERSION" ]]; then
+              raw="$DISPATCH_VERSION"
+            elif [[ "$NIGHTLY_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              # A nightly previews the bare upstream base, which is never a
+              # valid ++ stable version; its first ++ revision is .1.
+              raw="${NIGHTLY_VERSION}-plusplus.1"
+            else
+              echo "Stable releases need an X.Y.Z-plusplus.N version input, which builds the dispatched commit, or a published nightly whose base version they extend." >&2
+              exit 1
+            fi
+
+            version="${raw#v}"
+
+            # X.Y.Z-plusplus.N (upstream base plus an incrementing ++ revision)
+            # is the fork's only stable format: never a bare X.Y.Z, never
+            # another prerelease suffix. It is not a semver prerelease, so it
+            # publishes as a full release and the repository's latest.
+            if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-plusplus\.[0-9]+$ ]]; then
+              echo "Invalid release version: $raw (expected X.Y.Z-plusplus.N)" >&2
+              exit 1
+            fi
+
+            echo "release_channel=stable" >> "$GITHUB_OUTPUT"
+            echo "version=$version" >> "$GITHUB_OUTPUT"
+            echo "tag=v$version" >> "$GITHUB_OUTPUT"
+            echo "name=T3 Code ++ v$version" >> "$GITHUB_OUTPUT"
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+            echo "make_latest=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - id: previous_tag
+        name: Resolve previous release tag
+        run: |
+          node scripts/resolve-previous-release-tag.ts \
+            --channel "${{ steps.release_meta.outputs.release_channel }}" \
+            --current-tag "${{ steps.release_meta.outputs.tag }}" \
+            --github-output
+
+      # The cloud identifiers baked into release builds are public and checked
+      # in at .env.example (see scripts/lib/public-config.ts); no Clerk or
+      # Cloudflare credentials are involved.
+      - id: public_config
+        name: Resolve public cloud config
+        shell: bash
+        run: |
+          set -euo pipefail
+          value() { sed -n "s/^$1=//p" .env.example | head -n1; }
+          names=(
+            T3CODE_CLERK_PUBLISHABLE_KEY
+            T3CODE_CLERK_JWT_TEMPLATE
+            T3CODE_CLERK_CLI_OAUTH_CLIENT_ID
+            T3CODE_RELAY_URL
+          )
+          missing=()
+          for name in "${names[@]}"; do
+            if [[ -z "$(value "$name")" ]]; then
+              missing+=("$name")
+            fi
+          done
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing public cloud config in .env.example: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+          echo "clerk_publishable_key=$(value T3CODE_CLERK_PUBLISHABLE_KEY)" >> "$GITHUB_OUTPUT"
+          echo "clerk_jwt_template=$(value T3CODE_CLERK_JWT_TEMPLATE)" >> "$GITHUB_OUTPUT"
+          echo "clerk_cli_oauth_client_id=$(value T3CODE_CLERK_CLI_OAUTH_CLIENT_ID)" >> "$GITHUB_OUTPUT"
+          echo "relay_url=$(value T3CODE_RELAY_URL)" >> "$GITHUB_OUTPUT"
+
+      # Share only the verification results, not the large registry metadata cache.
+      - name: Upload dependency verification
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-dependency-verification
+          path: ${{ runner.temp }}/pnpm-metadata/lockfile-verified.jsonl
+
+  # The platform-independent JS (server bundle, web client, Electron main) is
+  # built exactly once here and handed to every platform job as `js-bundle`.
+  # The public relay/Clerk values are baked into the bundle, so they belong to
+  # this job rather than to the packaging jobs.
+  build_bundle:
+    name: Build JS bundle
+    needs: [preflight, verify_ci]
+    if: ${{ !cancelled() && needs.preflight.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      T3CODE_CLERK_PUBLISHABLE_KEY: ${{ needs.preflight.outputs.clerk_publishable_key }}
+      T3CODE_CLERK_JWT_TEMPLATE: ${{ needs.preflight.outputs.clerk_jwt_template }}
+      T3CODE_CLERK_CLI_OAUTH_CLIENT_ID: ${{ needs.preflight.outputs.clerk_cli_oauth_client_id }}
+      T3CODE_RELAY_URL: ${{ needs.preflight.outputs.relay_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.ref }}
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      # pnpm checks the lockfile and policy before reusing this result. A missing
+      # artifact leaves the cache empty, so installation runs the checks again.
+      - name: Download dependency verification
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: release-dependency-verification
+          path: ${{ runner.temp }}/pnpm-metadata
+
+      - name: Setup dependencies
+        uses: ./.github/actions/setup-ci-deps
+        with:
+          install-args: --filter=t3... --filter=@t3tools/web... --filter=@t3tools/desktop... --filter=@t3tools/scripts...
+        env:
+          pnpm_config_cache_dir: ${{ runner.temp }}/pnpm-metadata
+
+      - name: Align package versions to release version
+        run: node scripts/update-release-package-versions.ts "${{ needs.preflight.outputs.version }}"
+
+      # @t3tools/desktop#build compiles the Linux browser secret helper on a
+      # Linux host before packing, and that needs libsecret headers.
+      - name: Install browser secret helper build libraries
+        run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev pkg-config
+
+      # Runs t3#build (which depends on @t3tools/web#build) and
+      # @t3tools/desktop#build, so apps/server/dist holds the server bundle
+      # plus the web client and apps/desktop/dist-electron the Electron main.
+      # The release channel is already stable, nightly, or preview, and it
+      # stamps the build's telemetry channel.
+      - name: Build JS bundle
+        env:
+          T3CODE_TELEMETRY_CHANNEL: ${{ needs.preflight.outputs.release_channel }}
+          T3CODE_DESKTOP_VARIANT: plusplus
+        run: vp run build:desktop
+
+      # Two paths under apps/ so the artifact root is apps/; consumers download
+      # into `apps` to restore both at their original locations.
+      - name: Upload JS bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: js-bundle
+          path: |
+            apps/server/dist
+            apps/desktop/dist-electron
+          if-no-files-found: error
+          retention-days: 1
+
+  # One job per shipped target (see plusplus-release-desktop.yml): Windows x64 and
+  # Linux x64, both built on GitHub-hosted Linux runners. The Windows job
+  # embeds the Linux CLI archive as its WSL runtime and waits for that
+  # artifact partway through instead of for the whole Linux job. Both jobs
+  # also build the CLI archive for their platform, so a target either ships
+  # fully or not at all.
+  desktop_linux_x64:
+    name: Desktop Linux x64
+    needs: [preflight, build_bundle, verify_ci]
+    if: ${{ !cancelled() && needs.preflight.result == 'success' && needs.build_bundle.result == 'success' }}
+    uses: ./.github/workflows/plusplus-release-desktop.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.preflight.outputs.version }}
+      ref: ${{ needs.preflight.outputs.ref }}
+      release_channel: ${{ needs.preflight.outputs.release_channel }}
+      clerk_publishable_key: ${{ needs.preflight.outputs.clerk_publishable_key }}
+      clerk_jwt_template: ${{ needs.preflight.outputs.clerk_jwt_template }}
+      clerk_cli_oauth_client_id: ${{ needs.preflight.outputs.clerk_cli_oauth_client_id }}
+      relay_url: ${{ needs.preflight.outputs.relay_url }}
+      relay_client_tracing: false
+      label: Linux x64
+      runner: ubuntu-24.04
+      platform: linux
+      target: AppImage
+      arch: x64
+      rust_target: x86_64-unknown-linux-gnu
+      resource_key: linux-x64
+      cli_archive: true
+      launch_check: true
+
+  desktop_win_x64:
+    name: Desktop Windows x64
+    needs: [preflight, build_bundle, verify_ci]
+    if: ${{ !cancelled() && needs.preflight.result == 'success' && needs.build_bundle.result == 'success' }}
+    uses: ./.github/workflows/plusplus-release-desktop.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.preflight.outputs.version }}
+      ref: ${{ needs.preflight.outputs.ref }}
+      release_channel: ${{ needs.preflight.outputs.release_channel }}
+      clerk_publishable_key: ${{ needs.preflight.outputs.clerk_publishable_key }}
+      clerk_jwt_template: ${{ needs.preflight.outputs.clerk_jwt_template }}
+      clerk_cli_oauth_client_id: ${{ needs.preflight.outputs.clerk_cli_oauth_client_id }}
+      relay_url: ${{ needs.preflight.outputs.relay_url }}
+      relay_client_tracing: false
+      label: Windows x64
+      runner: ubuntu-24.04
+      verify_runner: windows-2025
+      platform: win
+      target: nsis
+      arch: x64
+      rust_target: x86_64-pc-windows-msvc
+      resource_key: win32-x64
+      cli_archive: true
+
+  # Manual macOS download: an unsigned DMG plus the darwin arm64 CLI archive,
+  # built on a GitHub-hosted arm64 macOS runner. No darwin update feed is
+  # published until arm64 auto-update is verified (see "Drop macOS updater
+  # metadata" in the release job), so no install ever updates onto this build.
+  desktop_mac_arm64:
+    name: Desktop macOS arm64
+    needs: [preflight, build_bundle, verify_ci]
+    if: ${{ !cancelled() && needs.preflight.result == 'success' && needs.build_bundle.result == 'success' }}
+    uses: ./.github/workflows/plusplus-release-desktop.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.preflight.outputs.version }}
+      ref: ${{ needs.preflight.outputs.ref }}
+      release_channel: ${{ needs.preflight.outputs.release_channel }}
+      clerk_publishable_key: ${{ needs.preflight.outputs.clerk_publishable_key }}
+      clerk_jwt_template: ${{ needs.preflight.outputs.clerk_jwt_template }}
+      clerk_cli_oauth_client_id: ${{ needs.preflight.outputs.clerk_cli_oauth_client_id }}
+      relay_url: ${{ needs.preflight.outputs.relay_url }}
+      relay_client_tracing: false
+      label: macOS arm64
+      runner: macos-15
+      platform: mac
+      target: dmg
+      arch: arm64
+      rust_target: aarch64-apple-darwin
+      resource_key: darwin-arm64
+      cli_archive: true
+      launch_check: true
+
+  release:
+    name: Publish GitHub Release
+    needs: [preflight, desktop_linux_x64, desktop_win_x64, desktop_mac_arm64, verify_ci]
+    if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' && needs.desktop_linux_x64.result == 'success' && needs.desktop_win_x64.result == 'success' && needs.desktop_mac_arm64.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # Stable and nightly wait for maintainer approval here, right before
+    # publishing. Previews come from unmerged branches, which the protected
+    # environment's main-only branch policy would reject.
+    environment: ${{ needs.preflight.outputs.release_channel == 'preview' && 'preview' || 'release' }}
+    permissions:
+      contents: write
+      # GitHub's generated release notes read PR titles and authors.
+      pull-requests: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.ref }}
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup dependencies
+        uses: ./.github/actions/setup-ci-deps
+        with:
+          install-args: --filter=@t3tools/scripts...
+
+      - name: Download all desktop artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Download all CLI archives
+        uses: actions/download-artifact@v8
+        with:
+          pattern: cli-*
+          merge-multiple: true
+          path: release-assets
+
+      # macOS ships as a manual download only: until arm64 auto-update is
+      # verified, no darwin feed may be advertised. The unsigned mac build has
+      # publish=null, so electron-builder writes no channel manifest and no
+      # blockmap; dropping them here is defense-in-depth for a build that ever
+      # gains a feed. The DMG and the CLI archive stay.
+      - name: Drop macOS updater metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          dropped=(
+            release-assets/*-mac*.yml
+            release-assets/*-mac*.blockmap
+            release-assets/*.dmg.blockmap
+            release-assets/*-mac.zip
+          )
+          if (( ${#dropped[@]} > 0 )); then
+            printf 'Dropping macOS updater files: %s\n' "${dropped[@]}"
+            rm -f "${dropped[@]}"
+          fi
+
+      # Installers verify archives against this file, so it is written from the
+      # signed bytes that get uploaded, never from an earlier stage.
+      - name: Write CLI archive checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          shopt -s nullglob
+          archives=(t3-*.tar.gz t3-*.zip)
+          if [[ ${#archives[@]} -eq 0 ]]; then
+            echo "No CLI archives were produced." >&2
+            exit 1
+          fi
+          sha256sum "${archives[@]}" > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            release-assets/*.exe
+            release-assets/*.AppImage
+            release-assets/*.deb
+            release-assets/*.dmg
+            release-assets/t3-*.tar.gz
+            release-assets/t3-*.zip
+
+      # Shared consumers fetch this at releases/download/v<version>/release-metadata.json,
+      # so every channel ships it. It is release information, not updater metadata:
+      # the preview no-feed guard below only rejects manifests and blockmaps.
+      - name: Write release metadata
+        run: |
+          node scripts/build-release-metadata.ts \
+            --version "${{ needs.preflight.outputs.version }}" \
+            --channel "${{ needs.preflight.outputs.release_channel }}" \
+            --output-dir release-assets
+
+      # The desktop build omits the publish config for preview versions, so
+      # electron-builder emits no updater manifests for them. Refuse to publish
+      # if one shows up anyway: a `latest*.yml` or `nightly*.yml` on a preview
+      # release is what would let a stable or nightly install update onto it.
+      - name: Refuse updater metadata on preview releases
+        if: needs.preflight.outputs.release_channel == 'preview'
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob extglob
+          # builder-debug.yml is electron-builder's config dump, not a feed.
+          updater_files=(release-assets/!(builder-debug).yml release-assets/*.blockmap)
+          if [[ ${#updater_files[@]} -ne 0 ]]; then
+            printf 'Preview releases must not carry updater metadata, found: %s\n' "${updater_files[*]}" >&2
+            exit 1
+          fi
+
+      # electron-updater reads one manifest per platform and channel. Only the
+      # x64 Windows build ships, so its per-arch manifest becomes the one file.
+      - name: Merge Windows updater manifests
+        if: needs.preflight.outputs.release_channel != 'preview'
+        run: |
+          shopt -s nullglob
+          for x64_manifest in release-assets/*-win-x64.yml; do
+            merged_manifest="${x64_manifest%-win-x64.yml}.yml"
+            mv "$x64_manifest" "$merged_manifest"
+          done
+
+      # Updater manifests and blockmaps are what electron-updater consumes.
+      # They are only listed for channels an updater is meant to follow.
+      - id: release_files
+        name: Resolve release asset list
+        shell: bash
+        run: |
+          {
+            echo 'files<<EOF'
+            echo 'release-assets/*.dmg'
+            echo 'release-assets/*.zip'
+            echo 'release-assets/*.AppImage'
+            echo 'release-assets/*.deb'
+            echo 'release-assets/*.exe'
+            if [[ "${{ needs.preflight.outputs.release_channel }}" != "preview" ]]; then
+              echo 'release-assets/*.blockmap'
+              echo 'release-assets/*.yml'
+            fi
+            echo 'release-assets/*.tar.gz'
+            echo 'release-assets/SHA256SUMS'
+            echo 'release-assets/release-metadata.json'
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      # A preview release gets a warning instead of generated notes. Generated
+      # notes would list every commit since the previous preview, which is
+      # unmerged branch history no one should read as a changelog, and would
+      # make the release look like any other build to someone browsing the
+      # releases page. Stable and nightly releases fall back to GitHub's
+      # generated notes.
+      - name: Write preview release notes
+        if: needs.preflight.outputs.release_channel == 'preview'
+        shell: bash
+        run: |
+          cat > release-notes.md <<'EOF'
+          > [!WARNING]
+          > **This is a preview build. Do not install it unless you know exactly why you are here.**
+          >
+          > Preview builds are cut by maintainers from unreleased branches to exercise the release pipeline. They can be broken, receive no fixes, are never offered as updates, and are not supported. If you want T3 Code, install the [latest release](https://github.com/${{ github.repository }}/releases/latest) or a nightly instead.
+
+          Built from `${{ needs.preflight.outputs.ref }}`.
+          EOF
+
+      - name: Publish release
+        if: needs.preflight.outputs.previous_tag != ''
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.preflight.outputs.tag }}
+          target_commitish: ${{ needs.preflight.outputs.ref }}
+          name: ${{ needs.preflight.outputs.release_name }}
+          generate_release_notes: ${{ needs.preflight.outputs.release_channel != 'preview' }}
+          body_path: ${{ needs.preflight.outputs.release_channel == 'preview' && 'release-notes.md' || '' }}
+          previous_tag: ${{ needs.preflight.outputs.previous_tag }}
+          prerelease: ${{ needs.preflight.outputs.is_prerelease }}
+          draft: ${{ needs.preflight.outputs.is_prerelease }}
+          make_latest: ${{ needs.preflight.outputs.make_latest }}
+          files: ${{ steps.release_files.outputs.files }}
+          fail_on_unmatched_files: true
+          token: ${{ github.token }}
+
+      - name: Publish first release
+        if: needs.preflight.outputs.previous_tag == ''
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.preflight.outputs.tag }}
+          target_commitish: ${{ needs.preflight.outputs.ref }}
+          name: ${{ needs.preflight.outputs.release_name }}
+          generate_release_notes: ${{ needs.preflight.outputs.release_channel != 'preview' }}
+          body_path: ${{ needs.preflight.outputs.release_channel == 'preview' && 'release-notes.md' || '' }}
+          prerelease: ${{ needs.preflight.outputs.is_prerelease }}
+          draft: ${{ needs.preflight.outputs.is_prerelease }}
+          make_latest: ${{ needs.preflight.outputs.make_latest }}
+          files: ${{ steps.release_files.outputs.files }}
+          fail_on_unmatched_files: true
+          token: ${{ github.token }}
+
+      # The action keeps a stable release a draft until its assets finish uploading, but publishes a
+      # prerelease first. Desktop clients update connected servers from the CLI archives as soon as
+      # they see the release, so a prerelease also goes public only once every asset is attached.
+      - name: Publish prerelease
+        if: needs.preflight.outputs.is_prerelease == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.preflight.outputs.tag }}
+        run: gh release edit "$RELEASE_TAG" --draft=false
