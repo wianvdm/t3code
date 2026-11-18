@@ -16,7 +16,6 @@ import {
   type ResetCreditChoice,
   resetCreditChoices,
 } from "@t3tools/plusplus-extensions/usageReporting";
-import { formatUsd } from "@t3tools/shared/usageFormat";
 import type { ProviderDriverKind } from "@t3tools/contracts";
 import type { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import { normalizeProviderAccentColor } from "@t3tools/client-runtime/state/provider-instance-display";
@@ -44,9 +43,11 @@ import { OpenAI } from "../Icons";
 import { Alert, AlertTitle } from "../ui/alert";
 import { Popover, PopoverCreateHandle, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { PaceIcon, ResetCreditDialog, barColor, usePaceMark, useResetCredit } from "./UsageLimits";
-import { ModelVendorIcon, usesModelVendorIcon } from "~/plusplus/usage/modelVendorIcon";
-import { MonetaryUsageAccounts } from "~/plusplus/usage/MonetaryUsage";
-import { monetaryUsageOf } from "~/plusplus/usage/monetaryUsage.logic";
+import {
+  PoolWindowLabel,
+  PooledMonetaryUsage,
+  SegmentMonetaryUsage,
+} from "~/plusplus/usage/PooledMonetaryUsage";
 
 function accountInitials(email: string): string {
   const [local = "", domain = ""] = email.split("@");
@@ -160,7 +161,6 @@ function SegmentPopover({
     redeem && account.redeem && account.limits.resetCredits?.availableCount
       ? resetCreditChoices(account.limits.resetCredits, account.redeem.input, now, true)
       : [];
-  const monetary = monetaryUsageOf(account.limits);
   return (
     <div className="flex w-72 max-w-[calc(100vw-3rem)] flex-col gap-2.5 text-xs">
       <div className="flex min-w-0 flex-col gap-0.5">
@@ -186,19 +186,7 @@ function SegmentPopover({
           <Row label={account.environments.length > 0 ? "Signed in" : "Via"}>{where}</Row>
         ) : null}
       </div>
-      {monetary ? (
-        <div className="flex flex-col gap-1 border-t border-border/60 pt-2.5">
-          {monetary.usedUsd !== undefined ? (
-            <Row label="Used">{formatUsd(monetary.usedUsd)}</Row>
-          ) : null}
-          {monetary.remainingUsd !== undefined ? (
-            <Row label="Remaining">{formatUsd(monetary.remainingUsd)}</Row>
-          ) : null}
-          {monetary.limitUsd !== undefined ? (
-            <Row label="Limit">{formatUsd(monetary.limitUsd)}</Row>
-          ) : null}
-        </div>
-      ) : null}
+      <SegmentMonetaryUsage limits={account.limits} />
       <div className="flex flex-col gap-1 border-t border-border/60 pt-2.5">
         <Row label="Left">{remaining}%</Row>
         {window.resetsAt ? (
@@ -237,8 +225,9 @@ function SegmentPopover({
 }
 
 /**
- * One popover is shared by every segment, so hovering another segment moves it
- * rather than opening a second one. The payload names the segment it describes.
+ * Every segment on the page shares one popover, so hovering or clicking another
+ * segment moves it instead of opening a second one. The payload is the segment
+ * it currently describes.
  */
 type SegmentPayload = Omit<Parameters<typeof SegmentPopover>[0], "now" | "onRedeem">;
 const SegmentPopoverContext = createContext<ReturnType<
@@ -269,9 +258,9 @@ function ActiveSegmentPopover({
       ),
     ),
   );
-  // The trigger is gone, so an exit transition would slide the popup to the viewport
-  // origin. Unmounting it also clears Base UI's active-trigger bookkeeping, so the
-  // segment can open again when it returns.
+  // The trigger is gone, so the popup has nothing to anchor to: an exit transition would
+  // slide it to the viewport origin. Unmount it outright, which also clears Base UI's
+  // active-trigger bookkeeping so the segment can open again when it comes back.
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- closes the popover handle and unmounts the Base UI popup before paint when its trigger is gone
   useLayoutEffect(() => {
     if (available) return;
@@ -333,7 +322,7 @@ function RedeemableSegment({
         onConfirm={() => void redeem.redeem()}
         disabled={!redeem.canManageProviders}
       />
-      {/* The popover closes before the confirm, so progress and outcome live here. */}
+      {/* The popover closed before the confirm, so progress and the outcome need a home outside it. */}
       {redeem.busy || redeem.status ? (
         <span role="status" className="col-span-full text-xs text-muted-foreground">
           <AccountName account={props.account} className="font-medium text-foreground" />{" "}
@@ -385,7 +374,7 @@ function SegmentTriggers({
         }
       >
         <div aria-hidden className="absolute inset-0 overflow-hidden rounded-md">
-          {/* Inside the rounded clip so the bar's corners keep their antialiasing. */}
+          {/* Clipped inside the rounded clip so the bar's own corners keep their antialiasing. */}
           <div className="absolute inset-0" style={paceMark?.gap}>
             <div
               aria-hidden
@@ -567,12 +556,7 @@ function PoolWindowCard({
   return (
     <div className="grid items-center gap-x-6 gap-y-3 rounded-lg border border-border/60 p-4 md:grid-cols-[11rem_minmax(0,1fr)]">
       <div className="flex flex-col gap-1">
-        <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-          {usesModelVendorIcon(driver) ? (
-            <ModelVendorIcon name={pool.label} className="size-4 shrink-0" />
-          ) : null}
-          {label ?? pool.label}
-        </span>
+        <PoolWindowLabel driver={driver} iconName={pool.label} label={label ?? pool.label} />
         <span className="flex items-baseline gap-2">
           <span className="text-3xl font-semibold text-foreground tabular-nums">
             {pool.remainingPercent}%
@@ -626,7 +610,7 @@ function PoolSection({ pool, now }: { readonly pool: LimitPool; readonly now: nu
           />
         );
       })}
-      <MonetaryUsageAccounts
+      <PooledMonetaryUsage
         pool={pool}
         showEmptyLabel={windows.length === 0}
         renderAccountName={(account, className) => (

@@ -33,6 +33,10 @@
       "title": "Model vendor icons on Usage",
       "issue": 82
     },
+    "upstream-merge-access": {
+      "title": "Upstream merge push access",
+      "issue": 64
+    },
     "fork-docs": {
       "title": "++ install and FAQ pages",
       "issue": 92
@@ -447,12 +451,87 @@
       ]
     },
     "apps/mobile/src/features/usage/UsageLimitsPooled.tsx": {
-      "delta": [35, 5],
-      "legacy": true
+      "delta": [7, 2],
+      "seams": [
+        {
+          "id": "usage-limits.mobile-pooled-import",
+          "feature": "usage-limits",
+          "mechanism": "override",
+          "anchor": {
+            "text": "from \"@t3tools/shared/usageLimits\""
+          },
+          "reason": "Pooled usage needs the ++ aggregation that retains usage accounts and monetary-only rows.",
+          "fingerprint": "sha256:5437402de21de5de"
+        },
+        {
+          "id": "usage-limits.mobile-pooled-components-import",
+          "feature": "usage-limits",
+          "mechanism": "hook",
+          "anchor": {
+            "text": "import { ResetCredits } from \"./UsageLimitsSection\";"
+          },
+          "reason": "Monetary-only pooling and account rows live in the ++ mobile usage module.",
+          "fingerprint": "sha256:99299f1e16faccfb"
+        },
+        {
+          "id": "usage-limits.mobile-pooled-filter",
+          "feature": "usage-limits",
+          "mechanism": "override",
+          "anchor": {
+            "symbol": "UsageLimitsSection",
+            "text": "const pools = collectLimitPools(collectLimitAccounts(selected), now);"
+          },
+          "reason": "Pools with monetary usage but no rate-limit windows must remain visible.",
+          "fingerprint": "sha256:2f01a3967bfa1ab6"
+        },
+        {
+          "id": "usage-limits.mobile-pooled-accounts",
+          "feature": "usage-limits",
+          "mechanism": "mount",
+          "anchor": {
+            "symbol": "UsageLimitsSection",
+            "text": "{windows.map((window) => {"
+          },
+          "reason": "Each pool renders its per-account monetary usage below the upstream window cards.",
+          "fingerprint": "sha256:1de7344eec4947bd"
+        }
+      ]
     },
     "apps/mobile/src/features/usage/UsageLimitsSection.tsx": {
-      "delta": [22, 1],
-      "legacy": true
+      "delta": [3, 1],
+      "seams": [
+        {
+          "id": "usage-limits.mobile-account-import",
+          "feature": "usage-limits",
+          "mechanism": "override",
+          "anchor": {
+            "text": "from \"@t3tools/shared/usageLimits\""
+          },
+          "reason": "Account limits need the ++ wrappers that understand usage accounts and monetary usage.",
+          "fingerprint": "sha256:6947bc41223a96e9"
+        },
+        {
+          "id": "usage-limits.mobile-account-monetary-import",
+          "feature": "usage-limits",
+          "mechanism": "hook",
+          "anchor": {
+            "text": "from \"./usageProviders\";"
+          },
+          "reason": "The monetary line is owned by the ++ mobile usage module.",
+          "fingerprint": "sha256:9b2271c17bafba15"
+        },
+        {
+          "id": "usage-limits.mobile-account-monetary",
+          "feature": "usage-limits",
+          "mechanism": "mount",
+          "anchor": {
+            "symbol": "AccountLimits",
+            "text": "{externalUsage ? ("
+          },
+          "reason": "Monetary usage renders between the upstream limit windows and external usage link.",
+          "fingerprint": "sha256:a9192401106f4ca5"
+        }
+      ]
     },
     "apps/mobile/src/widgets/subscriptionUsageSnapshot.ts": {
       "delta": [1, 1],
@@ -957,7 +1036,50 @@
     },
     "apps/server/src/ws.ts": {
       "delta": [4, 1],
-      "legacy": true
+      "seams": [
+        {
+          "id": "usage-limits.ws-import",
+          "feature": "usage-limits",
+          "mechanism": "override",
+          "anchor": {
+            "text": "from \"@t3tools/shared/usageLimits\""
+          },
+          "reason": "Usage-limit commands must cover the ++ usage accounts as well as native providers.",
+          "fingerprint": "sha256:f551caba4ac1d7d9"
+        },
+        {
+          "id": "upstream-merge-access.ws-import",
+          "feature": "upstream-merge-access",
+          "mechanism": "hook",
+          "anchor": {
+            "text": "import * as SourceControlSignIn from \"./sourceControl/SourceControlSignIn.ts\";"
+          },
+          "reason": "Issue #64 exposes the ++ push-access check through the WebSocket RPC layer.",
+          "fingerprint": "sha256:55d3127acf0fc008"
+        },
+        {
+          "id": "upstream-merge-access.ws-service",
+          "feature": "upstream-merge-access",
+          "mechanism": "hook",
+          "anchor": {
+            "symbol": "layerWsRpc",
+            "text": "const sourceControlSignIn = yield* SourceControlSignIn.SourceControlSignIn;"
+          },
+          "reason": "Issue #64 resolves the ++ access service beside the other source-control services.",
+          "fingerprint": "sha256:30ac8b53d4d42b8f"
+        },
+        {
+          "id": "upstream-merge-access.ws-rpc",
+          "feature": "upstream-merge-access",
+          "mechanism": "hook",
+          "anchor": {
+            "symbol": "layerWsRpc",
+            "text": "[WS_METHODS.sourceControlStar]: (input) => sourceControlSignIn.star(input),"
+          },
+          "reason": "Issue #64 adds the ++ access check beside the source-control RPC handlers.",
+          "fingerprint": "sha256:713a3cd58ee3887e"
+        }
+      ]
     },
     "apps/web/package.json": {
       "delta": [1, 0],
@@ -1147,8 +1269,73 @@
       "legacy": true
     },
     "apps/web/src/components/usage/UsageLimitsPooled.tsx": {
-      "delta": [43, 10],
-      "legacy": true
+      "delta": [19, 2],
+      "seams": [
+        {
+          "id": "usage-limits.web-pooled-import",
+          "feature": "usage-limits",
+          "mechanism": "override",
+          "anchor": {
+            "text": "from \"@t3tools/shared/usageLimits\""
+          },
+          "reason": "Pooled usage needs the ++ aggregation that retains usage accounts and monetary-only rows.",
+          "fingerprint": "sha256:7a81efe30cbcb8ff"
+        },
+        {
+          "id": "usage-limits.web-pooled-components-import",
+          "feature": "usage-limits",
+          "mechanism": "hook",
+          "anchor": {
+            "text": "from \"./UsageLimits\";"
+          },
+          "reason": "Monetary usage and model-aware pool labels are mounted from one ++ web usage module.",
+          "fingerprint": "sha256:ea1976823583bac9"
+        },
+        {
+          "id": "usage-limits.web-pooled-popover",
+          "feature": "usage-limits",
+          "mechanism": "mount",
+          "anchor": {
+            "symbol": "SegmentPopover",
+            "text": "{account.plan ? <Row label=\"Plan\">"
+          },
+          "reason": "The account popover includes monetary usage between identity and rate-limit details.",
+          "fingerprint": "sha256:74577bab05d0e99f"
+        },
+        {
+          "id": "usage-vendor-icons.pooled-window-card",
+          "feature": "usage-vendor-icons",
+          "mechanism": "override",
+          "anchor": {
+            "symbol": "PoolWindowCard",
+            "text": "<span className=\"text-sm font-medium text-foreground\">{label ?? pool.label}</span>"
+          },
+          "reason": "The pool window label uses the ++ model vendor icon when its driver supports one.",
+          "fingerprint": "sha256:be027d9c09618c8e"
+        },
+        {
+          "id": "usage-vendor-icons.pooled-window-driver",
+          "feature": "usage-vendor-icons",
+          "mechanism": "hook",
+          "anchor": {
+            "symbol": "PoolSection",
+            "text": "<PoolWindowCard"
+          },
+          "reason": "The pool driver selects the model vendor icon in the ++ label mount.",
+          "fingerprint": "sha256:134c48c807282b0e"
+        },
+        {
+          "id": "usage-limits.web-pooled-accounts",
+          "feature": "usage-limits",
+          "mechanism": "mount",
+          "anchor": {
+            "symbol": "PoolSection",
+            "text": "const windows = displayLimitWindows(pool);"
+          },
+          "reason": "Each pool renders its ++ monetary account rows below the upstream window cards.",
+          "fingerprint": "sha256:32dfddde6742d683"
+        }
+      ]
     },
     "apps/web/src/components/usage/UsagePage.tsx": {
       "delta": [12, 1],
