@@ -36,6 +36,10 @@
     "release": {
       "title": "++ release pipeline and runbook",
       "issue": 93
+    },
+    "remote-ssh": {
+      "title": "SSH remote launch errors for unpublished fork builds",
+      "issue": 115
     }
   },
   "files": {
@@ -1607,6 +1611,21 @@
     "packages/source-control-github/src/server/driver.ts": {
       "delta": [31, 3],
       "legacy": true
+    },
+    "packages/ssh/src/tunnel.ts": {
+      "delta": [1, 1],
+      "seams": [
+        {
+          "id": "remote-ssh.linux-arm64-no-archive",
+          "feature": "remote-ssh",
+          "mechanism": "override",
+          "anchor": {
+            "text": "T3_PLATFORM_KEY=\"linux-arm64\""
+          },
+          "reason": "The fork publishes only linux-x64, win32-x64 and darwin-arm64 archives (CLI_ARCHIVE_PLATFORM_KEYS), so the Linux arm64/aarch64 case branch fails fast with an error naming the missing build instead of downloading a nonexistent archive. Maintainer decision on #115.",
+          "fingerprint": "sha256:5e2359d30e08b5c9"
+        }
+      ]
     },
     "packaging/aur/.gitignore": {
       "delta": [0, 9],
