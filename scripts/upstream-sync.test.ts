@@ -2581,7 +2581,7 @@ it.live("validate-merge accepts the real two-parent sync merge", () =>
   ).pipe(Effect.provide(NodeServices.layer)),
 );
 
-it.live("validate-merge checks whitespace against the upstream side only", () =>
+it.live("validate-merge rejects whitespace and conflict markers added by the resolution", () =>
   Effect.scoped(
     Effect.gen(function* () {
       // Upstream ships trailing whitespace, as vendored patches do.
@@ -2609,6 +2609,20 @@ it.live("validate-merge checks whitespace against the upstream side only", () =>
       yield* fixture.git(["push", fixture.originLocalUrl, `${dirtyHead}:refs/pull/11/head`]);
       const error = yield* Effect.flip(validate(11, dirtyHead));
       assert.instanceOf(error, GitCommandError);
+      assert.include(error.args, "--check");
+
+      // Conflict markers in the same upstream-changed file are rejected first.
+      yield* fs.writeFileString(
+        path.join(fixture.cwd, "vendored.patch"),
+        "context \n<<<<<<< resolution\n",
+      );
+      yield* fixture.git(["add", "-A"]);
+      yield* fixture.git(["commit", "--amend", "--no-edit"]);
+      const markerHead = (yield* fixture.git(["rev-parse", "HEAD"])).trim();
+      yield* fixture.git(["push", fixture.originLocalUrl, `${markerHead}:refs/pull/12/head`]);
+      const markerError = yield* Effect.flip(validate(12, markerHead));
+      assert.instanceOf(markerError, UpstreamSyncError);
+      assert.match(markerError.message, /Conflict markers[\s\S]*<<<<<<< resolution/);
     }),
   ).pipe(Effect.provide(NodeServices.layer)),
 );
