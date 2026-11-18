@@ -500,7 +500,7 @@ if ! t3_runtime_ready; then
   # Keep aligned with CLI_ARCHIVE_PLATFORM_KEYS in packages/shared/src/cliRelease.ts.
   case "$(uname -s) $(uname -m)" in
     "Darwin arm64") T3_PLATFORM_KEY="darwin-arm64" ;;
-    "Linux arm64" | "Linux aarch64") printf 'T3 Code ++ has no release build for %s (linux-arm64). Published builds: linux-x64, win32-x64, darwin-arm64.\\n' "$(uname -s) $(uname -m)" >&2; exit 1 ;;
+    "Linux arm64" | "Linux aarch64") printf 'T3 Code ++ has no release build for %s (linux-arm64).\\n' "$(uname -s) $(uname -m)" >&2; exit 1 ;;
     "Linux x86_64" | "Linux amd64") T3_PLATFORM_KEY="linux-x64" ;;
     *) printf 'Remote host %s has no t3 release archive.\\n' "$(uname -s) $(uname -m)" >&2; exit 1 ;;
   esac

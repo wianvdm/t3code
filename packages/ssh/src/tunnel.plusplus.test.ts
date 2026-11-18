@@ -1,6 +1,4 @@
-// Runs the generated runner in a real POSIX shell with a fake uname, like
-// tunnel.test.ts, but asserts the ++ behaviour: Linux arm64/aarch64 remotes
-// fail with an error naming the missing fork build instead of downloading.
+// @effect-diagnostics nodeBuiltinImport:off - Runs the generated runner in a real shell.
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
