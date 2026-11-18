@@ -4,18 +4,9 @@ import { describe, expect, it } from "vite-plus/test";
 import { readUsageAccounts } from "./contracts.ts";
 import {
   applyUsageLimitsUpdate,
-  reconcileProviderUsageSnapshot,
   resolveUsageLimitsAfterProbe,
+  retainPublishedUsageAccounts,
 } from "./usageLimits.ts";
-
-const window = {
-  id: "five_hour",
-  kind: "session",
-  label: "Session",
-  usedPercent: 40,
-  windowDurationMins: 300,
-  resetsAt: "2026-09-03T14:00:00.000Z",
-} as const;
 
 function provider(overrides: Partial<ServerProvider>): ServerProvider {
   return {
@@ -153,65 +144,15 @@ describe("resolveUsageLimitsAfterProbe", () => {
   });
 });
 
-describe("reconcileProviderUsageSnapshot", () => {
-  const good = { checkedAt: "2026-09-03T11:00:00.000Z", windows: [window] };
-  const failed = {
-    checkedAt: "2026-09-03T12:00:00.000Z",
-    windows: [],
-    unavailable: { reason: "probeFailed" as const },
-  };
+describe("retainPublishedUsageAccounts", () => {
   const accounts = [
     {
       id: "a@example.com.json",
       driver: ProviderDriverKind.make("codex"),
       email: "a@example.com",
-      usageLimits: good,
+      usageLimits: { checkedAt: "2026-09-03T11:00:00.000Z", windows: [session] },
     },
   ];
-
-  it("keeps last-good limits through a failed probe for the same account", () => {
-    const published = provider({
-      usageLimits: good,
-      auth: { status: "authenticated", email: "a@example.com" },
-    });
-    const probed = provider({
-      usageLimits: failed,
-      auth: { status: "authenticated", email: "a@example.com" },
-    });
-    expect(reconcileProviderUsageSnapshot({ published, probed }).usageLimits).toBe(good);
-  });
-
-  it("drops last-good limits on an account or workspace switch", () => {
-    const published = provider({
-      usageLimits: good,
-      auth: { status: "authenticated", email: "a@example.com", workspaceId: "ws-a" },
-    });
-    const otherEmail = provider({
-      usageLimits: failed,
-      auth: { status: "authenticated", email: "b@example.com", workspaceId: "ws-a" },
-    });
-    expect(reconcileProviderUsageSnapshot({ published, probed: otherEmail }).usageLimits).toBe(
-      failed,
-    );
-    const otherWorkspace = provider({
-      usageLimits: failed,
-      auth: { status: "authenticated", email: "a@example.com", workspaceId: "ws-b" },
-    });
-    expect(reconcileProviderUsageSnapshot({ published, probed: otherWorkspace }).usageLimits).toBe(
-      failed,
-    );
-  });
-
-  it("retains the original workspace while last-good limits are retained", () => {
-    const published = provider({
-      usageLimits: good,
-      auth: { status: "authenticated", workspaceId: "ws-a" },
-    });
-    const probed = provider({ usageLimits: failed, auth: { status: "authenticated" } });
-    const next = reconcileProviderUsageSnapshot({ published, probed });
-    expect(next.usageLimits).toBe(good);
-    expect(next.auth.workspaceId).toBe("ws-a");
-  });
 
   it("keeps published accounts through an empty authenticated probe", () => {
     const published = provider({
@@ -219,9 +160,14 @@ describe("reconcileProviderUsageSnapshot", () => {
       auth: { status: "authenticated", email: "a@example.com" },
     });
     const emptyProbe = provider({ auth: { status: "authenticated", email: "a@example.com" } });
-    expect(reconcileProviderUsageSnapshot({ published, probed: emptyProbe }).usageAccounts).toBe(
-      accounts,
-    );
+    expect(
+      retainPublishedUsageAccounts({
+        published,
+        probed: emptyProbe,
+        switchedAccount: false,
+        snapshot: emptyProbe,
+      }).usageAccounts,
+    ).toBe(accounts);
   });
 
   it("drops published accounts on sign-out, uninstall, or account switch", () => {
@@ -231,18 +177,33 @@ describe("reconcileProviderUsageSnapshot", () => {
     });
     const signedOut = provider({ auth: { status: "unauthenticated" } });
     expect(
-      reconcileProviderUsageSnapshot({ published, probed: signedOut }).usageAccounts,
+      retainPublishedUsageAccounts({
+        published,
+        probed: signedOut,
+        switchedAccount: false,
+        snapshot: signedOut,
+      }).usageAccounts,
     ).toBeUndefined();
     const uninstalled = provider({
       installed: false,
       auth: { status: "authenticated", email: "a@example.com" },
     });
     expect(
-      reconcileProviderUsageSnapshot({ published, probed: uninstalled }).usageAccounts,
+      retainPublishedUsageAccounts({
+        published,
+        probed: uninstalled,
+        switchedAccount: false,
+        snapshot: uninstalled,
+      }).usageAccounts,
     ).toBeUndefined();
     const switched = provider({ auth: { status: "authenticated", email: "b@example.com" } });
     expect(
-      reconcileProviderUsageSnapshot({ published, probed: switched }).usageAccounts,
+      retainPublishedUsageAccounts({
+        published,
+        probed: switched,
+        switchedAccount: true,
+        snapshot: switched,
+      }).usageAccounts,
     ).toBeUndefined();
   });
 
@@ -252,7 +213,12 @@ describe("reconcileProviderUsageSnapshot", () => {
       auth: { status: "authenticated", email: "a@example.com" },
     });
     const emptyProbe = provider({ auth: { status: "authenticated", email: "a@example.com" } });
-    const next = reconcileProviderUsageSnapshot({ published, probed: emptyProbe });
+    const next = retainPublishedUsageAccounts({
+      published,
+      probed: emptyProbe,
+      switchedAccount: false,
+      snapshot: emptyProbe,
+    });
     expect(next.usageAccounts).toEqual(accounts);
     expect(next.plusplus).toEqual({ usageAccounts: accounts });
   });
@@ -266,7 +232,12 @@ describe("reconcileProviderUsageSnapshot", () => {
       auth: { status: "authenticated", email: "a@example.com" },
       plusplus: { usageAccounts: [], future: 1 },
     });
-    const next = reconcileProviderUsageSnapshot({ published, probed: emptyProbe });
+    const next = retainPublishedUsageAccounts({
+      published,
+      probed: emptyProbe,
+      switchedAccount: false,
+      snapshot: emptyProbe,
+    });
     expect(readUsageAccounts(next)).toEqual(accounts);
     expect(next.usageAccounts).toEqual(accounts);
     expect(next.plusplus).toEqual({ future: 1, usageAccounts: accounts });
@@ -279,7 +250,12 @@ describe("reconcileProviderUsageSnapshot", () => {
       auth: { status: "authenticated", email: "a@example.com" },
     });
     const emptyProbe = provider({ auth: { status: "authenticated", email: "a@example.com" } });
-    const next = reconcileProviderUsageSnapshot({ published, probed: emptyProbe });
+    const next = retainPublishedUsageAccounts({
+      published,
+      probed: emptyProbe,
+      switchedAccount: false,
+      snapshot: emptyProbe,
+    });
     expect(next.usageAccounts).toBeUndefined();
     expect(next.plusplus).toBeUndefined();
   });

@@ -1522,10 +1522,6 @@
       "delta": [7, 0],
       "legacy": true
     },
-    "packages/provider-muse/src/server/usageLimits.test.ts": {
-      "delta": [0, 88],
-      "legacy": true
-    },
     "packages/provider-muse/src/server/usageLimits.ts": {
       "delta": [9, 20],
       "legacy": true
