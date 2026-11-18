@@ -238,8 +238,8 @@ test("registry packages stay out of the Windows scope when the closure runs", ()
 });
 
 // The same invariant against the real workspace: the Windows closure is
-// exactly the Electron distribution surface, and full CI runs the ten selected
-// packages (the closure plus scripts, minus POSIX-only suites).
+// exactly the Electron distribution surface, and full CI runs its eleven test
+// packages; the Windows workflow excludes only SSH's POSIX shell test files.
 test("the real desktop closure is exactly the distribution surface", () => {
   assert.deepEqual([...desktopClosure(readWorkspace())].sort(), [
     "@t3tools/client-runtime",
@@ -256,12 +256,12 @@ test("the real desktop closure is exactly the distribution surface", () => {
   ]);
 });
 
-test("a full run selects the ten-package Windows surface", () => {
+test("a full run selects the eleven-package Windows surface", () => {
   const { outputs } = decide([], readWorkspace(), true);
   assert.equal(outputs.windows, true);
   assert.equal(
     outputs.windows_packages,
-    "apps/desktop packages/client-runtime packages/contracts packages/plusplus packages/provider-core packages/secret-provider-core packages/secret-provider-onepassword packages/shared packages/tailscale scripts",
+    "apps/desktop packages/client-runtime packages/contracts packages/plusplus packages/provider-core packages/secret-provider-core packages/secret-provider-onepassword packages/shared packages/ssh packages/tailscale scripts",
   );
 });
 
@@ -778,4 +778,8 @@ test("windows-tests exposes replay inputs as all-or-none and a verification outp
   // Existing CI/manual behavior is preserved.
   assert.match(windowsWorkflow, /was called without a package/);
   assert.match(windowsWorkflow, /files is only supported by manual runs/);
+  assert.match(
+    windowsWorkflow,
+    /test --exclude src\/tunnel\.test\.ts --exclude src\/tunnel\.plusplus\.test\.ts/,
+  );
 });

@@ -226,10 +226,6 @@ function windowsDeps(pkg) {
     : pkg.deps;
 }
 
-// Closure packages whose suites drive POSIX shell scripts (fake uname on a
-// colon-separated PATH, sh PIDs) and that upstream never runs on Windows.
-const POSIX_ONLY_TEST_PACKAGES = new Set(["@t3tools/ssh"]);
-
 // Names in the Windows dependency closure of @t3tools/desktop, including
 // desktop itself. deps already excludes build-only edges.
 function desktopClosure(packages) {
@@ -333,7 +329,6 @@ function decide(files, packages, full, sync = "none") {
           (pkg) =>
             pkg.hasTest &&
             affected.has(pkg.name) &&
-            !POSIX_ONLY_TEST_PACKAGES.has(pkg.name) &&
             (pkg.name === "@t3tools/scripts" || closure.has(pkg.name)),
         )
         .map((pkg) => pkg.dir)
