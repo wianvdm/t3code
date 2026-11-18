@@ -67,9 +67,8 @@ than a fork-only version bump.
   the dispatched commit instead.
 - Version changes land as ordinary PRs. Nothing in the release workflow writes to `main` or commits a
   bump back, and pushing a tag publishes nothing: the release job creates the tag.
-
-Nightly and preview `<run>` suffixes come from `run_number`, which restarted at 1 when the pipeline
-moved to `plusplus-release.yml`.
+- Nightly and preview `<run>` suffixes come from `run_number`, which restarted at 1 when the pipeline
+  moved to `plusplus-release.yml`.
 
 ## Promotion
 
@@ -314,8 +313,8 @@ it is missing.
 #### 1. Prepare
 
 - Inspect the newest dry-run report and confirm the strict tag (`vX.Y.Z`) you intend to sync.
-- Review upstream's `release.yml` and `release-desktop.yml` changes on every sync and port applicable
-  changes into the ++ release workflows.
+- Review upstream's `release.yml` and `release-desktop.yml` changes since the last sync and port what
+  applies into the ++ release workflows.
 - Use a dedicated worktree on a detached or throwaway checkout of `origin/main`, never the checkout
   you develop in. The script requires a clean working tree and the exact remotes (`origin` =
   `WianVDM/t3code`, `upstream` = `pingdotgg/t3code`) and fails otherwise.
