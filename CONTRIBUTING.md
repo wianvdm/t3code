@@ -4,6 +4,7 @@ This is a personal fork of [T3 Code](https://github.com/pingdotgg/t3code), maint
 for their own use. External pull requests are welcome on a best-effort basis. Opening one does not
 create an obligation to review, merge, or reply, and a change that suits a different setup than the
 fork owner's may still be declined.
+Read [plusplus/GUIDE.md](plusplus/GUIDE.md) for the fork's contributor and agent rules.
 
 Focused bug fixes, reliability fixes, performance improvements, and small maintenance changes are the
 most likely to land. Unsolicited features, opinionated rewrites, and unrelated cleanup usually are not.

@@ -214,11 +214,11 @@
       "reason": "Upstream-internal macroscope review agent configuration was dropped from the fork; fork CI does not run macroscope. Deletions are intentional."
     },
     "AGENTS.md": {
-      "delta": [8, 5],
+      "delta": [9, 5],
       "legacy": true
     },
     "CONTRIBUTING.md": {
-      "delta": [56, 143],
+      "delta": [57, 143],
       "legacy": true
     },
     "README.md": {

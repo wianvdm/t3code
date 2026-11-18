@@ -382,6 +382,8 @@ node scripts/upstream-sync.ts finish --tag vX.Y.Z
 - After merging, confirm the upstream tag commit is an ancestor of `main`
   (`git merge-base --is-ancestor <tag-commit> origin/main`) and that the merge commit on `main`
   still has exactly the expected two parents.
+- Re-check that nothing upstream-only now runs on the fork, per the post-sync workflow re-check in
+  [the ++ guide](../GUIDE.md#upstream-syncs-and-releases).
 
 #### 6. Release
 
