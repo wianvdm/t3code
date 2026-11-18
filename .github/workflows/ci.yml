@@ -558,7 +558,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
           components: rustfmt
 

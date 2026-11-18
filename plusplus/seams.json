@@ -115,7 +115,7 @@
       "legacy": true
     },
     ".github/workflows/ci.yml": {
-      "delta": [236, 100],
+      "delta": [237, 101],
       "legacy": true
     },
     ".github/workflows/deploy-relay.yml": {
@@ -185,7 +185,7 @@
       "legacy": true
     },
     ".github/workflows/windows-tests.yml": {
-      "delta": [201, 12],
+      "delta": [202, 13],
       "legacy": true
     },
     ".macroscope/approvability.md": {
