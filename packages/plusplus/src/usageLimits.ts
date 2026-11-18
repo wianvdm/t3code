@@ -127,53 +127,6 @@ export function resolveUsageLimitsAfterProbe(input: {
   return probed;
 }
 
-function snapshotWithUsageLimits(
-  snapshot: ServerProvider,
-  usageLimits: ServerProvider["usageLimits"],
-): ServerProvider {
-  if (snapshot.usageLimits === usageLimits) {
-    return snapshot;
-  }
-  const { usageLimits: _previous, ...rest } = snapshot;
-  return usageLimits ? { ...rest, usageLimits } : rest;
-}
-
-/**
- * Failed reads retain last-good limits only for the same account and original
- * workspace; drivers fold auth-file read failures into empty account lists.
- */
-export function reconcileProviderUsageSnapshot(input: {
-  readonly published: ServerProvider;
-  readonly probed: ServerProvider;
-}): ServerProvider {
-  const { published, probed: probedSnapshot } = input;
-  const previous = published.auth;
-  const differs = (a: string | undefined, b: string | undefined) =>
-    a !== undefined && b !== undefined && a !== b;
-  const switchedAccount =
-    differs(probedSnapshot.auth.email?.toLowerCase(), previous.email?.toLowerCase()) ||
-    (probedSnapshot.auth.workspaceId !== undefined &&
-      probedSnapshot.auth.workspaceId !== previous.workspaceId);
-  const usageLimits = switchedAccount
-    ? probedSnapshot.usageLimits
-    : resolveUsageLimitsAfterProbe({
-        published: published.usageLimits,
-        probed: probedSnapshot.usageLimits,
-      });
-  const workspaceId =
-    usageLimits === probedSnapshot.usageLimits ? undefined : published.auth.workspaceId;
-  const withWorkspace =
-    workspaceId && !probedSnapshot.auth.workspaceId
-      ? { ...probedSnapshot, auth: { ...probedSnapshot.auth, workspaceId } }
-      : probedSnapshot;
-  return retainPublishedUsageAccounts({
-    published,
-    probed: probedSnapshot,
-    switchedAccount,
-    snapshot: snapshotWithUsageLimits(withWorkspace, usageLimits),
-  });
-}
-
 /**
  * Keeps the last-good usage accounts when an authenticated probe of the same
  * account lists none. Sign-out, uninstall, and account switches still drop them.
