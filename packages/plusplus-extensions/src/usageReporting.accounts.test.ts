@@ -5,7 +5,8 @@ import {
   type ServerProvider,
   UsageLimitSourceId,
 } from "@t3tools/contracts";
-import { describe, expect, it } from "vite-plus/test";
+import * as upstream from "@t3tools/shared/usageLimits";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 import {
   collectLimitAccounts,
@@ -177,6 +178,74 @@ describe("usage accounts that merge with a native login of another provider", ()
 
   it("offers no redeem when no native login shares the identity", () => {
     expect(mergedRow(collectLimitAccounts(presentations([piParent])))?.redeem).toBeNull();
+  });
+
+  it("keeps identical synthetic ids separate across environments", () => {
+    const usageParent = (email: string) =>
+      provider({
+        instanceId: ProviderInstanceId.make("pi"),
+        driver: pi,
+        auth: { status: "authenticated", email: "pi@example.com" },
+        usageAccounts: [
+          {
+            id: "shared.json",
+            driver: codex,
+            email,
+            usageLimits: { checkedAt, windows: [{ ...window, usedPercent: 15 }] },
+          },
+        ],
+      });
+    const native = (email: string) =>
+      provider({
+        instanceId: ProviderInstanceId.make("codex"),
+        driver: codex,
+        auth: { status: "authenticated", email },
+        usageLimits: { checkedAt, windows: [window] },
+      });
+    const accounts = collectLimitAccounts(
+      new Map([
+        [
+          EnvironmentId.make("env-a"),
+          {
+            entry: { target: { label: "Laptop" } },
+            serverConfig: { providers: [usageParent("a@example.com"), native("a@example.com")] },
+          },
+        ],
+        [
+          EnvironmentId.make("env-b"),
+          {
+            entry: { target: { label: "Desktop" } },
+            serverConfig: { providers: [usageParent("b@example.com"), native("b@example.com")] },
+          },
+        ],
+      ]),
+    );
+    expect(accounts.find((account) => account.email === "a@example.com")?.redeem).toEqual(
+      codexRedeem("env-a"),
+    );
+    expect(accounts.find((account) => account.email === "b@example.com")?.redeem).toEqual(
+      codexRedeem("env-b"),
+    );
+  });
+});
+
+describe("usage accounts without a native identity", () => {
+  it("skips native and membership collection passes", () => {
+    const anonymous = provider({
+      auth: { status: "authenticated" },
+      usageAccounts: [
+        {
+          id: "anonymous.json",
+          driver: claude,
+          usageLimits: { checkedAt, windows: [window] },
+        },
+      ],
+    });
+    const input = presentations([anonymous]);
+    const expected = collectLimitAccounts(input);
+    using collect = vi.spyOn(upstream, "collectLimitAccounts");
+    expect(collectLimitAccounts(input)).toEqual(expected);
+    expect(collect).toHaveBeenCalledTimes(1);
   });
 });
 
