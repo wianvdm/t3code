@@ -704,8 +704,8 @@ const assertNoOtherConnection = Effect.fn("mergeOldForkDatabase.assertNoOtherCon
           database.close();
         }
       },
-      catch: (cause) => new Cause.UnknownError(cause),
-    }).pipe(Effect.mapError((error) => destinationReadError(databasePath, error)));
+      catch: (error) => destinationReadError(databasePath, error),
+    });
   },
 );
 
@@ -1067,8 +1067,8 @@ export const mergeOldForkDatabase = Effect.fn("mergeOldForkDatabase")(function* 
           yield* assertNoOtherConnection(destinationPath);
           yield* Effect.tryPromise({
             try: () => backupDatabase(destinationPath, candidatePath),
-            catch: (cause) => new Cause.UnknownError(cause),
-          }).pipe(Effect.mapError((error) => destinationReadError(destinationPath, error)));
+            catch: (error) => destinationReadError(destinationPath, error),
+          });
           yield* runMigrations().pipe(
             Effect.provide(NodeSqliteClient.layer({ filename: snapshotPath })),
           );
