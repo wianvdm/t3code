@@ -62,6 +62,8 @@ jobs:
           DISPATCH_CHANNEL: ${{ inputs.channel }}
           DISPATCH_VERSION: ${{ inputs.version }}
         with:
+          # Every call here is a read; retry GitHub's transient 5xx and dropped connections.
+          retries: 3
           script: |
             const {
               assertCommitOnDefaultBranch,
@@ -362,21 +364,30 @@ jobs:
       - name: Align package versions to release version
         run: node scripts/update-release-package-versions.ts "${{ needs.preflight.outputs.version }}"
 
-      # @t3tools/desktop#build compiles the Linux browser secret helper on a
-      # Linux host before packing, and that needs libsecret headers.
+      # Older release refs lack build:desktop:bundle and use the full build,
+      # which compiles the Linux browser secret helper and needs libsecret.
+      - name: Check bundle-only build support
+        id: bundle_build
+        run: |
+          script="$(node -p "require('./package.json').scripts['build:desktop:bundle'] ? 'build:desktop:bundle' : 'build:desktop'")"
+          echo "script=$script" >> "$GITHUB_OUTPUT"
+
       - name: Install browser secret helper build libraries
+        if: steps.bundle_build.outputs.script == 'build:desktop'
         run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev pkg-config
 
-      # Runs t3#build (which depends on @t3tools/web#build) and
-      # @t3tools/desktop#build, so apps/server/dist holds the server bundle
-      # plus the web client and apps/desktop/dist-electron the Electron main.
+      # Runs t3#build (which depends on @t3tools/web#build) and the desktop
+      # bundle, so apps/server/dist holds the server bundle plus the web client
+      # and apps/desktop/dist-electron the Electron main. build:desktop:bundle
+      # skips the Linux browser secret helper, which this artifact does not
+      # carry; each Linux package job compiles its own per arch.
       # The release channel is already stable, nightly, or preview, and it
       # stamps the build's telemetry channel.
       - name: Build JS bundle
         env:
           T3CODE_TELEMETRY_CHANNEL: ${{ needs.preflight.outputs.release_channel }}
           T3CODE_DESKTOP_VARIANT: plusplus
-        run: vp run build:desktop
+        run: vp run ${{ steps.bundle_build.outputs.script }}
 
       # Two paths under apps/ so the artifact root is apps/; consumers download
       # into `apps` to restore both at their original locations.
@@ -466,7 +477,7 @@ jobs:
       relay_url: ${{ needs.preflight.outputs.relay_url }}
       relay_client_tracing: false
       label: macOS arm64
-      runner: macos-15
+      runner: macos-26
       platform: mac
       target: dmg
       arch: arm64
@@ -650,7 +661,7 @@ jobs:
 
       - name: Publish release
         if: needs.preflight.outputs.previous_tag != ''
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: ${{ needs.preflight.outputs.tag }}
           target_commitish: ${{ needs.preflight.outputs.ref }}
@@ -667,7 +678,7 @@ jobs:
 
       - name: Publish first release
         if: needs.preflight.outputs.previous_tag == ''
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: ${{ needs.preflight.outputs.tag }}
           target_commitish: ${{ needs.preflight.outputs.ref }}

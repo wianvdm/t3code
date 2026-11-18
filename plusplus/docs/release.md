@@ -67,6 +67,8 @@ than a fork-only version bump.
   the dispatched commit instead.
 - Version changes land as ordinary PRs. Nothing in the release workflow writes to `main` or commits a
   bump back, and pushing a tag publishes nothing: the release job creates the tag.
+- Nightly and preview `<run>` suffixes come from `run_number`, which restarted at 1 when the pipeline
+  moved to `plusplus-release.yml`.
 
 ## Promotion
 
@@ -113,7 +115,7 @@ than a fork-only version bump.
    platform job packages this artifact instead of rebuilding it.
 4. **Desktop targets.** `desktop_linux_x64` and `desktop_win_x64` call
    `.github/workflows/plusplus-release-desktop.yml` on `ubuntu-24.04`; `desktop_mac_arm64` calls it on
-   `macos-15`. Each job builds its own CLI archive and smoke-tests it, then packages the app. The
+   `macos-26`. Each job builds its own CLI archive and smoke-tests it, then packages the app. The
    Linux job packages the AppImage and the `.deb` together. The Windows job embeds the Linux CLI
    archive as its WSL runtime and a `windows-2025` verify job runs the packaged natives, the CLI
    archive, and the resource monitor. The macOS job mounts its DMG for the same launch check and
@@ -247,7 +249,7 @@ anything a user may already have installed.
   `SHA256SUMS`, clear the quarantine attribute macOS puts on a downloaded binary, and run
   `t3 --version`.
 - **CLI archive.** The workflow extracts and runs each archive on its build runner, or on the
-  Windows verify runner, so the darwin archive is smoke-tested on `macos-15`. If it fails there,
+  Windows verify runner, so the darwin archive is smoke-tested on `macos-26`. If it fails there,
   nothing publishes.
 - **Release-only steps.** CI's Release Smoke job exercises the version alignment, nightly and
   preview metadata, and checksum steps (`scripts/release-smoke.ts`) without publishing.
@@ -311,6 +313,8 @@ it is missing.
 #### 1. Prepare
 
 - Inspect the newest dry-run report and confirm the strict tag (`vX.Y.Z`) you intend to sync.
+- Review upstream's `release.yml` and `release-desktop.yml` changes since the last sync and port what
+  applies into the ++ release workflows.
 - Use a dedicated worktree on a detached or throwaway checkout of `origin/main`, never the checkout
   you develop in. The script requires a clean working tree and the exact remotes (`origin` =
   `WianVDM/t3code`, `upstream` = `pingdotgg/t3code`) and fails otherwise.
@@ -363,10 +367,9 @@ node scripts/upstream-sync.ts finish --tag vX.Y.Z
 - A maintainer applies the protected `upstream-sync` label during triage. The issue form cannot
   self-apply it, unauthorized additions are removed automatically, and an unauthorized removal
   restores it. An invalid claim forces full CI and fails `Check`; it can never suppress work.
-- With a verified designation, CI runs the full pipeline including the seven-package Windows lane,
-  the `Upstream Sync Merge` job re-validates the exact two-parent merge identity against the
-  payload, and the bot publishes one hotspot report comment built from the newest matching
-  trusted dry-run artifact.
+- With a verified designation, CI runs the full pipeline including the Windows lane, the `Upstream
+  Sync Merge` job re-validates the exact two-parent merge identity against the payload, and the bot
+  publishes one hotspot report comment built from the newest matching trusted dry-run artifact.
 - Require the full `Check`, the Windows lane, and `Agent context budget` green, and review every
   entry under the report's `Unregistered conflicts` and `Unregistered fork deltas` lists before
   merging.
