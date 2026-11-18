@@ -619,7 +619,9 @@
           "id": "shared-persistence.026-model-selection-options",
           "feature": "shared-persistence",
           "mechanism": "override",
-          "anchor": { "text": "SET model_selection_json = json_set(" },
+          "anchor": {
+            "text": "SET model_selection_json = json_set("
+          },
           "reason": "Verbatim port of upstream fc480ea66a wrapping the options subquery in json() so json_set stores an array, not a string; keeps the shared-persistence gate passing. Drop at the v0.1.10 sync.",
           "fingerprint": "sha256:a2e78ffca3fd9e72"
         },
@@ -627,7 +629,9 @@
           "id": "shared-persistence.026-default-model-selection-options",
           "feature": "shared-persistence",
           "mechanism": "override",
-          "anchor": { "text": "SET default_model_selection_json = json_set(" },
+          "anchor": {
+            "text": "SET default_model_selection_json = json_set("
+          },
           "reason": "Verbatim port of upstream fc480ea66a wrapping the options subquery in json() so json_set stores an array, not a string; keeps the shared-persistence gate passing. Drop at the v0.1.10 sync.",
           "fingerprint": "sha256:58be612431579480"
         },
@@ -635,7 +639,9 @@
           "id": "shared-persistence.026-model-selection-events",
           "feature": "shared-persistence",
           "mechanism": "override",
-          "anchor": { "text": "'$.modelSelection.options'," },
+          "anchor": {
+            "text": "'$.modelSelection.options',"
+          },
           "reason": "Verbatim port of upstream fc480ea66a wrapping the options subquery in json() so json_set stores an array, not a string; keeps the shared-persistence gate passing. Drop at the v0.1.10 sync.",
           "fingerprint": "sha256:b9ca82d63f8ada95"
         },
@@ -643,7 +649,9 @@
           "id": "shared-persistence.026-default-model-selection-events",
           "feature": "shared-persistence",
           "mechanism": "override",
-          "anchor": { "text": "'$.defaultModelSelection.options'," },
+          "anchor": {
+            "text": "'$.defaultModelSelection.options',"
+          },
           "reason": "Verbatim port of upstream fc480ea66a wrapping the options subquery in json() so json_set stores an array, not a string; keeps the shared-persistence gate passing. Drop at the v0.1.10 sync.",
           "fingerprint": "sha256:39b4e5053dd81eaf"
         }
