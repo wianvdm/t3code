@@ -5,7 +5,7 @@ This guide governs contributions and agent work in `WianVDM/t3code`. It takes pr
 ## Remotes and upstream contact
 
 - `origin` is `WianVDM/t3code`. `upstream` is `pingdotgg/t3code`, fetch-only with push disabled.
-- Never push, open a PR, file an issue or security report, or send anything else to `pingdotgg/t3code`. Keep all work and reports in `WianVDM/t3code`.
+- Maintainer and agent work stays in the fork: never push, open a PR, file an issue, or send anything else to `pingdotgg/t3code`. Keep all work and reports in `WianVDM/t3code`. Security reports follow [the fork's security policy](../.github/SECURITY.md).
 
 ## Issues and pull requests
 
@@ -19,7 +19,7 @@ Follow [plusplus/ARCHITECTURE.md](ARCHITECTURE.md) for ++ directory conventions,
 
 ## Upstream syncs and releases
 
-Follow [the release runbook](docs/release.md#updating-from-upstream) for upstream syncs and [releases](docs/release.md). After every upstream sync, re-check:
+Follow [the release runbook](docs/release.md#updating-from-upstream) for upstream syncs and [releases](docs/release.md). After every upstream sync, re-check that nothing upstream-only now runs on the fork, and disable it if so:
 
 - every new or renamed workflow file;
 - every restored workflow whose jobs are no longer all skipped on the fork;
@@ -32,4 +32,4 @@ Follow the [verification expectations](../AGENTS.md#verifying) and report vulner
 
 ## Inherited upstream policies
 
-Upstream's vouching and automatic closure of outside PRs, [release process](../docs/operations/release.md), and upstream-only hosting such as `app.t3.codes` deploys do not govern this fork. Leave those policies in inherited upstream files.
+Upstream's vouching and automatic closure of outside PRs, [release process](../docs/operations/release.md), and upstream's hosted deploy pipeline (`app.t3.codes` aliases) do not govern this fork. Leave those policies in inherited upstream files.

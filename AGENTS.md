@@ -152,13 +152,13 @@ For mobile verification, a missing or outdated native client is an install step,
 - If `origin` is git.cafe, follow [GitCafe mirror](docs/operations/development.md#gitcafe-mirror-optional): push to `origin`, open and track PRs with `cafe` and their git.cafe URLs, and keep `gh` for merging.
 - This fork is solo maintained. External PRs get best-effort review: no vouching step, no automatic closure, and no requirement that an advisory bot (CodeRabbit) approves. Say plainly when a PR is out of scope.
 - Merge with squash. Conventional commit titles, plain language: `fix(web): new threads no longer spike CPU`.
-- Green means the `Check` and `Agent context budget` check runs pass. Those two are required; advisory bot comments are input, not gates.
+- Green means the `Check`, `Agent context budget`, and `Fork Boundaries` check runs pass. Those three are required; advisory bot comments are input, not gates.
 - Persistence must stay compatible with existing state: additive migrations, no breaking rewrite of stored events, rows, or the SQLite schema, since worktrees and long-lived installs read the same database.
 - Body: the problem in a sentence or two, then how you fixed it. End with the model and harness that did the work.
 - UI changes need before/after images. Motion or timing needs a short video. Upload PR evidence to GitHub. Never commit PR-only screenshots or assets such as `.github/pr-assets/`.
 - One request is one PR. A large integration may land as a main PR plus focused stacked child PRs that each stand alone, instead of one unfocused diff. Outside contributions stay one problem per PR per [CONTRIBUTING.md](CONTRIBUTING.md#one-problem).
 - `agent-context-increase` is for a deliberate, argued override of the context budget check. Apply it only when the added context earns its cost on every load.
-- When babysitting: call `watch_pull_request` and end your turn. T3 Code wakes you on checks, comments, or conflicts. Do not poll or sleep. Verify each bot finding against the source, fix real ones, dismiss false positives with a written reason. Stay quiet when nothing is new. Stop when `Check` and `Agent context budget` pass on the latest commit.
+- When babysitting: call `watch_pull_request` and end your turn. T3 Code wakes you on checks, comments, or conflicts. Do not poll or sleep. Verify each bot finding against the source, fix real ones, dismiss false positives with a written reason. Stay quiet when nothing is new. Stop when `Check`, `Agent context budget`, and `Fork Boundaries` pass on the latest commit.
 
 ## Documentation
 
