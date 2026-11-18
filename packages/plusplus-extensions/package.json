@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./forkInstallCommands": {
+      "types": "./src/forkInstallCommands.ts",
+      "import": "./src/forkInstallCommands.ts"
+    },
     "./usageReporting": {
       "types": "./src/usageReporting.ts",
       "import": "./src/usageReporting.ts"

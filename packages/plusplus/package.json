@@ -15,6 +15,10 @@
       "types": "./src/forkRepository.ts",
       "import": "./src/forkRepository.ts"
     },
+    "./forkInstallCommands": {
+      "types": "./src/forkInstallCommands.ts",
+      "import": "./src/forkInstallCommands.ts"
+    },
     "./contextBridge": {
       "types": "./src/contextBridge.ts",
       "import": "./src/contextBridge.ts"
