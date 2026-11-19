@@ -39,6 +39,9 @@ type SyntheticIdentity = (
   account: UsageLimitSourceAccount,
 ) => Pick<ServerProvider, "displayName" | "driver">;
 
+const syntheticParentKey = (environmentId: EnvironmentId, instanceId: string) =>
+  `${environmentId}:${instanceId}`;
+
 // Upstream account ids are credential file names, so the `.json` suffix is not part of the name.
 function accountIdLabel(id: string): string {
   return id.replace(/\.json$/i, "");
@@ -120,13 +123,13 @@ function monetarySources(sources: UsageLimitSourceSnapshots): UsageLimitSourceSn
 
 function mapServerConfigs(
   presentations: LimitPresentations,
-  update: (serverConfig: ServerConfig) => ServerConfig,
+  update: (serverConfig: ServerConfig, environmentId: EnvironmentId) => ServerConfig,
 ): LimitPresentations {
   return new Map(
     [...presentations].map(([environmentId, presentation]) => [
       environmentId,
       presentation.serverConfig
-        ? { ...presentation, serverConfig: update(presentation.serverConfig) }
+        ? { ...presentation, serverConfig: update(presentation.serverConfig, environmentId) }
         : presentation,
     ]),
   );
@@ -134,9 +137,11 @@ function mapServerConfigs(
 
 function expandPresentations(presentations: LimitPresentations, identity: SyntheticIdentity) {
   const syntheticParents = new Map<string, ProviderInstanceId>();
-  const view = mapServerConfigs(presentations, (serverConfig) => {
+  const view = mapServerConfigs(presentations, (serverConfig, environmentId) => {
     const expanded = expandUsageAccounts(serverConfig.providers, identity);
-    for (const [id, parentId] of expanded.syntheticParents) syntheticParents.set(id, parentId);
+    for (const [id, parentId] of expanded.syntheticParents) {
+      syntheticParents.set(syntheticParentKey(environmentId, id), parentId);
+    }
     return { ...serverConfig, providers: expanded.providers };
   });
   return { view, syntheticParents };
@@ -208,8 +213,8 @@ export function collectLimitAccounts(
   }));
 }
 
-const usageAccountEnvironment = (instanceId: string) =>
-  `plusplus.usage-account:${instanceId}` as EnvironmentId;
+const usageAccountEnvironment = (environmentId: EnvironmentId, instanceId: ProviderInstanceId) =>
+  `plusplus.usage-account:${syntheticParentKey(environmentId, instanceId)}` as EnvironmentId;
 
 // Synthetic ids never leave here. A usage account that won a merged row redeems through the
 // native login in that row, whatever provider holds it; reset credits it supplied have no native
@@ -220,14 +225,23 @@ function nativeRedeemOf(
   expanded: ReturnType<typeof expandPresentations>,
   accounts: readonly upstream.LimitAccount[],
 ) {
-  const syntheticId = (account: upstream.LimitAccount): string | null => {
-    const input = account.redeem?.input;
-    if (!input || !("instanceId" in input)) return null;
-    return expanded.syntheticParents.has(input.instanceId) ? input.instanceId : null;
+  const syntheticRedeem = (account: upstream.LimitAccount) => {
+    const redeem = account.redeem;
+    if (!redeem || !("instanceId" in redeem.input)) return null;
+    const key = syntheticParentKey(redeem.environmentId, redeem.input.instanceId);
+    return expanded.syntheticParents.has(key) ? redeem : null;
   };
-  const needsNative = accounts.some(
-    (account) => syntheticId(account) !== null && !account.limits.resetCredits,
+  const hasNativeIdentity = [...expanded.view].some(([environmentId, presentation]) =>
+    (presentation.serverConfig?.providers ?? []).some(
+      (provider) =>
+        expanded.syntheticParents.has(syntheticParentKey(environmentId, provider.instanceId)) &&
+        (Boolean(provider.auth.email?.trim()) ||
+          provider.usageLimits?.credentialFingerprint !== undefined),
+    ),
   );
+  const needsNative =
+    hasNativeIdentity &&
+    accounts.some((account) => syntheticRedeem(account) !== null && !account.limits.resetCredits);
   const natives = needsNative
     ? upstream.collectLimitAccounts(withMonetaryPlaceholders(presentations))
     : [];
@@ -237,10 +251,10 @@ function nativeRedeemOf(
       )
     : [];
   return (account: upstream.LimitAccount): upstream.LimitAccount["redeem"] => {
-    const id = syntheticId(account);
-    if (id === null) return account.redeem;
+    const redeem = syntheticRedeem(account);
+    if (redeem === null || !("instanceId" in redeem.input)) return account.redeem;
     if (account.limits.resetCredits) return null;
-    const environmentId = usageAccountEnvironment(id);
+    const environmentId = usageAccountEnvironment(redeem.environmentId, redeem.input.instanceId);
     const row = membership.find((candidate) =>
       candidate.environments.some((environment) => environment.environmentId === environmentId),
     );
@@ -253,10 +267,12 @@ function withUsageAccountEnvironments(
   expanded: ReturnType<typeof expandPresentations>,
 ): LimitPresentations {
   const withAccounts = new Map(presentations);
-  for (const presentation of expanded.view.values()) {
+  for (const [environmentId, presentation] of expanded.view) {
     for (const provider of presentation.serverConfig?.providers ?? []) {
-      if (!expanded.syntheticParents.has(provider.instanceId)) continue;
-      withAccounts.set(usageAccountEnvironment(provider.instanceId), {
+      if (!expanded.syntheticParents.has(syntheticParentKey(environmentId, provider.instanceId))) {
+        continue;
+      }
+      withAccounts.set(usageAccountEnvironment(environmentId, provider.instanceId), {
         entry: presentation.entry,
         serverConfig: { providers: [provider] },
       });

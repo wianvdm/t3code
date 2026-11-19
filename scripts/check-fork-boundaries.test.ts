@@ -301,7 +301,13 @@ describe("summarizeRegistryChanges", () => {
   it("lists edits that do not grow the registry: changed or removed seams, seams to legacy, changed siblings", () => {
     const reanchored = seam("one", { text: "elsewhere" }, WRONG_FINGERPRINT);
     const base = registryOf(
-      { "a.ts": oneSeam, "b.ts": twoSeams, "c.ts": oneSeam, "d.ts": oneSeam },
+      {
+        "a.ts": oneSeam,
+        "b.ts": twoSeams,
+        "c.ts": oneSeam,
+        "d.ts": oneSeam,
+        "e.ts": legacy(1, 0),
+      },
       [sibling],
     );
     const head = registryOf(
@@ -324,6 +330,7 @@ describe("summarizeRegistryChanges", () => {
         ["b.ts", "changed", "demo.two: removed"],
         ["c.ts", "changed", "seams -> legacy"],
         ["docs/guide.md", "changed", "docs/other.md (demo): record changed"],
+        ["e.ts", "changed", "entry removed"],
       ],
     );
   });
@@ -1024,6 +1031,15 @@ describe("checkForkBoundaries", () => {
         const exempt = yield* runCheck(project.root, project.base, { exempt: true });
         assert.strictEqual(exempt.mode, "exempt");
         assert.deepStrictEqual(exempt.findings, []);
+
+        project.writeRegistry({ "apps/server/src/main.ts": mainEntry([1, 3]) });
+        const mismatched = yield* runCheck(project.root, project.base, { exempt: true });
+        assert.deepStrictEqual(verdictsByPath(mismatched.findings), {
+          [SEAM_REGISTRY_PATH]: ["SYNC_REGISTRY_INCONSISTENT"],
+        });
+        assert.include(mismatched.findings[0]?.detail, "apps/server/src/main.ts");
+        assert.include(mismatched.findings[0]?.detail, "+1 -3");
+        assert.include(mismatched.findings[0]?.detail, "+0 -3");
 
         // An unregistered edit fails as an inconsistent registry, not as check 1.
         project.git("reset", "--hard", "--quiet", "HEAD");

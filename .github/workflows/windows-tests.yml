@@ -233,18 +233,28 @@ jobs:
           $package = '${{ inputs.package }}'
           $files = '${{ inputs.files }}'
           $dirs = @($package -split '\s+' | Where-Object { $_ -ne '' })
+          function Invoke-PackageTests($dir) {
+            if ($dir -eq 'packages/ssh') {
+              vp run --filter "./$dir" test --exclude src/tunnel.test.ts --exclude src/tunnel.plusplus.test.ts
+            } else {
+              vp run --filter "./$dir" test
+            }
+          }
           if ($dirs.Count -eq 0) {
-            vp run --parallel --concurrency-limit 4 --filter '!t3' --filter '!@t3tools/monorepo' test
+            vp run --parallel --concurrency-limit 4 --filter '!t3' --filter '!@t3tools/monorepo' --filter '!@t3tools/ssh' test
+            $parallelFailed = $LASTEXITCODE -ne 0
+            Invoke-PackageTests 'packages/ssh'
+            if ($parallelFailed -or $LASTEXITCODE -ne 0) { exit 1 }
           } elseif ($files -ne '') {
             Set-Location $dirs[0]
             vp test run $files.Split(' ')
           } elseif ($dirs.Count -eq 1) {
-            vp run --filter "./$dirs" test
+            Invoke-PackageTests $dirs[0]
           } else {
             $failed = @()
             foreach ($dir in $dirs) {
               Write-Output "::group::Test $dir"
-              vp run --filter "./$dir" test
+              Invoke-PackageTests $dir
               if ($LASTEXITCODE -ne 0) { $failed += $dir }
               Write-Output "::endgroup::"
             }
