@@ -12,6 +12,8 @@ Write or run an eval when a change affects what a model sees or does: agent inst
 | [voice-cleanup](voice-cleanup/) | Whether optional dictation cleanup edits only the spoken text and preserves its meaning.             |
 | [test-signal](test-signal/)     | Whether a cheap model running the test-signal check flags low-signal tests.                          |
 
+++ eval: [token-efficiency](token-efficiency/).
+
 ## Run an eval
 
 1. Run `vp i` at the repo root.

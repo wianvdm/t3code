@@ -12,6 +12,7 @@ export function buildRuntimeInstructions(runtime: {
   /** False when the session's system prompt already carries the linking instructions. */
   readonly pullRequestLinking?: boolean;
   readonly bridgedContext?: string | undefined;
+  readonly projectInstructions?: string | undefined;
 }): string {
   const harness = toSingleLine(runtime.harness);
   const model = toSingleLine(runtime.model ?? "");
@@ -27,7 +28,10 @@ export function buildRuntimeInstructions(runtime: {
       ? runtimeInfo
       : `${runtimeInfo}\n\n${PULL_REQUEST_LINKING_INSTRUCTIONS}`;
   const bridgedContext = runtime.bridgedContext;
-  return bridgedContext ? `${instructions}\n\n${bridgedContext}` : instructions;
+  const withBridge = bridgedContext ? `${instructions}\n\n${bridgedContext}` : instructions;
+  return runtime.projectInstructions
+    ? `${withBridge}\n\n${runtime.projectInstructions}`
+    : withBridge;
 }
 
 function toSingleLine(value: string): string {
