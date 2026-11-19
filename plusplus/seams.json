@@ -1632,6 +1632,21 @@
         }
       ]
     },
+    "docs/user/project-settings.md": {
+      "delta": [2, 0],
+      "seams": [
+        {
+          "id": "token-efficiency.docs-pointer",
+          "feature": "token-efficiency",
+          "mechanism": "config",
+          "anchor": {
+            "text": "# Settings and project overrides"
+          },
+          "reason": "Pointer line to the ++ token-efficiency guide, so fork readers find the per-project instructions feature.",
+          "fingerprint": "sha256:4129d8aeb1946c75"
+        }
+      ]
+    },
     "docs/user/remote-access.md": {
       "delta": [1, 1],
       "legacy": true
