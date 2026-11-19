@@ -119,6 +119,10 @@
       "types": "./src/server/processGroup.ts",
       "import": "./src/server/processGroup.ts"
     },
+    "./server/projectInstructions": {
+      "types": "./src/server/projectInstructions.ts",
+      "import": "./src/server/projectInstructions.ts"
+    },
     "./server/ProviderAdapter": {
       "types": "./src/server/ProviderAdapter.ts",
       "import": "./src/server/ProviderAdapter.ts"

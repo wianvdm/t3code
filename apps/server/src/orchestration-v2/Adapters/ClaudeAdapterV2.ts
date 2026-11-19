@@ -181,6 +181,7 @@ import {
 import * as ServerConfig from "../../config.ts";
 import * as PortScanner from "../../preview/PortScanner.ts";
 import * as ServerSettings from "../../serverSettings.ts";
+import { claudeEffectiveQueryKey } from "../../plusplus/projectInstructions/claude.ts";
 import { expandHomePath } from "@t3tools/provider-core/server/pathExpansion";
 import { spawnAndCollect } from "@t3tools/provider-core/server/snapshotProbe";
 import { signalProcessGroup } from "@t3tools/provider-core/server/processGroup";
@@ -1781,6 +1782,7 @@ export function makeClaudeQueryOptions(input: {
   readonly tools?: ClaudeAgentSdkQueryTools;
   /** Context bridge block resolved for this turn; appended to the preset system prompt. */
   readonly bridgedContext?: string | undefined;
+  readonly projectInstructions?: string | undefined;
   readonly allowedTools?: ReadonlyArray<string>;
   readonly disallowedTools?: ReadonlyArray<string>;
   readonly permissionMode?: PermissionMode;
@@ -1901,7 +1903,11 @@ export function makeClaudeQueryOptions(input: {
       type: "preset" as const,
       preset: "claude_code" as const,
       append: [
-        buildRuntimeInstructions({ harness: "Claude Code", bridgedContext: input.bridgedContext }) +
+        buildRuntimeInstructions({
+          harness: "Claude Code",
+          bridgedContext: input.bridgedContext,
+          projectInstructions: input.projectInstructions,
+        }) +
           (input.mcpServers === undefined
             ? ""
             : T3_CODE_ORCHESTRATION_INSTRUCTIONS +
@@ -11058,7 +11064,13 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
               ? {}
               : { allowedTools: queryPolicy.allowedTools }),
           });
-          const queryPolicyKey = claudeEffectiveQueryPolicyKey(queryPolicy, mcpOverrides);
+          const queryPolicyKey = yield* claudeEffectiveQueryKey({
+            base: claudeEffectiveQueryPolicyKey(queryPolicy, mcpOverrides),
+            projectInstructions: turnInput.projectInstructions,
+            queryContext,
+            nativeThreadId,
+            backgroundBusy: liveProcessRunsBackgroundWork,
+          });
           const compiledSelection = compileClaudeModelSelection(
             turnInput.modelSelection,
             modelCatalog,
@@ -11189,6 +11201,7 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
             ...(resumeSessionAt === undefined ? {} : { resumeSessionAt }),
             cwd: turnInput.runtimePolicy.cwd,
             bridgedContext,
+            projectInstructions: turnInput.projectInstructions?.text,
             attachmentsDir,
             settings: adapterOptions.settings,
             // Delegated threads have no one typing, so they never ask for suggestions.

@@ -115,6 +115,11 @@ import { getCodexServiceTierOptionValue } from "../../codexModelOptions.ts";
 import { ServerConfig } from "../../config.ts";
 import { expandHomePath } from "@t3tools/provider-core/server/pathExpansion";
 import { buildCodexAdditionalContext } from "../../provider/CodexDeveloperInstructions.ts";
+import type { ProjectInstructions } from "@t3tools/plusplus/projectInstructions";
+import {
+  refreshCodexProjectInstructionsCache,
+  withCodexProjectInstructions,
+} from "../../plusplus/projectInstructions/codex.ts";
 import {
   describeMcpElicitation,
   toMcpElicitationResponse,
@@ -799,6 +804,7 @@ export const buildCodexTurnStartParams = Effect.fn("CodexAdapterV2.buildCodexTur
     /** ChatGPT token sharing does not accept service tiers. */
     readonly omitServiceTier?: boolean;
     readonly appContext?: ProviderAdapter.ProviderAdapterV2TurnInput["appContext"];
+    readonly projectInstructions?: ProjectInstructions | undefined;
   }) {
     const runtimeModeDefaults = codexRuntimeModeTurnDefaults(input.runtimePolicy.runtimeMode);
     const approvalPolicy =
@@ -839,10 +845,12 @@ export const buildCodexTurnStartParams = Effect.fn("CodexAdapterV2.buildCodexTur
             },
           )
         : undefined;
-    const additionalContext =
+    const additionalContext = withCodexProjectInstructions(
       t3Context === undefined && Object.keys(appContext).length === 0
         ? undefined
-        : { ...t3Context, ...appContext };
+        : { ...t3Context, ...appContext },
+      input.projectInstructions,
+    );
     return yield* decodeCodexTurnStartParamsWithCollaborationMode({
       threadId: input.nativeThreadId,
       input: input.codexInput,
@@ -7161,6 +7169,9 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
               deviceToolsAvailable: mcpSession?.capabilities?.has("device") ?? false,
               omitServiceTier: adapterOptions.resolveRuntime !== undefined,
               ...(turnInput.appContext === undefined ? {} : { appContext: turnInput.appContext }),
+              ...(turnInput.projectInstructions === undefined
+                ? {}
+                : { projectInstructions: turnInput.projectInstructions }),
             });
             yield* Ref.update(pendingRootTurns, (current) => {
               const updated = new Map(current);
@@ -7553,6 +7564,11 @@ export const makeCodexAdapterV2 = Effect.fn("makeCodexAdapterV2")(function* (
               const threadId = yield* getNativeThreadId(turnInput.providerThread);
               yield* Ref.update(pendingRootTurns, (current) =>
                 new Map(current).set(threadId, turnInput),
+              );
+              yield* refreshCodexProjectInstructionsCache(
+                additionalContextByThread,
+                threadId,
+                turnInput.projectInstructions,
               );
               // Clear on interruption; a late turn/started must not be adopted after an interrupted start.
               yield* client.request("thread/compact/start", { threadId }).pipe(

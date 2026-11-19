@@ -3,6 +3,20 @@ import { assert, describe, it } from "@effect/vitest";
 import { buildRuntimeInstructions } from "./runtimeInstructions.ts";
 
 describe("buildRuntimeInstructions", () => {
+  it("appends project instructions after bridged context", () => {
+    const instructions = buildRuntimeInstructions({
+      harness: "Claude Code",
+      bridgedContext: "<project_context>bridge</project_context>",
+      projectInstructions: "<token_efficiency>instructions</token_efficiency>",
+    });
+
+    assert.isTrue(
+      instructions.endsWith(
+        "<project_context>bridge</project_context>\n\n<token_efficiency>instructions</token_efficiency>",
+      ),
+    );
+  });
+
   it("leaves PR linking to a session that already carries it, and keeps runtime identity", () => {
     const instructions = buildRuntimeInstructions({
       harness: "Antigravity",
