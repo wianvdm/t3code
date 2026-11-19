@@ -15,7 +15,9 @@ import { applyServerSettingsPatch } from "@t3tools/shared/serverSettings";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Context from "effect/Context";
 import * as Deferred from "effect/Deferred";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
@@ -146,8 +148,9 @@ const testLayer = (options: {
         yield* fileSystem.writeFileString(join(directory, "core-cache.json"), options.seed);
       }
       if (options.blockCacheDirectory === true) {
-        yield* fileSystem.makeDirectory(join(config.stateDir, "plusplus"), { recursive: true });
-        yield* fileSystem.writeFileString(directory, "not a directory");
+        yield* fileSystem.makeDirectory(join(directory, `core-cache-${process.pid}.tmp`), {
+          recursive: true,
+        });
       }
       return TokenEfficiencySnapshotService.layer;
     }),
@@ -246,6 +249,7 @@ describe("successful refreshes", () => {
       expect(active.instructions.id).toBe(tokenEfficiencyInstructionsId(UPSTREAM_SHA));
       expect(active.instructions.text).toContain("Minimize upstream cost");
       expect(requests[0]?.headers.authorization).toBeUndefined();
+      expect(requests[0]?.headers.traceparent).toBeUndefined();
     }).pipe(Effect.provide(testLayer({ handler })));
   });
 
@@ -267,20 +271,51 @@ describe("successful refreshes", () => {
   it.effect("sends a current upstream ETag and commits a 304", () =>
     Effect.gen(function* () {
       const snapshots = yield* TokenEfficiencySnapshotService.TokenEfficiencySnapshotService;
+      yield* TestClock.adjust("1 minute");
       const result = yield* snapshots.refresh;
       expect(result.outcome).toBe("unchanged");
       expect(result.view.status.active.source).toBe("upstream");
-      expect(result.view.status.active.fetchedAt).not.toBeUndefined();
+      expect(result.view.status.active.fetchedAt).toEqual(DateTime.makeUnsafe(EPOCH));
       expect(result.view.status.lastSuccessfulCheckAt).not.toBeNull();
       expect(result.view.status.lastAttemptAt).not.toBeNull();
+      const config = yield* ServerConfig.ServerConfig;
+      const fileSystem = yield* FileSystem.FileSystem;
+      const cache = JSON.parse(
+        yield* fileSystem.readFileString(
+          join(config.stateDir, "plusplus", "token-efficiency", "core-cache.json"),
+        ),
+      );
+      expect(cache.raw).toBe(BUNDLED_CORE.raw);
+      expect(cache.fetchedAt).toBe(EPOCH);
+      expect(cache.lastSuccessfulCheckAt).toBe("1970-01-01T00:01:00.000Z");
     }).pipe(
       Effect.provide(
         testLayer({
-          seed: cacheFile({ lastSuccessfulCheckAt: null }),
+          seed: cacheFile(),
           handler: (request) => {
             expect(request.headers["if-none-match"]).toBe('"cached-etag"');
             return response(request, { status: 304, body: null });
           },
+        }),
+      ),
+    ),
+  );
+
+  it.effect("keeps the active snapshot when a 304 cache write fails", () =>
+    Effect.gen(function* () {
+      const snapshots = yield* TokenEfficiencySnapshotService.TokenEfficiencySnapshotService;
+      const before = yield* snapshots.active;
+      const result = yield* snapshots.refresh;
+      expect(result.outcome).toBe("failed");
+      expect(result.view.status.lastFailure?.reason).toBe("cache-write");
+      expect(before.provenance.source).toBe("upstream");
+      expect(yield* snapshots.active).toEqual(before);
+    }).pipe(
+      Effect.provide(
+        testLayer({
+          seed: cacheFile(),
+          blockCacheDirectory: true,
+          handler: (request) => response(request, { status: 304, body: null }),
         }),
       ),
     ),
@@ -572,6 +607,7 @@ describe("automatic scheduling", () => {
       yield* settings.updateSettings({
         projectSettingsOverrides: { [PROJECT_ID]: ENABLED_OVERRIDE },
       });
+      yield* TestClock.adjust("0 millis");
       expect(calls).toBe(1);
     }).pipe(
       Effect.provide(
@@ -591,6 +627,32 @@ describe("automatic scheduling", () => {
 });
 
 describe("refresh coalescing", () => {
+  it.effect("releases the single-flight slot when a refresh defects", () => {
+    const started = Deferred.makeUnsafe<void>();
+    let calls = 0;
+    const handler: Handler = (request) =>
+      Effect.suspend(() => {
+        calls += 1;
+        return calls === 1
+          ? Deferred.succeed(started, undefined).pipe(
+              Effect.andThen(Effect.die(new Error("refresh defect"))),
+            )
+          : response(request);
+      });
+    return Effect.gen(function* () {
+      const snapshots = yield* TokenEfficiencySnapshotService.TokenEfficiencySnapshotService;
+      const first = yield* Effect.forkChild(snapshots.refresh);
+      yield* Deferred.await(started);
+      yield* TestClock.adjust("0 millis");
+      expect((yield* snapshots.view).status.refreshing).toBe(false);
+      expect(Exit.isFailure(yield* Effect.exit(Fiber.join(first)))).toBe(true);
+      const second = yield* snapshots.refresh;
+      expect(second.outcome).toBe("updated");
+      expect(second.view.status.refreshing).toBe(false);
+      expect(calls).toBe(2);
+    }).pipe(Effect.provide(testLayer({ handler })));
+  });
+
   it.effect("shares automatic and manual calls and survives caller interruption", () => {
     const started = Deferred.makeUnsafe<void>();
     const release = Deferred.makeUnsafe<void>();
@@ -610,10 +672,13 @@ describe("refresh coalescing", () => {
       const interrupted = yield* Effect.forkChild(snapshots.refresh);
       const joined = yield* Effect.forkChild(snapshots.refresh);
       yield* TestClock.adjust("0 millis");
+      expect(calls).toBe(1);
+      expect((yield* snapshots.view).status.refreshing).toBe(true);
       yield* Fiber.interrupt(interrupted);
       yield* Deferred.succeed(release, undefined);
       const result = yield* Fiber.join(joined);
       expect(result.outcome).toBe("updated");
+      expect(result.view.status.refreshing).toBe(false);
       expect(calls).toBe(1);
       expect((yield* snapshots.active).instructions.id).toBe(
         tokenEfficiencyInstructionsId(UPSTREAM_SHA),
