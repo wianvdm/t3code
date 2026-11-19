@@ -11,6 +11,7 @@ import {
   useScopedSettingsWriteAllowed,
 } from "../../components/settings/useScopedSettings";
 import { TokenEfficiencyProvenance } from "./TokenEfficiencyProvenance";
+import { refreshTokenEfficiencyViews } from "../state/tokenEfficiency";
 import {
   planTokenEfficiencyPatch,
   tokenEfficiencyEnabled,
@@ -24,7 +25,7 @@ export function TokenEfficiencySettings() {
 }
 
 function TokenEfficiencySettingsContent() {
-  const { scope, environments, targets } = useSettingsScope();
+  const { scope, environments, connectedEnvironments = environments, targets } = useSettingsScope();
   const run = useRunScopedPlan();
   const writeAllowed = useScopedSettingsWriteAllowed();
   const mixed = tokenEfficiencyMixed(targets);
@@ -59,12 +60,20 @@ function TokenEfficiencySettingsContent() {
             disabled={!writeAllowed || !scopeSupportsToggle}
             onCheckedChange={(enabled) => {
               if (!scopeSupportsToggle) return;
-              run(planTokenEfficiencyPatch(scope, environments, enabled));
+              const plan = planTokenEfficiencyPatch(scope, environments, enabled);
+              run(plan);
+              if (plan.unavailableReason === undefined) {
+                refreshTokenEfficiencyViews(
+                  connectedEnvironments.map((environment) => environment.environmentId),
+                );
+              }
             }}
           />
         }
       />
-      {scopeSupportsToggle ? <TokenEfficiencyProvenance environments={environments} /> : null}
+      {scopeSupportsToggle ? (
+        <TokenEfficiencyProvenance environments={connectedEnvironments} />
+      ) : null}
     </SettingsSection>
   );
 }

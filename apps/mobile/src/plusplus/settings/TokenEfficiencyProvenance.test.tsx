@@ -65,6 +65,7 @@ const harness = vi.hoisted(() => ({
   canWrite: true,
   enabled: false,
   refresh: vi.fn(),
+  refreshViews: vi.fn(),
   writeSettings: vi.fn(),
   alert: vi.fn(),
   openURL: vi.fn(),
@@ -80,6 +81,7 @@ vi.mock("@effect/atom-react", () => ({
 vi.mock("../state/tokenEfficiency", () => ({
   tokenEfficiencyView: () => harness.viewAtom,
   refreshTokenEfficiency: { permissionAtom: () => harness.permissionAtom },
+  refreshTokenEfficiencyViews: harness.refreshViews,
 }));
 vi.mock("../../state/use-atom-command", () => ({ useAtomCommand: () => harness.refresh }));
 vi.mock("../../state/session", () => ({
@@ -172,7 +174,8 @@ function selectedEnvironment() {
 function setup(
   options: {
     readonly view?: AsyncResult.AsyncResult<TokenEfficiencyView, unknown>;
-    readonly refreshResult?: TokenEfficiencyRefreshResult;
+    readonly refreshResult?: TokenEfficiencyRefreshResult | undefined;
+    readonly refreshFailure?: string | undefined;
     readonly canRefresh?: boolean;
     readonly enabled?: boolean;
   } = {},
@@ -183,9 +186,13 @@ function setup(
   harness.enabled = options.enabled ?? false;
   harness.refresh.mockReset();
   harness.refresh.mockResolvedValue(
-    AsyncResult.success(options.refreshResult ?? { outcome: "unchanged", view: bundledView }),
+    options.refreshFailure === undefined
+      ? AsyncResult.success(options.refreshResult ?? { outcome: "unchanged", view: bundledView })
+      : AsyncResult.failure(Cause.fail(new Error(options.refreshFailure))),
   );
+  harness.refreshViews.mockReset();
   harness.writeSettings.mockReset();
+  harness.writeSettings.mockResolvedValue(undefined);
   harness.alert.mockReset();
   harness.openURL.mockReset();
   harness.openURL.mockResolvedValue(undefined);
@@ -233,40 +240,70 @@ it.each([
   { source: "bundled", view: bundledView, label: "Bundled fallback" },
   { source: "upstream", view: upstreamView, label: "Cached upstream" },
 ] as const)("shows $source provenance, revision and last successful check", ({ view, label }) => {
+  using _now = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-11-19T13:00:00.000Z"));
   setup({ view: AsyncResult.success(view) });
   renderSection();
   expect(container.textContent).toContain(label);
   expect(container.textContent).toContain("Revision 416ae43");
-  expect(container.textContent).toContain("Last successful check: 2026-11-19T12:00:00.000Z");
-});
-
-it("identifies an unsupported stock server", () => {
-  setup({ view: AsyncResult.failure(Cause.fail(new Error("Unknown method"))) });
-  renderSection();
-  expect(container.textContent).toContain("Not supported on Test");
+  expect(container.textContent).toContain("Last successful check: 1h ago");
 });
 
 it.each([
   {
+    name: "unsupported stock server",
+    error: "Unknown request tag: plusplus.tokenEfficiency.view",
+    label: "Not supported on Test",
+  },
+  {
+    name: "unavailable environment",
+    error: "This connection requires orchestration:read.",
+    label: "Unavailable on Test",
+  },
+] as const)("identifies an $name", ({ error, label }) => {
+  setup({ view: AsyncResult.failure(Cause.fail(new Error(error))) });
+  renderSection();
+  expect(container.textContent).toContain(label);
+});
+
+it.each([
+  {
+    name: "updated",
     outcome: "updated",
     view: upstreamView,
     message: "Refresh updated. Cached upstream revision 416ae43 is active.",
   },
   {
+    name: "unchanged",
     outcome: "unchanged",
     view: upstreamView,
     message: "Refresh unchanged. Cached upstream revision 416ae43 stays active.",
   },
   {
+    name: "failed",
     outcome: "failed",
     view: failedView,
     message: "Refresh failed (rate limited). Cached upstream revision 416ae43 stays active.",
   },
-] as const)("reports a $outcome refresh", async ({ outcome, view, message }) => {
-  setup({ view: AsyncResult.success(view), refreshResult: { outcome, view } });
+  {
+    name: "transport failure",
+    requestFailure: "Connection lost",
+    view: upstreamView,
+    message: "Refresh failed. Connection lost Cached upstream revision 416ae43 stays active.",
+  },
+] as const)("reports a $name refresh", async (row) => {
+  setup({
+    view: AsyncResult.success(
+      "outcome" in row && row.outcome === "failed" ? upstreamView : row.view,
+    ),
+    ...("outcome" in row ? { refreshResult: { outcome: row.outcome!, view: row.view } } : {}),
+    ...("requestFailure" in row ? { refreshFailure: row.requestFailure } : {}),
+  });
   renderSection();
+  if (!("outcome" in row) || row.outcome === "failed") {
+    expect(container.textContent).not.toContain(row.message);
+  }
   await act(async () => button("Refresh now").click());
-  expect(container.textContent).toContain(message);
+  expect(container.textContent).toContain(row.message);
   expect(harness.refresh).toHaveBeenCalledExactlyOnceWith({ environmentId, input: {} });
 });
 
@@ -302,6 +339,14 @@ it("opens exact instructions as plain text and exposes every attribution link", 
     await act(async () => (link as HTMLElement).click());
     expect(harness.openURL).toHaveBeenLastCalledWith(url);
   }
+});
+
+it("refreshes provenance after a toggle write", async () => {
+  setup();
+  renderSection();
+  await act(async () => container.querySelector<HTMLElement>('[role="switch"]')?.click());
+  expect(harness.writeSettings).toHaveBeenCalledTimes(1);
+  expect(harness.refreshViews).toHaveBeenCalledExactlyOnceWith([environmentId]);
 });
 
 it("refreshes a disabled project without enabling delivery", async () => {

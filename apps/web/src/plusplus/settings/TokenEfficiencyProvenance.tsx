@@ -15,6 +15,7 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
+import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import { AsyncResult } from "effect/reactivity";
 import { useState } from "react";
@@ -30,6 +31,7 @@ import {
   DialogTrigger,
 } from "../../components/ui/dialog";
 import { useAtomCommand } from "../../state/use-atom-command";
+import { useRelativeTimeState } from "../../hooks/useRelativeTimeState";
 import { refreshTokenEfficiency, tokenEfficiencyView } from "../state/tokenEfficiency";
 
 interface ProvenanceEnvironment {
@@ -37,8 +39,19 @@ interface ProvenanceEnvironment {
   readonly label: string;
 }
 
-function formatLastSuccessfulCheck(value: TokenEfficiencyStatus["lastSuccessfulCheckAt"]) {
-  return value === null ? "Never" : DateTime.formatIso(value);
+function isTokenEfficiencyUnsupportedError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /\bUnknown (?:request tag|method):/.test(message);
+}
+
+function LastSuccessfulCheck(props: {
+  readonly value: TokenEfficiencyStatus["lastSuccessfulCheckAt"];
+}) {
+  const iso = props.value === null ? null : DateTime.formatIso(props.value);
+  const relative = useRelativeTimeState(iso);
+  if (iso === null) return "Never";
+  if (relative.status !== "relative") return iso;
+  return relative.suffix ? `${relative.value} ${relative.suffix}` : relative.value;
 }
 
 function InstructionsDialog(props: { readonly instructions: string }) {
@@ -133,13 +146,13 @@ function EnvironmentProvenance(props: {
   };
 
   if (view === null) {
-    return (
-      <p className="text-muted-foreground text-sm">
-        {result._tag === "Failure"
-          ? `Not supported on ${label}`
-          : `Loading token-efficiency provenance on ${label}…`}
-      </p>
-    );
+    let message = `Loading token-efficiency provenance on ${label}…`;
+    if (result._tag === "Failure") {
+      message = isTokenEfficiencyUnsupportedError(Cause.squash(result.cause))
+        ? `Not supported on ${label}`
+        : `Unavailable on ${label}`;
+    }
+    return <p className="text-muted-foreground text-sm">{message}</p>;
   }
 
   const active = view.status.active;
@@ -149,7 +162,6 @@ function EnvironmentProvenance(props: {
     outcome === null || outcome.outcome === "failed" ? null : refreshOutcomeMessage(outcome);
   const failedOutcomeMessage =
     outcome?.outcome === "failed" ? refreshOutcomeMessage(outcome) : null;
-  const busy = refreshing || view.status.refreshing;
 
   return (
     <div className="space-y-2 rounded-md border border-border/60 p-3 text-sm">
@@ -161,7 +173,7 @@ function EnvironmentProvenance(props: {
           : ""}
       </p>
       <p className="text-muted-foreground">
-        Last successful check: {formatLastSuccessfulCheck(view.status.lastSuccessfulCheckAt)}
+        Last successful check: <LastSuccessfulCheck value={view.status.lastSuccessfulCheckAt} />
       </p>
       {(failedOutcomeMessage ?? failureMessage) ? (
         <p className="text-destructive">{failedOutcomeMessage ?? failureMessage}</p>
@@ -172,10 +184,10 @@ function EnvironmentProvenance(props: {
         <Button
           variant="outline"
           size="xs"
-          disabled={!canRefresh || busy}
+          disabled={!canRefresh || refreshing}
           onClick={() => void refreshNow()}
         >
-          {busy ? "Refreshing…" : "Refresh now"}
+          {refreshing ? "Refreshing…" : "Refresh now"}
         </Button>
         <InstructionsDialog instructions={view.instructions} />
       </div>

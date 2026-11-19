@@ -8,7 +8,10 @@ import type {
   TokenEfficiencyRefreshResult,
   TokenEfficiencyView,
 } from "@t3tools/contracts/plusplus/tokenEfficiency";
-import { TOKEN_EFFICIENCY_LINKS } from "@t3tools/plusplus-extensions/tokenEfficiency";
+import {
+  ATTRIBUTION_TEXT,
+  TOKEN_EFFICIENCY_LINKS,
+} from "@t3tools/plusplus-extensions/tokenEfficiency";
 import { RegistryContext } from "@effect/atom-react";
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
@@ -75,10 +78,12 @@ const refreshAllowed = Atom.make(true);
 const state = vi.hoisted(() => ({
   scope: null as unknown,
   environments: [] as readonly unknown[],
+  connectedEnvironments: [] as readonly unknown[],
   targets: [] as readonly { readonly projectId: ProjectId; readonly settings: ServerSettings }[],
   writeAllowed: true,
   run: vi.fn(),
   refresh: vi.fn(),
+  refreshViews: vi.fn(),
 }));
 
 vi.mock(import("../../components/settings/SettingsScopeContext"), () => ({
@@ -93,6 +98,7 @@ vi.mock(import("../state/tokenEfficiency"), () => ({
   tokenEfficiencyView: ((target: { readonly environmentId: EnvironmentId }) =>
     target.environmentId === secondaryEnvironmentId ? secondaryViewResult : viewResult) as never,
   refreshTokenEfficiency: { permissionAtom: () => refreshAllowed } as never,
+  refreshTokenEfficiencyViews: state.refreshViews,
 }));
 vi.mock(import("../../state/use-atom-command"), () => ({
   useAtomCommand: () => state.refresh,
@@ -138,7 +144,8 @@ function setup(
     readonly secondary?: boolean;
     readonly canRefresh?: boolean;
     readonly enabled?: boolean;
-    readonly refreshResult?: TokenEfficiencyRefreshResult;
+    readonly refreshResult?: TokenEfficiencyRefreshResult | undefined;
+    readonly refreshFailure?: string | undefined;
   } = {},
 ) {
   const serverSettings = settings(options.enabled ?? false);
@@ -168,13 +175,17 @@ function setup(
     })),
   };
   state.environments = environments;
+  state.connectedEnvironments = environments;
   state.targets = environments.map(() => ({ projectId, settings: serverSettings }));
   state.writeAllowed = true;
   state.run.mockReset();
   state.refresh.mockReset();
   state.refresh.mockResolvedValue(
-    AsyncResult.success(options.refreshResult ?? { outcome: "unchanged", view: bundledView }),
+    options.refreshFailure === undefined
+      ? AsyncResult.success(options.refreshResult ?? { outcome: "unchanged", view: bundledView })
+      : AsyncResult.failure(Cause.fail(new Error(options.refreshFailure))),
   );
+  state.refreshViews.mockReset();
   const registry = AtomRegistry.make();
   registry.set(viewResult, options.view ?? AsyncResult.success(bundledView));
   registry.set(
@@ -212,50 +223,78 @@ it.each([
 ] as const)(
   "shows $source provenance, revision and last successful check",
   async ({ view, label }) => {
+    using _now = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-11-19T13:00:00.000Z"));
     const registry = setup({ view: AsyncResult.success(view) });
     using _registry = disposableRegistry(registry);
     await using screen = await render(panel(registry));
     await expect.element(screen.getByText(new RegExp(label))).toBeInTheDocument();
     await expect.element(screen.getByText(/Revision 416ae43/)).toBeInTheDocument();
-    await expect
-      .element(screen.getByText("Last successful check: 2026-11-19T12:00:00.000Z"))
-      .toBeInTheDocument();
+    await expect.element(screen.getByText("Last successful check: 1h ago")).toBeInTheDocument();
   },
 );
 
-it("labels grouped environments and identifies an unsupported stock server", async () => {
+it.each([
+  {
+    name: "unsupported stock server",
+    error: "Unknown request tag: plusplus.tokenEfficiency.view",
+    label: "Not supported on Stock",
+  },
+  {
+    name: "unavailable environment",
+    error: "This connection requires orchestration:read.",
+    label: "Unavailable on Stock",
+  },
+] as const)("labels an $name", async ({ error, label }) => {
   const registry = setup({
     secondary: true,
-    secondaryView: AsyncResult.failure(Cause.fail(new Error("Unknown method"))),
+    secondaryView: AsyncResult.failure(Cause.fail(new Error(error))),
   });
   using _registry = disposableRegistry(registry);
   await using screen = await render(panel(registry));
   await expect.element(screen.getByRole("heading", { name: "Test" })).toBeInTheDocument();
-  await expect.element(screen.getByText("Not supported on Stock")).toBeInTheDocument();
+  await expect.element(screen.getByText(label)).toBeInTheDocument();
 });
 
 it.each([
   {
+    name: "updated",
     outcome: "updated",
     view: upstreamView,
     message: "Refresh updated. Cached upstream revision 416ae43 is active.",
   },
   {
+    name: "unchanged",
     outcome: "unchanged",
     view: upstreamView,
     message: "Refresh unchanged. Cached upstream revision 416ae43 stays active.",
   },
   {
+    name: "failed",
     outcome: "failed",
     view: failedView,
     message: "Refresh failed (rate limited). Cached upstream revision 416ae43 stays active.",
   },
-] as const)("reports a $outcome refresh", async ({ outcome, view, message }) => {
-  const registry = setup({ view: AsyncResult.success(view), refreshResult: { outcome, view } });
+  {
+    name: "transport failure",
+    requestFailure: "Connection lost",
+    view: upstreamView,
+    message: "Refresh failed. Connection lost Cached upstream revision 416ae43 stays active.",
+  },
+] as const)("reports a $name refresh", async (row) => {
+  const registry = setup({
+    view: AsyncResult.success(
+      "outcome" in row && row.outcome === "failed" ? upstreamView : row.view,
+    ),
+    ...("outcome" in row ? { refreshResult: { outcome: row.outcome!, view: row.view } } : {}),
+    ...("requestFailure" in row ? { refreshFailure: row.requestFailure } : {}),
+  });
   using _registry = disposableRegistry(registry);
   await using screen = await render(panel(registry));
+  if (!("outcome" in row) || row.outcome === "failed") {
+    await expect.element(screen.getByText(row.message)).not.toBeInTheDocument();
+  }
   await userEvent.click(screen.getByRole("button", { name: "Refresh now" }));
-  await expect.element(screen.getByText(message)).toBeInTheDocument();
+  await expect.element(screen.getByText(row.message)).toBeInTheDocument();
   expect(state.refresh).toHaveBeenCalledExactlyOnceWith({ environmentId, input: {} });
 });
 
@@ -279,6 +318,7 @@ it("shows exact instructions as plain text with every attribution link", async (
   await expect.element(page.getByRole("dialog")).toBeVisible();
   const popup = document.querySelector('[data-slot="dialog-popup"]');
   expect(popup?.querySelector("pre")?.textContent).toBe(instructions);
+  expect(popup?.textContent).toContain(ATTRIBUTION_TEXT);
   expect(popup?.querySelector("img, textarea, input")).toBeNull();
   for (const [name, href] of [
     ["Upstream CORE", TOKEN_EFFICIENCY_LINKS.core],

@@ -14,6 +14,7 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
+import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import { AsyncResult } from "effect/reactivity";
 import { useState } from "react";
@@ -23,6 +24,7 @@ import { AppText as Text } from "../../components/ui/AppText";
 import { Button } from "../../components/ui/Button";
 import * as Dialog from "../../components/ui/Dialog";
 import type { SettingsTarget } from "../../features/settings/settings-environment-filter";
+import { relativeTime } from "../../lib/time";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { refreshTokenEfficiency, tokenEfficiencyView } from "../state/tokenEfficiency";
 
@@ -33,8 +35,14 @@ const ATTRIBUTION_LINKS = [
   { label: "MIT license", url: TOKEN_EFFICIENCY_LINKS.license },
 ] as const;
 
+function isTokenEfficiencyUnsupportedError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /\bUnknown (?:request tag|method):/.test(message);
+}
+
 function formatLastSuccessfulCheck(value: TokenEfficiencyStatus["lastSuccessfulCheckAt"]) {
-  return value === null ? "Never" : DateTime.formatIso(value);
+  if (value === null) return "Never";
+  return `${relativeTime(DateTime.formatIso(value))} ago`;
 }
 
 function openUrl(url: string) {
@@ -75,11 +83,15 @@ function EnvironmentProvenance(props: {
   };
 
   if (view === null) {
+    let message = `Loading token-efficiency provenance on ${label}…`;
+    if (result._tag === "Failure") {
+      message = isTokenEfficiencyUnsupportedError(Cause.squash(result.cause))
+        ? `Not supported on ${label}`
+        : `Unavailable on ${label}`;
+    }
     return (
       <Text textRole="footnote" className="px-2 text-foreground-muted">
-        {result._tag === "Failure"
-          ? `Not supported on ${label}`
-          : `Loading token-efficiency provenance on ${label}…`}
+        {message}
       </Text>
     );
   }
@@ -91,7 +103,6 @@ function EnvironmentProvenance(props: {
     outcome === null || outcome.outcome === "failed" ? null : refreshOutcomeMessage(outcome);
   const failedOutcomeMessage =
     outcome?.outcome === "failed" ? refreshOutcomeMessage(outcome) : null;
-  const busy = refreshing || view.status.refreshing;
 
   return (
     <View className="gap-3 px-2 py-3">
@@ -118,9 +129,9 @@ function EnvironmentProvenance(props: {
       ) : null}
       <View className="flex-row flex-wrap gap-2">
         <Button
-          label={busy ? "Refreshing…" : "Refresh now"}
+          label={refreshing ? "Refreshing…" : "Refresh now"}
           size="compact"
-          disabled={!canRefresh || busy}
+          disabled={!canRefresh || refreshing}
           loading={refreshing}
           onPress={() => void refreshNow()}
         />
@@ -134,21 +145,6 @@ function EnvironmentProvenance(props: {
             )
           }
         />
-      </View>
-      <Text textRole="footnote" className="text-foreground-muted">
-        {ATTRIBUTION_TEXT}
-      </Text>
-      <View className="flex-row flex-wrap gap-x-4 gap-y-2">
-        {ATTRIBUTION_LINKS.map((link) => (
-          <Text
-            key={link.label}
-            accessibilityRole="link"
-            className="text-foreground underline"
-            onPress={() => openUrl(link.url)}
-          >
-            {link.label}
-          </Text>
-        ))}
       </View>
     </View>
   );
@@ -171,6 +167,23 @@ export function TokenEfficiencyProvenance(props: {
           showEnvironmentLabel={environments.length > 1}
         />
       ))}
+      <View className="gap-3 px-2 pb-3">
+        <Text textRole="footnote" className="text-foreground-muted">
+          {ATTRIBUTION_TEXT}
+        </Text>
+        <View className="flex-row flex-wrap gap-x-4 gap-y-2">
+          {ATTRIBUTION_LINKS.map((link) => (
+            <Text
+              key={link.label}
+              accessibilityRole="link"
+              className="text-foreground underline"
+              onPress={() => openUrl(link.url)}
+            >
+              {link.label}
+            </Text>
+          ))}
+        </View>
+      </View>
     </View>
   );
 }
