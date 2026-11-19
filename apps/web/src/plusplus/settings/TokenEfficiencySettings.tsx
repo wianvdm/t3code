@@ -66,7 +66,7 @@ function TokenEfficiencySettingsContent() {
         }
       />
       {scopeSupportsToggle ? (
-        <TokenEfficiencyProvenance environments={connectedEnvironments ?? []} />
+        <TokenEfficiencyProvenance environments={connectedEnvironments} />
       ) : null}
     </SettingsSection>
   );

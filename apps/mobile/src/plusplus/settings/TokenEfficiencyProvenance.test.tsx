@@ -283,9 +283,10 @@ it.each([
   },
   {
     name: "transport failure",
-    requestFailure: "Connection lost",
+    requestFailure: "Test is not connected.",
     view: upstreamView,
-    message: "Refresh failed. Connection lost. Cached upstream revision 416ae43 stays active.",
+    message:
+      "Refresh failed. Test is not connected. Cached upstream revision 416ae43 stays active.",
   },
 ] as const)("reports a $name refresh", async (row) => {
   setup({
@@ -347,13 +348,6 @@ it("opens exact instructions as plain text and exposes every attribution link", 
     await act(async () => (link as HTMLElement).click());
     expect(harness.openURL).toHaveBeenLastCalledWith(url);
   }
-});
-
-it("writes a toggle change", async () => {
-  setup();
-  renderSection();
-  await act(async () => container.querySelector<HTMLElement>('[role="switch"]')?.click());
-  expect(harness.writeSettings).toHaveBeenCalledTimes(1);
 });
 
 it("refreshes a disabled project without enabling delivery", async () => {

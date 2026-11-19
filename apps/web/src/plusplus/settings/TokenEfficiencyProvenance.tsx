@@ -44,6 +44,10 @@ function isTokenEfficiencyUnsupportedError(error: unknown): boolean {
   return /\bUnknown request tag:/.test(message);
 }
 
+function withTerminalPunctuation(message: string): string {
+  return /[.!?]$/.test(message) ? message : `${message}.`;
+}
+
 function LastSuccessfulCheck(props: {
   readonly value: TokenEfficiencyStatus["lastSuccessfulCheckAt"];
 }) {
@@ -137,7 +141,7 @@ function EnvironmentProvenance(props: {
       setOutcome(next.value);
     } else if (!isAtomCommandInterrupted(next)) {
       const error = squashAtomCommandFailure(next);
-      const detail = error instanceof Error ? ` ${error.message}.` : "";
+      const detail = error instanceof Error ? ` ${withTerminalPunctuation(error.message)}` : "";
       setRequestFailure(
         `Refresh failed.${detail} ${sourceLabel(view.status.active.source)} revision ${shortRevision(view.status.active.blobSha)} stays active.`,
       );

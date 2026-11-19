@@ -273,9 +273,10 @@ it.each([
   },
   {
     name: "transport failure",
-    requestFailure: "Connection lost",
+    requestFailure: "Test is not connected.",
     view: upstreamView,
-    message: "Refresh failed. Connection lost. Cached upstream revision 416ae43 stays active.",
+    message:
+      "Refresh failed. Test is not connected. Cached upstream revision 416ae43 stays active.",
   },
 ] as const)("reports a $name refresh", async (row) => {
   const registry = setup({

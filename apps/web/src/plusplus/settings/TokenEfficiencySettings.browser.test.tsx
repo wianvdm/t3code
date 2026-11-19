@@ -16,6 +16,7 @@ import { act, render } from "../../../test/render";
 const state = vi.hoisted(() => ({
   scope: null as unknown,
   environments: [] as readonly unknown[],
+  connectedEnvironments: [] as readonly unknown[],
   targets: [] as readonly { readonly projectId: ProjectId; readonly settings: ServerSettings }[],
   writeAllowed: true,
   run: vi.fn(),
@@ -77,6 +78,7 @@ function setup(enabled = false) {
     },
   ];
   state.targets = [{ projectId, settings }];
+  state.connectedEnvironments = state.environments;
   state.writeAllowed = true;
   state.run.mockReset();
 }
