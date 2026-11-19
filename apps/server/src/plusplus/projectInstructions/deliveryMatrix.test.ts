@@ -2,13 +2,29 @@ import { ProviderDriverKind } from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
 
 import { BUILT_IN_DRIVERS } from "../../provider/builtInDrivers.ts";
-import { PROJECT_INSTRUCTIONS_DELIVERY, PROJECT_INSTRUCTIONS_PENDING } from "./deliveryMatrix.ts";
+import {
+  PROJECT_INSTRUCTIONS_DELIVERY,
+  PROJECT_INSTRUCTIONS_PENDING,
+  type ProjectInstructionsDeliveryByVersion,
+  type ProjectInstructionsDeliveryRow,
+} from "./deliveryMatrix.ts";
+
+const isVersioned = (
+  row: ProjectInstructionsDeliveryRow,
+): row is ProjectInstructionsDeliveryByVersion => "versions" in row;
 
 const registryKinds = BUILT_IN_DRIVERS.map((driver) => driver.driverKind);
 const claudeAgent = ProviderDriverKind.make("claudeAgent");
 const codex = ProviderDriverKind.make("codex");
+const opencode = ProviderDriverKind.make("opencode");
 
 describe("PROJECT_INSTRUCTIONS_DELIVERY", () => {
+  it("keys the matrix to exactly the registry kinds", () => {
+    expect(
+      [...Object.keys(PROJECT_INSTRUCTIONS_DELIVERY), ...PROJECT_INSTRUCTIONS_PENDING].sort(),
+    ).toEqual([...registryKinds].sort());
+  });
+
   it("gives every built-in driver kind a row or an explicit pending decision", () => {
     for (const kind of registryKinds) {
       const hasRow = PROJECT_INSTRUCTIONS_DELIVERY[kind] !== undefined;
@@ -32,8 +48,17 @@ describe("PROJECT_INSTRUCTIONS_DELIVERY", () => {
     }
   });
 
-  it("covers Claude and Codex", () => {
+  it("gives every versioned row at least one version", () => {
+    for (const delivery of Object.values(PROJECT_INSTRUCTIONS_DELIVERY)) {
+      if (delivery !== undefined && isVersioned(delivery)) {
+        expect(Object.keys(delivery.versions).length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("covers Claude, Codex, and OpenCode", () => {
     expect(PROJECT_INSTRUCTIONS_DELIVERY[claudeAgent]).toBeDefined();
     expect(PROJECT_INSTRUCTIONS_DELIVERY[codex]).toBeDefined();
+    expect(PROJECT_INSTRUCTIONS_DELIVERY[opencode]).toBeDefined();
   });
 });

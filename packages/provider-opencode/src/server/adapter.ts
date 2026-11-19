@@ -260,6 +260,7 @@ function accumulateOpenCodeStepUsage(
 
 interface ActiveOpenCodeTurn {
   readonly usage: OpenCodeTurnTokenUsageAccumulator;
+  readonly projectInstructions?: string | undefined;
   readonly isRoot: boolean;
   readonly threadId: ThreadId;
   readonly runId: ProviderAdapter.ProviderAdapterV2TurnInput["runId"] | null;
@@ -2970,6 +2971,7 @@ export const makeOpenCodeAdapterV2 = Effect.fn("makeOpenCodeAdapterV2")(function
                 harness: "OpenCode",
                 model: turn.modelSelection.model,
                 bridgedContext,
+                projectInstructions: turn.projectInstructions,
               }),
             ]
               .filter(Boolean)
@@ -3234,6 +3236,7 @@ export const makeOpenCodeAdapterV2 = Effect.fn("makeOpenCodeAdapterV2")(function
                 appThread: turnInput.appThread,
                 modelSelection: turnInput.modelSelection,
                 runtimePolicy: turnInput.runtimePolicy,
+                projectInstructions: turnInput.projectInstructions?.text,
                 providerTurnId,
                 providerThreadId: turnInput.providerThread.id,
                 runOrdinal: turnInput.runOrdinal,
