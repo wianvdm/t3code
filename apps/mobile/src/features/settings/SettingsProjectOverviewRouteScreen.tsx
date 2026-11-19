@@ -44,6 +44,7 @@ import { leaveSettingsPage } from "./settings-navigation";
 import { workspaceHasColumns } from "../layout/workspace/workspace-selection-store";
 import { DEFAULT_SETTINGS_PAGE } from "../layout/workspace/workspace-tab-navigation";
 import { readUnloadedThreadCount } from "../../state/olderSettledShelf";
+import { TokenEfficiencySection } from "../../plusplus/settings/TokenEfficiencySection";
 
 export function SettingsProjectOverviewRouteScreen() {
   const environmentMenu = useSettingsEnvironmentMenu();
@@ -372,6 +373,7 @@ function ProjectOverviewContent(props: {
         </SettingsSection>
       ) : null}
 
+      <TokenEfficiencySection members={props.members} environments={props.environments} />
       <SettingsSection title="Checkouts">
         {props.members.map((member, index) => {
           const environment = props.environments.find(
