@@ -1,5 +1,13 @@
-import { DEFAULT_SERVER_SETTINGS, type ServerSettings } from "@t3tools/contracts";
+import {
+  DEFAULT_SERVER_SETTINGS,
+  ProjectId,
+  type ProjectSettingsOverrides,
+  type ServerSettings,
+  type T3ProjectFile,
+} from "@t3tools/contracts";
+import { readProjectTokenEfficiency } from "@t3tools/plusplus/contracts";
 import { describe, expect, it } from "vite-plus/test";
+import { resolveProjectSettings } from "./projectSettings.ts";
 import { applyServerSettingsPatch } from "./serverSettings.ts";
 
 describe("contextBridge sidecar patching", () => {
@@ -86,5 +94,52 @@ describe("contextBridge sidecar patching", () => {
     const patched = applyServerSettingsPatch(malformed, { worktreesDirectory: "" });
     expect(patched.contextBridge).toEqual(seeded.contextBridge);
     expect(patched.plusplus).toBe("malformed");
+  });
+});
+
+describe("token-efficiency project override entry", () => {
+  const projectId = ProjectId.make("project_a");
+  const entry = {
+    defaultAutoPull: false,
+    plusplus: { tokenEfficiency: true },
+  } as unknown as ProjectSettingsOverrides;
+
+  function seeded(): ServerSettings {
+    return { ...DEFAULT_SERVER_SETTINGS, projectSettingsOverrides: { [projectId]: entry } };
+  }
+
+  it("keeps plusplus.tokenEfficiency across an upstream-style whole-entry replacement", () => {
+    const replacement = { ...entry, defaultAutoPull: true };
+    const patched = applyServerSettingsPatch(seeded(), {
+      projectSettingsOverrides: { [projectId]: replacement },
+    });
+    expect(patched.projectSettingsOverrides[projectId]).toEqual(replacement);
+    expect(readProjectTokenEfficiency(patched, projectId)).toBe(true);
+  });
+
+  it("drops the entry together with the area when the patch writes null", () => {
+    const patched = applyServerSettingsPatch(seeded(), {
+      projectSettingsOverrides: { [projectId]: null },
+    });
+    expect(patched.projectSettingsOverrides[projectId]).toBeUndefined();
+    expect(readProjectTokenEfficiency(patched, projectId)).toBe(false);
+  });
+
+  it("never surfaces the key through resolveProjectSettings or a t3.json project file", () => {
+    const projectFile = {
+      tokenEfficiency: true,
+      plusplus: { tokenEfficiency: true },
+    } as unknown as T3ProjectFile;
+    const resolved = resolveProjectSettings(seeded(), projectId, null, projectFile);
+    expect("tokenEfficiency" in resolved.settings).toBe(false);
+    expect("tokenEfficiency" in resolved.sources).toBe(false);
+    expect(resolved.overrides).toEqual(entry);
+    expect(readProjectTokenEfficiency(resolved.settings, projectId)).toBe(true);
+
+    // A project with no stored area must stay disabled even when t3.json claims it.
+    const bareProjectId = ProjectId.make("project_b");
+    const bare = resolveProjectSettings(DEFAULT_SERVER_SETTINGS, bareProjectId, null, projectFile);
+    expect("plusplus" in bare.overrides).toBe(false);
+    expect(readProjectTokenEfficiency(bare.settings, bareProjectId)).toBe(false);
   });
 });
