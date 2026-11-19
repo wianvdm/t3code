@@ -275,8 +275,7 @@ describe("successful refreshes", () => {
       const result = yield* snapshots.refresh;
       expect(result.outcome).toBe("unchanged");
       expect(result.view.status.active.source).toBe("upstream");
-      expect(result.view.status.active.fetchedAt).toBeDefined();
-      expect(DateTime.toEpochMillis(result.view.status.active.fetchedAt!)).toBe(Date.parse(EPOCH));
+      expect(result.view.status.active.fetchedAt).toEqual(DateTime.makeUnsafe(EPOCH));
       expect(result.view.status.lastSuccessfulCheckAt).not.toBeNull();
       expect(result.view.status.lastAttemptAt).not.toBeNull();
       const config = yield* ServerConfig.ServerConfig;
@@ -649,6 +648,7 @@ describe("refresh coalescing", () => {
       expect(Exit.isFailure(yield* Effect.exit(Fiber.join(first)))).toBe(true);
       const second = yield* snapshots.refresh;
       expect(second.outcome).toBe("updated");
+      expect(second.view.status.refreshing).toBe(false);
       expect(calls).toBe(2);
     }).pipe(Effect.provide(testLayer({ handler })));
   });
@@ -678,6 +678,7 @@ describe("refresh coalescing", () => {
       yield* Deferred.succeed(release, undefined);
       const result = yield* Fiber.join(joined);
       expect(result.outcome).toBe("updated");
+      expect(result.view.status.refreshing).toBe(false);
       expect(calls).toBe(1);
       expect((yield* snapshots.active).instructions.id).toBe(
         tokenEfficiencyInstructionsId(UPSTREAM_SHA),

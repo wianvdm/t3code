@@ -32,6 +32,7 @@ import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -453,16 +454,22 @@ const make = Effect.gen(function* () {
           ] as const);
         }
         const deferred = Deferred.makeUnsafe<TokenEfficiencyRefreshResult>();
-        const run = Effect.gen(function* () {
-          const outcome = yield* performRefresh();
-          return { outcome, view: yield* view } satisfies TokenEfficiencyRefreshResult;
-        }).pipe(
+        const run = performRefresh().pipe(
           Effect.onExit((exit) =>
             SynchronizedRef.set(inFlight, Option.none()).pipe(
-              Effect.andThen(Deferred.done(deferred, exit)),
+              Effect.andThen(
+                Exit.isSuccess(exit)
+                  ? Effect.gen(function* () {
+                      yield* Deferred.succeed(deferred, {
+                        outcome: exit.value,
+                        view: yield* view,
+                      });
+                    })
+                  : Deferred.failCause(deferred, exit.cause),
+              ),
             ),
           ),
-          Effect.forkIn(serviceScope),
+          Effect.forkIn(serviceScope, { startImmediately: true }),
           Effect.asVoid,
         );
         return Effect.succeed([
