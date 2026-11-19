@@ -75,7 +75,7 @@
 /packages/provider-pi/src/server/mcpExtensionSource.ts @WianVDM
 /packages/provider-pi/src/server/mcpExtensionSource.test.ts @WianVDM
 /packages/provider-pi/src/server/mcpInjection.ts @WianVDM
-/packages/provider-pi/src/server/mcpInjection.test.ts @WianVDM
+/packages/provider-pi/src/server/mcpInjection.plusplus.test.ts @WianVDM
 /packages/shared/src/promptLinks.ts @WianVDM
 /packages/shared/src/promptLinks.test.ts @WianVDM
 /scripts/build-desktop-artifact.test.ts @WianVDM

@@ -74,7 +74,7 @@ JSON so workflow `.cjs` scripts and TS tools read it without a build. One schema
         }
       ]
     },
-    "apps/server/src/terminal/Manager.test.ts": { "delta": [155, 1], "legacy": true }
+    "apps/server/src/terminal/Manager.ts": { "delta": [15, 0], "legacy": true }
   },
   "siblings": [
     {
@@ -123,7 +123,7 @@ After the sync PR resolves conflicts, `verify` stages the refresh (and refuses w
 2. A touched file's recorded `delta` must equal its numstat delta: a higher actual delta fails (raise the entry), and so does a recorded delta above the actual one, which would leave slack for later growth. `legacy` entries are bootstrap-only: a PR may not add one, nor convert a seams entry to one. An existing one may grow when the PR raises its `delta` to the actual figure, and check 5 lists it as raised.
 3. A deleted or renamed upstream-owned path fails.
 4. Anchors of touched entries and siblings must resolve at `upstreamRef` with matching fingerprints. Untouched entries are not re-checked.
-5. The check summary lists every entry the PR adds or raises, every new seam, and every other registry edit (a changed or removed seam, a seams entry converted to `legacy`, a changed sibling), so each is a visible maintainer decision.
+5. The check summary lists every entry the PR adds, raises or removes, every new seam, and every other registry edit (a changed or removed seam, a seams entry converted to `legacy`, a changed sibling), so each is a visible maintainer decision.
 
 A designated sync PR skips checks 0-5 and instead runs the whole-registry check of `node scripts/seamRegistry.ts check` on its head, and its head must be a merge commit whose second parent is the registry's `upstreamRef`. The exemption comes from the `changes` job's `upstream_sync` and `sync_designation_error` outputs plus the `sync` job's result, never from labels, title or branch. `vp run check:changed` runs the same checker on the working tree, without the exemption (the checker exempts only a run given `--head`).
 

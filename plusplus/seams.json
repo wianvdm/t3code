@@ -107,7 +107,7 @@
       "legacy": true
     },
     ".github/scripts/ci-changes.cjs": {
-      "delta": [221, 19],
+      "delta": [216, 19],
       "legacy": true
     },
     ".github/scripts/ci-changes.d.cts": {
@@ -189,7 +189,7 @@
       "legacy": true
     },
     ".github/workflows/windows-tests.yml": {
-      "delta": [202, 13],
+      "delta": [213, 14],
       "legacy": true
     },
     ".macroscope/approvability.md": {

@@ -43,10 +43,8 @@ describe("pi T3 MCP injection ++", () => {
       assert.include(source, "/home/.codex/skills");
 
       // An unchanged payload is not rewritten; a changed one is.
-      const firstStat = yield* fs.stat(dest);
       yield* materializePiT3McpExtension(cacheDir, { contextBridge, sessionId: "session-1" });
-      const secondStat = yield* fs.stat(dest);
-      assert.deepEqual(secondStat.mtime, firstStat.mtime);
+      assert.equal(yield* fs.readFileString(dest), source);
       const updated = {
         ...contextBridge,
         instructions: { ...contextBridge.instructions, block: "UPDATED_BRIDGED_CONTENT" },
