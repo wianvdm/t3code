@@ -63,6 +63,20 @@ export const PROJECT_INSTRUCTIONS_DELIVERY: Partial<
     },
     nativeSubagents: "not-covered",
   },
+  [ProviderDriverKind.make("cursor")]: {
+    mechanism: "prompt-block",
+    cadence:
+      "Once per native session, on change, and after T3-initiated /compress; native auto-compaction is not observable (per server process; a restart resends once)",
+    compaction: "reinject",
+    nativeSubagents: "not-covered",
+  },
+  [ProviderDriverKind.make("muse")]: {
+    mechanism: "prompt-block",
+    cadence:
+      "Once per native session and on change, without resending on resume; reinjected after observed compaction items and session/compact (per server process; a restart resends once)",
+    compaction: "reinject",
+    nativeSubagents: "not-covered",
+  },
   [ProviderDriverKind.make("acpRegistry")]: {
     mechanism: "prompt-block",
     cadence:
@@ -108,7 +122,4 @@ export const PROJECT_INSTRUCTIONS_DELIVERY: Partial<
 };
 
 /** Built-in driver kinds without a row yet. #78 PRs move kinds from this list into rows; it must be empty before the feature is described as cross-provider. */
-export const PROJECT_INSTRUCTIONS_PENDING: ReadonlyArray<ProviderDriverKind> = [
-  ProviderDriverKind.make("cursor"),
-  ProviderDriverKind.make("muse"),
-];
+export const PROJECT_INSTRUCTIONS_PENDING: ReadonlyArray<ProviderDriverKind> = [];
