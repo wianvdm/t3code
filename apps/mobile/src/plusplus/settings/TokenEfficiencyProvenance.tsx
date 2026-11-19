@@ -20,11 +20,11 @@ import { AsyncResult } from "effect/reactivity";
 import { useState } from "react";
 import { Linking, View } from "react-native";
 
+import { RelativeTime } from "../../components/RelativeTime";
 import { AppText as Text } from "../../components/ui/AppText";
 import { Button } from "../../components/ui/Button";
 import * as Dialog from "../../components/ui/Dialog";
 import type { SettingsTarget } from "../../features/settings/settings-environment-filter";
-import { relativeTime } from "../../lib/time";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { refreshTokenEfficiency, tokenEfficiencyView } from "../state/tokenEfficiency";
 
@@ -37,12 +37,18 @@ const ATTRIBUTION_LINKS = [
 
 function isTokenEfficiencyUnsupportedError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /\bUnknown (?:request tag|method):/.test(message);
+  return /\bUnknown request tag:/.test(message);
 }
 
-function formatLastSuccessfulCheck(value: TokenEfficiencyStatus["lastSuccessfulCheckAt"]) {
-  if (value === null) return "Never";
-  return `${relativeTime(DateTime.formatIso(value))} ago`;
+function LastSuccessfulCheck(props: {
+  readonly value: TokenEfficiencyStatus["lastSuccessfulCheckAt"];
+}) {
+  if (props.value === null) return "Never";
+  return (
+    <>
+      <RelativeTime timestamp={DateTime.formatIso(props.value)} /> ago
+    </>
+  );
 }
 
 function openUrl(url: string) {
@@ -74,7 +80,7 @@ function EnvironmentProvenance(props: {
       setOutcome(next.value);
     } else if (!isAtomCommandInterrupted(next)) {
       const error = squashAtomCommandFailure(next);
-      const detail = error instanceof Error ? ` ${error.message}` : "";
+      const detail = error instanceof Error ? ` ${error.message}.` : "";
       setRequestFailure(
         `Refresh failed.${detail} ${sourceLabel(view.status.active.source)} revision ${shortRevision(view.status.active.blobSha)} stays active.`,
       );
@@ -114,7 +120,7 @@ function EnvironmentProvenance(props: {
           : ""}
       </Text>
       <Text textRole="footnote" className="text-foreground-muted">
-        Last successful check: {formatLastSuccessfulCheck(view.status.lastSuccessfulCheckAt)}
+        Last successful check: <LastSuccessfulCheck value={view.status.lastSuccessfulCheckAt} />
       </Text>
       {(failedOutcomeMessage ?? failureMessage) ? (
         <Text textRole="footnote" className="text-danger">

@@ -41,7 +41,7 @@ interface ProvenanceEnvironment {
 
 function isTokenEfficiencyUnsupportedError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /\bUnknown (?:request tag|method):/.test(message);
+  return /\bUnknown request tag:/.test(message);
 }
 
 function LastSuccessfulCheck(props: {
@@ -137,7 +137,7 @@ function EnvironmentProvenance(props: {
       setOutcome(next.value);
     } else if (!isAtomCommandInterrupted(next)) {
       const error = squashAtomCommandFailure(next);
-      const detail = error instanceof Error ? ` ${error.message}` : "";
+      const detail = error instanceof Error ? ` ${error.message}.` : "";
       setRequestFailure(
         `Refresh failed.${detail} ${sourceLabel(view.status.active.source)} revision ${shortRevision(view.status.active.blobSha)} stays active.`,
       );

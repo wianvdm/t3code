@@ -11,7 +11,6 @@ import { resolveMobileSettingsTargets } from "../../features/settings/settings-s
 import { useSettingsWriter } from "../../features/settings/useSettingsWriter";
 import { useEnvironmentsWithScope } from "../../state/session";
 import { TokenEfficiencyProvenance } from "./TokenEfficiencyProvenance";
-import { refreshTokenEfficiencyViews } from "../state/tokenEfficiency";
 import {
   planMobileTokenEfficiencyWrites,
   readMobileTokenEfficiencyState,
@@ -36,9 +35,7 @@ export function TokenEfficiencySection(props: {
         value={enabled}
         disabled={!canWrite}
         onValueChange={(enabled) => {
-          void writeSettings(targets, planMobileTokenEfficiencyWrites(targets, enabled)).then(() =>
-            refreshTokenEfficiencyViews(targets.map((target) => target.environment.environmentId)),
-          );
+          void writeSettings(targets, planMobileTokenEfficiencyWrites(targets, enabled));
         }}
         meta={
           <View className="pt-1">
