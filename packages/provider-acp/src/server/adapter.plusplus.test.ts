@@ -470,6 +470,23 @@ describe("ACP project instructions delivery", () => {
     }).pipe(Effect.provide(layerTest), Effect.scoped),
   );
 
+  it.live("redelivers after a delivering prompt ends with an idle error", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeDeliveryHarness({ T3_ACP_IDLE_ERROR: "1" });
+      const failed = yield* harness.runTurn({
+        text: "Fail after delivery",
+        projectInstructions: INSTRUCTIONS_V1,
+        expectedStatus: "failed",
+      });
+      assertDelivered(failed, INSTRUCTIONS_V1);
+      const retry = yield* harness.runTurn({
+        text: "Retry after idle error",
+        projectInstructions: INSTRUCTIONS_V1,
+      });
+      assertDelivered(retry, INSTRUCTIONS_V1);
+    }).pipe(Effect.provide(layerTest), Effect.scoped),
+  );
+
   it.live("resends unchanged instructions in a new native session", () =>
     Effect.gen(function* () {
       const harness = yield* makeDeliveryHarness();
