@@ -12,10 +12,8 @@ import {
   displayLimitWindows,
   formatResetsIn,
   paceRemainingPercent,
-  readMonetaryUsage,
   remainingPercent,
   type LimitAccount,
-  type LimitPool,
   type LimitPoolWindow,
 } from "@t3tools/plusplus-extensions/usageReporting";
 import { Fragment, type ReactNode, useId, useState } from "react";
@@ -29,7 +27,11 @@ import { AppText as Text } from "../../components/ui/AppText";
 import { ProviderIcon } from "../../components/ProviderIcon";
 import { SettingsScreen } from "../settings/components/SettingsScreen";
 import { environmentPresentations } from "../../state/presentation";
-import { ResetCredits, monetaryUsageText } from "./UsageLimitsSection";
+import {
+  PoolMonetaryAccounts,
+  hasDisplayableLimits,
+} from "../../plusplus/usage/PooledMonetaryUsage";
+import { ResetCredits } from "./UsageLimitsSection";
 import { usageProviderKind, useProviderColors } from "./usageProviders";
 
 const PACE_LABEL = { ahead: "Ahead of pace", on: "On pace", under: "Under pace" } as const;
@@ -68,7 +70,7 @@ function AccountChip({ email }: { readonly email: string }) {
   );
 }
 
-// Two clipped copies of the segment leave the same see-through gap-and-tick as the Limits rows.
+// Same gap-and-tick as the Limits rows: two clipped copies of the segment leave a see-through gap.
 function PaceGap({
   timeLeft,
   children,
@@ -138,7 +140,7 @@ function AccountSegment({
       }}
     >
       {size.width > 0 && size.height > 0 ? (
-        // Numeric dimensions clear Android's SVG geometry cached from before the segment resized.
+        // Numeric canvas dimensions clear Android SVG geometry cached before a segment resized.
         <Svg width={size.width} height={size.height} accessible={false}>
           <Defs>
             <Pattern id={patternId} width={6} height={6} patternUnits="userSpaceOnUse">
@@ -401,33 +403,6 @@ function PoolWindowCard({
   );
 }
 
-function hasDisplayableLimits(pool: LimitPool) {
-  return (
-    displayLimitWindows(pool).length > 0 ||
-    pool.accounts.some((account) => monetaryUsageText(readMonetaryUsage(account.limits)) !== null)
-  );
-}
-
-function PoolMonetaryAccounts({ pool }: { readonly pool: LimitPool }) {
-  const rows = pool.accounts.flatMap((account) => {
-    const text = monetaryUsageText(readMonetaryUsage(account.limits));
-    return text !== null ? [{ account, text }] : [];
-  });
-  if (rows.length === 0) return null;
-  return (
-    <View className="gap-2 rounded-[24px] border-continuous bg-grouped-card p-4">
-      {rows.map(({ account, text }) => (
-        <View key={account.key} className="flex-row items-baseline justify-between gap-3">
-          <Text numberOfLines={1} className="min-w-0 shrink text-sm font-t3-medium text-foreground">
-            {accountName(account)}
-          </Text>
-          <Text className="shrink-0 text-sm tabular-nums text-foreground-muted">{text}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 export function UsageLimitsSection({
   now,
   failedLabels,
@@ -489,7 +464,7 @@ export function UsageLimitsSection({
                   />
                 );
               })}
-              <PoolMonetaryAccounts pool={pool} />
+              <PoolMonetaryAccounts pool={pool} accountName={accountName} />
             </View>
           </Fragment>
         );
