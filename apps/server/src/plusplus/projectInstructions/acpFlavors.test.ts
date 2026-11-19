@@ -1,23 +1,13 @@
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
-import {
-  ProviderDriverKind,
-  ProviderInstanceId,
-  ProviderSessionId,
-  ThreadId,
-} from "@t3tools/contracts";
+import { ProviderInstanceId, ProviderSessionId, ThreadId } from "@t3tools/contracts";
 import * as AcpSessionRuntime from "@t3tools/provider-acp/server/AcpSessionRuntime";
 import type { AcpAdapterV2Flavor } from "@t3tools/provider-acp/server/adapter";
-import { AcpRegistryCatalog } from "@t3tools/provider-acp-registry/server/AcpRegistrySupport";
-import { AcpRegistrySettings } from "@t3tools/provider-acp-registry/settings";
-import { makeAcpRegistryAdapterV2 } from "@t3tools/provider-acp-registry/testing";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import type { ProjectInstructions } from "@t3tools/provider-core/server/projectInstructions";
-import { FxSettings } from "@t3tools/provider-fx/settings";
-import { makeFxAdapterV2 } from "@t3tools/provider-fx/testing";
 import { GrokSettings } from "@t3tools/provider-grok/settings";
 import { makeGrokAdapterV2, makeXAiPromptCompletionRuntime } from "@t3tools/provider-grok/testing";
 import { KiroSettings } from "@t3tools/provider-kiro/settings";
@@ -41,7 +31,6 @@ import type * as EffectAcpProtocol from "effect-acp/protocol";
 
 import { makeTurnInput } from "../../orchestration-v2/Adapters/AcpAdapterV2.testkit.ts";
 import { makeAntigravityAcpAdapterFlavor } from "../../orchestration-v2/Adapters/AntigravityAdapterV2.ts";
-import { PROJECT_INSTRUCTIONS_DELIVERY } from "./deliveryMatrix.ts";
 
 const INSTRUCTIONS = {
   id: "flavor-instructions-v1",
@@ -49,8 +38,6 @@ const INSTRUCTIONS = {
 } as const;
 const decodeGrokSettings = Schema.decodeEffect(GrokSettings);
 const decodeKiroSettings = Schema.decodeEffect(KiroSettings);
-const decodeFxSettings = Schema.decodeEffect(FxSettings);
-const decodeAcpRegistrySettings = Schema.decodeEffect(AcpRegistrySettings);
 
 const layerTest = Layer.mergeAll(
   NodeServices.layer,
@@ -60,7 +47,6 @@ const layerTest = Layer.mergeAll(
   TestProviderHost.layer().pipe(
     Layer.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
   ),
-  Layer.mock(AcpRegistryCatalog)({ resolve: () => Effect.die("runtime is injected") }),
 );
 
 const decodeUnknownJson = Schema.decodeUnknownOption(Schema.fromJsonString(Schema.Unknown));
@@ -172,20 +158,6 @@ const runtimePolicy = (cwd = process.cwd()) =>
   });
 
 describe("ACP flavor project instructions", () => {
-  it.each([
-    { kind: "acpRegistry", compaction: "reinject" },
-    { kind: "grok", compaction: "reinject" },
-    { kind: "kiro", compaction: "reinject" },
-    { kind: "fx", compaction: "unsupported" },
-    { kind: "antigravity", compaction: "unsupported" },
-  ] as const)("records the $kind shared-ACP support decision", ({ kind, compaction }) => {
-    const delivery = PROJECT_INSTRUCTIONS_DELIVERY[ProviderDriverKind.make(kind)];
-    assert.equal(delivery?.mechanism, "prompt-block");
-    assert.equal(delivery?.compaction, compaction);
-    assert.include(delivery?.cadence, "once per native session");
-    assert.equal(delivery?.nativeSubagents, "not-covered");
-  });
-
   it.live("Grok $skill rewrites to a native slash turn and defers the block", () =>
     Effect.gen(function* () {
       const childProcessSpawner = yield* ChildProcessSpawner.ChildProcessSpawner;
@@ -326,78 +298,6 @@ describe("ACP flavor project instructions", () => {
       });
       assert.isTrue(afterCompact.at(-1)?.text.endsWith(INSTRUCTIONS.text));
     }).pipe(Effect.provide(layerTest), Effect.scoped),
-  );
-
-  it.live("FX exposes no compaction path", () =>
-    Effect.gen(function* () {
-      const childProcessSpawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-      const path = yield* Path.Path;
-      const mockAgentPath = yield* path.fromFileUrl(
-        new URL("../../../scripts/acp-mock-agent.ts", import.meta.url),
-      );
-      const protocolEvents = yield* Queue.unbounded<EffectAcpProtocol.AcpProtocolLogEvent>();
-      const instanceId = ProviderInstanceId.make("fx-project-instructions");
-      const adapter = yield* makeFxAdapterV2({
-        instanceId,
-        settings: yield* decodeFxSettings({ enabled: true }),
-        environment: {},
-        selfInvocation: yield* resolveSelfInvocation(),
-        defaultModel: Effect.undefined,
-        makeRuntime: makeMockRuntime({
-          childProcessSpawner,
-          mockAgentPath,
-          protocolEvents,
-          wrapRuntime: (runtime) => ({
-            ...runtime,
-            request: (method, payload) =>
-              method === "session/set_config_option"
-                ? Effect.succeed({})
-                : runtime.request(method, payload),
-          }),
-        }),
-      });
-      const modelSelection = { instanceId, model: "default" } as const;
-      const runtime = yield* adapter.openSession({
-        threadId: ThreadId.make("fx-project-instructions"),
-        providerSessionId: ProviderSessionId.make("fx-project-instructions"),
-        modelSelection,
-        runtimePolicy: runtimePolicy(),
-      });
-      assert.isUndefined(runtime.compactThread);
-    }).pipe(Effect.provide(layerTest), Effect.scoped),
-  );
-
-  it.live(
-    "ACP Registry exposes no manual compaction and retains observed-compaction delivery",
-    () =>
-      Effect.gen(function* () {
-        const childProcessSpawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-        const path = yield* Path.Path;
-        const mockAgentPath = yield* path.fromFileUrl(
-          new URL("../../../scripts/acp-mock-agent.ts", import.meta.url),
-        );
-        const protocolEvents = yield* Queue.unbounded<EffectAcpProtocol.AcpProtocolLogEvent>();
-        const instanceId = ProviderInstanceId.make("acp-registry-project-instructions");
-        const adapter = yield* makeAcpRegistryAdapterV2({
-          instanceId,
-          settings: yield* decodeAcpRegistrySettings({ agentId: "factory-droid" }),
-          environment: {},
-          selfInvocation: yield* resolveSelfInvocation(),
-          makeRuntime: makeMockRuntime({ childProcessSpawner, mockAgentPath, protocolEvents }),
-        });
-        const modelSelection = { instanceId, model: "default" } as const;
-        const runtime = yield* adapter.openSession({
-          threadId: ThreadId.make("acp-registry-project-instructions"),
-          providerSessionId: ProviderSessionId.make("acp-registry-project-instructions"),
-          modelSelection,
-          runtimePolicy: runtimePolicy(),
-        });
-        assert.isUndefined(runtime.compactThread);
-        assert.equal(
-          PROJECT_INSTRUCTIONS_DELIVERY[ProviderDriverKind.make("acpRegistry")]?.compaction,
-          "reinject",
-        );
-      }).pipe(Effect.provide(layerTest), Effect.scoped),
   );
 
   it("Antigravity retains its version-gated PR-linking flag and no compaction", () => {

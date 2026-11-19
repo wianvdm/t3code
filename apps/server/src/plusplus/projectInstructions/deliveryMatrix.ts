@@ -36,14 +36,14 @@ export const PROJECT_INSTRUCTIONS_DELIVERY: Partial<
   [ProviderDriverKind.make("acpRegistry")]: {
     mechanism: "prompt-block",
     cadence:
-      "Shared ACP trailing runtime block once per native session and on instructions id change; native slash turns defer delivery to the next ordinary turn",
+      "Shared ACP trailing runtime block once per native session and on instructions id change; native slash turns defer delivery to the next ordinary turn; observed compaction triggers reinjection",
     compaction: "reinject",
     nativeSubagents: "not-covered",
   },
   [ProviderDriverKind.make("grok")]: {
     mechanism: "prompt-block",
     cadence:
-      "Shared ACP trailing runtime block once per native session and on instructions id change; $skill rewrites to native /skill skip the block until the next ordinary turn",
+      "Shared ACP trailing runtime block once per native session and on instructions id change; $skill rewrites to native /skill skip the block until the next ordinary turn; observed compaction triggers reinjection",
     compaction: "reinject",
     nativeSubagents: "not-covered",
   },

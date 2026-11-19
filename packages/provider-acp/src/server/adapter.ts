@@ -8027,17 +8027,12 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
             targetDriver: driver,
             cwd: turnInput.runtimePolicy?.cwd,
           });
+          if (compactionMarker !== undefined) {
+            yield* projectInstructionsDelivery.forget(sessionId);
+          }
           const projectDelivery = isNativeSlashCommand
             ? undefined
-            : yield* (
-                compactionMarker === undefined
-                  ? Effect.void
-                  : projectInstructionsDelivery.forget(sessionId)
-              ).pipe(
-                Effect.andThen(
-                  projectInstructionsDelivery.plan(sessionId, turnInput.projectInstructions),
-                ),
-              );
+            : yield* projectInstructionsDelivery.plan(sessionId, turnInput.projectInstructions);
           if (!isNativeSlashCommand) {
             const sessionSetup = yield* Ref.get(activeSessionSetup);
             prompt.push({
@@ -8398,7 +8393,13 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
                     Effect.as({ stopReason: "end_turn" } satisfies EffectAcpSchema.PromptResponse),
                   )
             ).pipe(
-              Effect.tap(() => promptParts?.projectDelivery?.commit ?? Effect.void),
+              Effect.tap((result) =>
+                result.stopReason === "cancelled" ||
+                result.stopReason === "refusal" ||
+                result.stopReason === "error"
+                  ? Effect.void
+                  : (promptParts?.projectDelivery?.commit ?? Effect.void),
+              ),
               Effect.tap(() =>
                 Ref.update(promptInstructionStates, (current) => {
                   // Native compaction sends no prompt, so no instructions reached the agent.

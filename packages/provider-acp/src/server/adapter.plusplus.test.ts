@@ -35,7 +35,12 @@ import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 import type * as EffectAcpProtocol from "effect-acp/protocol";
 
 import * as AcpSessionRuntime from "./AcpSessionRuntime.ts";
-import { AcpProviderCapabilitiesV2, makeAcpAdapterV2, type AcpAdapterV2Flavor } from "./adapter.ts";
+import {
+  AcpProviderCapabilitiesV2,
+  acpScopedNativeId,
+  makeAcpAdapterV2,
+  type AcpAdapterV2Flavor,
+} from "./adapter.ts";
 
 const DRIVER = ProviderDriverKind.make("acp-project-instructions-test");
 const INSTRUCTIONS_V1 = {
@@ -228,12 +233,14 @@ const makeDeliveryHarness = Effect.fnUntraced(function* (
   const protocolEvents = yield* Queue.unbounded<EffectAcpProtocol.AcpProtocolLogEvent>();
   const instanceId = ProviderInstanceId.make("acp-project-instructions-test");
   const threadId = ThreadId.make("thread-acp-project-instructions");
+  const idAllocator = yield* IdAllocator.IdAllocatorV2;
   const adapter = yield* makeAcpAdapterV2({
     instanceId,
     flavor: {
       driver: DRIVER,
       capabilities: AcpProviderCapabilitiesV2,
       supportsCompaction: true,
+      interruptPromptOnCancel: true,
       makeRuntime: makeMockRuntime({
         childProcessSpawner,
         mockAgentPath,
@@ -259,10 +266,11 @@ const makeDeliveryHarness = Effect.fnUntraced(function* (
   const now = yield* DateTime.now;
   let ordinal = 0;
 
-  const runTurn = Effect.fnUntraced(function* (input: {
+  const startTurn = Effect.fnUntraced(function* (input: {
     readonly text: string;
     readonly projectInstructions?: ProjectInstructions | undefined;
   }) {
+    const turnOrdinal = ++ordinal;
     yield* runtime.startTurn(
       makeTurnInput({
         threadId,
@@ -271,24 +279,50 @@ const makeDeliveryHarness = Effect.fnUntraced(function* (
         runtimePolicy,
         modelSelection,
         now,
-        ordinal: ++ordinal,
+        ordinal: turnOrdinal,
         text: input.text,
         projectInstructions: input.projectInstructions,
       }),
     );
+    while (true) {
+      const event = yield* Queue.take(protocolEvents);
+      if (isPromptEvent(event)) {
+        return {
+          blocks: promptTextBlocks(event),
+          providerTurnId: idAllocator.derive.providerTurn({
+            driver: DRIVER,
+            nativeTurnId: acpScopedNativeId(instanceId, `mock-session-1:turn:${turnOrdinal}`),
+          }),
+        };
+      }
+    }
+  });
+
+  const awaitTerminal = Effect.fnUntraced(function* (expectedStatus = "completed") {
     const terminal = yield* runtime.events.pipe(
       Stream.filter((event) => event.type === "turn.terminal"),
       Stream.runHead,
     );
-    assert.equal(Option.getOrThrow(terminal).status, "completed");
-    while (true) {
-      const event = yield* Queue.take(protocolEvents);
-      if (isPromptEvent(event)) return promptTextBlocks(event);
-    }
+    assert.equal(Option.getOrThrow(terminal).status, expectedStatus);
+  });
+
+  const runTurn = Effect.fnUntraced(function* (input: {
+    readonly text: string;
+    readonly projectInstructions?: ProjectInstructions | undefined;
+    readonly expectedStatus?: string;
+  }) {
+    const { blocks } = yield* startTurn(input);
+    yield* awaitTerminal(input.expectedStatus);
+    return blocks;
   });
 
   return {
     runTurn,
+    startTurn,
+    awaitTerminal,
+    interruptTurn: (
+      providerTurnId: Parameters<typeof runtime.interruptTurn>[0]["providerTurnId"],
+    ) => runtime.interruptTurn({ providerThread, providerTurnId }),
     replaceSession: Effect.gen(function* () {
       providerThread = yield* runtime.ensureThread({
         threadId,
@@ -398,6 +432,41 @@ describe("ACP project instructions delivery", () => {
         projectInstructions: INSTRUCTIONS_V1,
       });
       assertDelivered(ordinary, INSTRUCTIONS_V1);
+    }).pipe(Effect.provide(layerTest), Effect.scoped),
+  );
+
+  it.live("redelivers on the next turn after an interrupted delivering turn", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeDeliveryHarness({ T3_ACP_PROMPT_DELAY_MS: "1000" });
+      const interrupted = yield* harness.startTurn({
+        text: "Interrupt this delivery",
+        projectInstructions: INSTRUCTIONS_V1,
+      });
+      assertDelivered(interrupted.blocks, INSTRUCTIONS_V1);
+      yield* harness.interruptTurn(interrupted.providerTurnId);
+      yield* harness.awaitTerminal("interrupted");
+      const retry = yield* harness.runTurn({
+        text: "Retry after interruption",
+        projectInstructions: INSTRUCTIONS_V1,
+      });
+      assertDelivered(retry, INSTRUCTIONS_V1);
+    }).pipe(Effect.provide(layerTest), Effect.scoped),
+  );
+
+  it.live("redelivers on the retry after a failed delivering prompt", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeDeliveryHarness({ T3_ACP_FAIL_PROMPT_ORDINAL: "1" });
+      const failed = yield* harness.runTurn({
+        text: "Fail this delivery",
+        projectInstructions: INSTRUCTIONS_V1,
+        expectedStatus: "failed",
+      });
+      assertDelivered(failed, INSTRUCTIONS_V1);
+      const retry = yield* harness.runTurn({
+        text: "Retry after failure",
+        projectInstructions: INSTRUCTIONS_V1,
+      });
+      assertDelivered(retry, INSTRUCTIONS_V1);
     }).pipe(Effect.provide(layerTest), Effect.scoped),
   );
 
