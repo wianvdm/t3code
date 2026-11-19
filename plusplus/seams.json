@@ -1797,7 +1797,7 @@
       "legacy": true
     },
     "packages/provider-acp/src/server/adapter.ts": {
-      "delta": [7, 0],
+      "delta": [24, 0],
       "legacy": true
     },
     "packages/provider-core/package.json": {

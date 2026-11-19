@@ -117,6 +117,7 @@ import {
 } from "@t3tools/provider-core/server/orchestrationInstructions";
 import { bridgedInstructionsForTurn } from "@t3tools/provider-core/server/contextBridgeRuntime";
 import { buildRuntimeInstructions } from "@t3tools/provider-core/server/runtimeInstructions";
+import { makeProjectInstructionsDeliveryTracker } from "@t3tools/provider-core/server/projectInstructions";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
 import type * as ProviderContinuationRequests from "@t3tools/provider-core/server/ProviderContinuationRequests";
 import {
@@ -1934,6 +1935,7 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
         const activeSelection = yield* Ref.make<ModelSelection | null>(null);
         const activeInteractionMode = yield* Ref.make<ProviderInteractionMode | null>(null);
         const promptInstructionStates = yield* Ref.make(new Map<string, T3AcpInstructionState>());
+        const projectInstructionsDelivery = yield* makeProjectInstructionsDeliveryTracker;
         // Unique markers keep delayed prompt completions from clearing later compactions.
         const compactionMarkers = yield* Ref.make(new Map<string, symbol>());
         const runtimeRestartRequired = yield* Ref.make(false);
@@ -7104,6 +7106,7 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
             yield* Ref.set(activeSelection, null);
             yield* Ref.set(activeInteractionMode, null);
             yield* Ref.set(promptInstructionStates, new Map());
+            yield* projectInstructionsDelivery.forget(candidate.sessionId);
             yield* Ref.set(compactionMarkers, new Map());
             yield* Ref.set(providerTurns, new Map());
             yield* Ref.set(snapshot, {
@@ -8024,6 +8027,17 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
             targetDriver: driver,
             cwd: turnInput.runtimePolicy?.cwd,
           });
+          const projectDelivery = isNativeSlashCommand
+            ? undefined
+            : yield* (
+                compactionMarker === undefined
+                  ? Effect.void
+                  : projectInstructionsDelivery.forget(sessionId)
+              ).pipe(
+                Effect.andThen(
+                  projectInstructionsDelivery.plan(sessionId, turnInput.projectInstructions),
+                ),
+              );
           if (!isNativeSlashCommand) {
             const sessionSetup = yield* Ref.get(activeSessionSetup);
             prompt.push({
@@ -8035,6 +8049,7 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
                   sessionSetup === null ||
                   flavor.sessionCarriesPullRequestLinking?.(sessionSetup.initializeResult) !== true,
                 bridgedContext,
+                projectInstructions: projectDelivery?.text,
               }),
             });
           }
@@ -8042,6 +8057,7 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
             prompt,
             instructionState: text === messageText ? undefined : instructionState,
             compactionMarker,
+            projectDelivery,
           };
         });
 
@@ -8382,6 +8398,7 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
                     Effect.as({ stopReason: "end_turn" } satisfies EffectAcpSchema.PromptResponse),
                   )
             ).pipe(
+              Effect.tap(() => promptParts?.projectDelivery?.commit ?? Effect.void),
               Effect.tap(() =>
                 Ref.update(promptInstructionStates, (current) => {
                   // Native compaction sends no prompt, so no instructions reached the agent.
