@@ -33,11 +33,17 @@ export const PROJECT_INSTRUCTIONS_DELIVERY: Partial<
     compaction: "reinject",
     nativeSubagents: "not-covered",
   },
+  [ProviderDriverKind.make("opencode")]: {
+    mechanism: "session-instructions",
+    cadence:
+      "OpenCode 1.x sends the system field on every prompt; OpenCode 2.x writes session.instructions.entry.put only when the instructions string changes",
+    compaction: "not-needed",
+    nativeSubagents: "not-covered",
+  },
 };
 
 /** Built-in driver kinds without a row yet. #78 PRs move kinds from this list into rows; it must be empty before the feature is described as cross-provider. */
 export const PROJECT_INSTRUCTIONS_PENDING: ReadonlyArray<DriverKind> = [
-  ProviderDriverKind.make("opencode"),
   ProviderDriverKind.make("cursor"),
   ProviderDriverKind.make("muse"),
   ProviderDriverKind.make("acpRegistry"),
