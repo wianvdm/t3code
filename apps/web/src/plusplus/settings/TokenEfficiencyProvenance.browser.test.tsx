@@ -83,7 +83,6 @@ const state = vi.hoisted(() => ({
   writeAllowed: true,
   run: vi.fn(),
   refresh: vi.fn(),
-  refreshViews: vi.fn(),
 }));
 
 vi.mock(import("../../components/settings/SettingsScopeContext"), () => ({
@@ -98,7 +97,6 @@ vi.mock(import("../state/tokenEfficiency"), () => ({
   tokenEfficiencyView: ((target: { readonly environmentId: EnvironmentId }) =>
     target.environmentId === secondaryEnvironmentId ? secondaryViewResult : viewResult) as never,
   refreshTokenEfficiency: { permissionAtom: () => refreshAllowed } as never,
-  refreshTokenEfficiencyViews: state.refreshViews,
 }));
 vi.mock(import("../../state/use-atom-command"), () => ({
   useAtomCommand: () => state.refresh,
@@ -185,7 +183,6 @@ function setup(
       ? AsyncResult.success(options.refreshResult ?? { outcome: "unchanged", view: bundledView })
       : AsyncResult.failure(Cause.fail(new Error(options.refreshFailure))),
   );
-  state.refreshViews.mockReset();
   const registry = AtomRegistry.make();
   registry.set(viewResult, options.view ?? AsyncResult.success(bundledView));
   registry.set(
@@ -236,18 +233,18 @@ it.each([
 it.each([
   {
     name: "unsupported stock server",
-    error: "Unknown request tag: plusplus.tokenEfficiency.view",
+    cause: Cause.die("Unknown request tag: plusplus.tokenEfficiency.view"),
     label: "Not supported on Stock",
   },
   {
     name: "unavailable environment",
-    error: "This connection requires orchestration:read.",
+    cause: Cause.fail(new Error("This connection requires orchestration:read.")),
     label: "Unavailable on Stock",
   },
-] as const)("labels an $name", async ({ error, label }) => {
+] as const)("labels an $name", async ({ cause, label }) => {
   const registry = setup({
     secondary: true,
-    secondaryView: AsyncResult.failure(Cause.fail(new Error(error))),
+    secondaryView: AsyncResult.failure(cause),
   });
   using _registry = disposableRegistry(registry);
   await using screen = await render(panel(registry));
@@ -276,9 +273,10 @@ it.each([
   },
   {
     name: "transport failure",
-    requestFailure: "Connection lost",
+    requestFailure: "Test is not connected.",
     view: upstreamView,
-    message: "Refresh failed. Connection lost Cached upstream revision 416ae43 stays active.",
+    message:
+      "Refresh failed. Test is not connected. Cached upstream revision 416ae43 stays active.",
   },
 ] as const)("reports a $name refresh", async (row) => {
   const registry = setup({
@@ -305,6 +303,17 @@ it("disables refresh without destination settings-write authority", async () => 
   await expect.element(screen.getByRole("button", { name: "Refresh now" })).toBeDisabled();
   await userEvent.click(screen.getByRole("button", { name: "Refresh now" }), { force: true });
   expect(state.refresh).not.toHaveBeenCalled();
+});
+
+it("keeps refresh available during a server refresh", async () => {
+  const refreshingView = {
+    ...bundledView,
+    status: { ...bundledView.status, refreshing: true },
+  };
+  const registry = setup({ view: AsyncResult.success(refreshingView) });
+  using _registry = disposableRegistry(registry);
+  await using screen = await render(panel(registry));
+  await expect.element(screen.getByRole("button", { name: "Refresh now" })).toBeEnabled();
 });
 
 it("shows exact instructions as plain text with every attribution link", async () => {
