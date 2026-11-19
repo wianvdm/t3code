@@ -2001,7 +2001,7 @@
       "legacy": true
     },
     "packages/provider-pi/src/server/adapter.ts": {
-      "delta": [47, 3],
+      "delta": [71, 3],
       "legacy": true
     },
     "packages/provider-pi/src/server/driver.test.ts": {
@@ -2021,7 +2021,7 @@
       "legacy": true
     },
     "packages/provider-pi/src/server/mcpExtensionSource.ts": {
-      "delta": [203, 5],
+      "delta": [225, 8],
       "legacy": true
     },
     "packages/provider-pi/src/server/mcpInjection.ts": {

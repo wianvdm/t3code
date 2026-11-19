@@ -40,6 +40,8 @@ import * as Stream from "effect/Stream";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
 import * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
+import { PI_T3_PROJECT_INSTRUCTIONS_COMMAND } from "@t3tools/plusplus/projectInstructions";
+import { makeProjectInstructionsDeliveryTracker } from "@t3tools/provider-core/server/projectInstructions";
 import { providerMessageTextWithAttachmentPaths } from "@t3tools/provider-core/server/attachmentPrompt";
 import { mcpToolPresentation } from "@t3tools/provider-core/server/mcpToolPresentation";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
@@ -443,6 +445,7 @@ export const makePiAdapterV2 = Effect.fn("makePiAdapterV2")(function* (
   const idAllocator = yield* IdAllocator.IdAllocatorV2;
   const host = yield* ProviderHost.ProviderHost;
   const mcpSessions = yield* McpProviderSessions.McpProviderSessions;
+  const projectInstructionsDelivery = yield* makeProjectInstructionsDeliveryTracker;
   const { continuationRequests } = options;
 
   const protocolError = (detail: string, payload?: unknown) =>
@@ -466,6 +469,7 @@ export const makePiAdapterV2 = Effect.fn("makePiAdapterV2")(function* (
     ) {
       const scope = yield* Effect.scope;
       const cwd = input.runtimePolicy.cwd ?? host.paths.cwd;
+      yield* projectInstructionsDelivery.forget(input.providerSessionId);
       const mcpSession = yield* mcpSessions.read(input.threadId);
       const provideCacheFs = <A, E>(effect: Effect.Effect<A, E, FileSystem.FileSystem>) =>
         effect.pipe(
@@ -2819,6 +2823,26 @@ export const makePiAdapterV2 = Effect.fn("makePiAdapterV2")(function* (
               turnInput.message.createdBy === "agent" &&
               turnInput.message.creationSource === "provider";
             if (!continuation) yield* applySelection(turnInput.modelSelection);
+            const projectDelivery = continuation
+              ? null
+              : yield* projectInstructionsDelivery.plan(
+                  input.providerSessionId,
+                  turnInput.projectInstructions,
+                );
+            if (projectDelivery !== null && projectDelivery.change._tag !== "Unchanged") {
+              const result = yield* request({
+                type: "prompt",
+                message:
+                  `/${PI_T3_PROJECT_INSTRUCTIONS_COMMAND} ${Buffer.from(projectDelivery.text ?? "", "utf8").toString("base64url")}`.trimEnd(),
+              });
+              const disposition = recordString(result, "disposition");
+              if (disposition !== undefined && disposition !== "handled") {
+                return yield* protocolError(
+                  "T3 Code's Pi extension did not apply the project instructions",
+                );
+              }
+              if (disposition === "handled") yield* projectDelivery.commit;
+            }
             if (turnInput.appThread.title !== appliedSessionName) {
               yield* request({
                 type: "set_session_name",

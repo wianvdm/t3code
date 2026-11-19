@@ -2,6 +2,7 @@
  * Do not import t3code modules from the string body. The Pi process resolves
  * `@earendil-works/pi-coding-agent` and `typebox` from the user's pi install.
  */
+import { PI_T3_PROJECT_INSTRUCTIONS_COMMAND } from "@t3tools/plusplus/projectInstructions";
 import type { BridgedInstructionsResolution } from "@t3tools/provider-core/server/contextBridge";
 import { T3_CODE_ORCHESTRATION_INSTRUCTIONS } from "@t3tools/provider-core/server/orchestrationInstructions";
 
@@ -46,6 +47,7 @@ const REPORT_PATH_ENV = ${JSON.stringify(T3_PI_CONTEXT_BRIDGE_REPORT_PATH_ENV)};
 const ORCHESTRATION_INSTRUCTIONS = ${JSON.stringify(T3_CODE_ORCHESTRATION_INSTRUCTIONS.trim())};
 const CONTEXT_BRIDGE = ${contextBridgeJson};
 const SERVICE_TIER_COMMAND = ${JSON.stringify(PI_T3_SERVICE_TIER_COMMAND)};
+const PROJECT_INSTRUCTIONS_COMMAND = ${JSON.stringify(PI_T3_PROJECT_INSTRUCTIONS_COMMAND)};
 const PROTOCOL = "2025-06-18";
 const READ_ONLY_TOOLS = new Set(["read", "grep", "find", "ls"]);
 const FILE_CHANGE_TOOLS = new Set(${JSON.stringify(PI_FILE_CHANGE_TOOLS)});
@@ -268,15 +270,26 @@ export default async function t3McpExtension(pi: ExtensionAPI) {
   // RPC has no trust prompt, so Pi skips an untrusted folder's protected resources. Session
   // replacement reruns this factory without project_trust, and T3 drops notices outside a turn,
   // so check each session's first turn. An explicit --no-approve is deliberate and stays quiet.
+  // MCP setup can return early, so project instructions share this always-loaded agent-start hook.
   let projectTrustChecked = false;
-  pi.on("before_agent_start", (_event, ctx) => {
-    if (projectTrustChecked) return;
+  let projectInstructions = "";
+  pi.on("before_agent_start", (event, ctx) => {
+    let projectPrompt: { systemPrompt: string } | undefined;
+    const sections = event.systemPromptOptions?.sections;
+    if (sections && typeof sections === "object" && event.systemPromptOptions?.forceSystemPrompt === undefined) {
+      if (projectInstructions.length === 0) delete sections.t3_project_instructions;
+      else sections.t3_project_instructions = projectInstructions;
+    } else if (projectInstructions.length > 0 && !event.systemPrompt.includes(projectInstructions)) {
+      projectPrompt = { systemPrompt: event.systemPrompt + "\\n\\n" + projectInstructions };
+    }
+    if (projectTrustChecked) return projectPrompt;
     projectTrustChecked = true;
-    if (ctx.isProjectTrusted() || process.argv.some((arg) => arg === "--no-approve" || arg === "-na")) return;
+    if (ctx.isProjectTrusted() || process.argv.some((arg) => arg === "--no-approve" || arg === "-na")) return projectPrompt;
     ctx.ui.notify(
       \`Pi did not load project settings, extensions, skills, prompts, MCP servers or system prompt files for \${ctx.cwd} because the folder is not trusted. To load them, run the configured Pi binary there with the same PI_CODING_AGENT_DIR (if set), trust the folder or its parent with /trust, then start a new thread in that same worktree. To trust every project, add --approve to Pi's launch arguments in T3 Code settings; to keep them off without this notice, add --no-approve.\`,
       "warning",
     );
+    return projectPrompt;
   });
 
   // Keep skill chips in the request. Pi expands only one leading /skill:
@@ -476,6 +489,12 @@ export default async function t3McpExtension(pi: ExtensionAPI) {
   // Pi has no service tier setting, so T3 sets one through this command before each turn.
   // Only a tier the active model advertises is sent; Standard sends none.
   let serviceTier: string | undefined;
+  pi.registerCommand(PROJECT_INSTRUCTIONS_COMMAND, {
+    description: "Set T3 Code's project instructions for the next agent start",
+    handler: async (args) => {
+      projectInstructions = Buffer.from(args.trim(), "base64url").toString("utf8");
+    },
+  });
   pi.registerCommand(SERVICE_TIER_COMMAND, {
     description: "Set the service tier T3 Code sends with provider requests",
     handler: async (args) => {
