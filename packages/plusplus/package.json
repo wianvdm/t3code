@@ -47,6 +47,10 @@
       "types": "./src/tokenEfficiency/policy.ts",
       "import": "./src/tokenEfficiency/policy.ts"
     },
+    "./tokenEfficiency/presentation": {
+      "types": "./src/tokenEfficiency/presentation.ts",
+      "import": "./src/tokenEfficiency/presentation.ts"
+    },
     "./openCodeContextBridge": {
       "types": "./src/openCodeContextBridge.ts",
       "import": "./src/openCodeContextBridge.ts"

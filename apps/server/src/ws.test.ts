@@ -109,6 +109,7 @@ import * as SourceControlDiscovery from "./sourceControl/SourceControlDiscovery.
 import * as SourceControlRepositoryService from "./sourceControl/SourceControlRepositoryService.ts";
 import * as SourceControlSignIn from "./sourceControl/SourceControlSignIn.ts";
 import * as UpstreamMergeAccess from "./plusplus/UpstreamMergeAccess.ts";
+import * as TokenEfficiencySnapshotService from "./plusplus/tokenEfficiency/TokenEfficiencySnapshotService.ts";
 import * as StorageCleanup from "./storageCleanup.ts";
 import * as DatabaseStorage from "./persistence/DatabaseStorage.ts";
 import * as TerminalManager from "./terminal/Manager.ts";
@@ -838,6 +839,7 @@ const layerUnusedConfigRpcServices = Layer.mergeAll(
   Layer.mock(SourceControlRepositoryService.SourceControlRepositoryService)({}),
   Layer.mock(SourceControlSignIn.SourceControlSignIn)({}),
   Layer.mock(UpstreamMergeAccess.UpstreamMergeAccess)({ check: Effect.succeed(false) }),
+  Layer.mock(TokenEfficiencySnapshotService.TokenEfficiencySnapshotService)({}),
   Layer.mock(StorageCleanup.StorageCleanup)({}),
   Layer.mock(DatabaseStorage.DatabaseStorage)({}),
   Layer.mock(TerminalManager.TerminalManager)({}),

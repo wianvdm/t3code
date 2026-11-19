@@ -10,6 +10,8 @@ import type { SettingsTarget } from "../../features/settings/settings-environmen
 import { resolveMobileSettingsTargets } from "../../features/settings/settings-scoped-server";
 import { useSettingsWriter } from "../../features/settings/useSettingsWriter";
 import { useEnvironmentsWithScope } from "../../state/session";
+import { TokenEfficiencyProvenance } from "./TokenEfficiencyProvenance";
+import { refreshTokenEfficiencyViews } from "../state/tokenEfficiency";
 import {
   planMobileTokenEfficiencyWrites,
   readMobileTokenEfficiencyState,
@@ -34,7 +36,9 @@ export function TokenEfficiencySection(props: {
         value={enabled}
         disabled={!canWrite}
         onValueChange={(enabled) => {
-          void writeSettings(targets, planMobileTokenEfficiencyWrites(targets, enabled));
+          void writeSettings(targets, planMobileTokenEfficiencyWrites(targets, enabled)).then(() =>
+            refreshTokenEfficiencyViews(targets.map((target) => target.environment.environmentId)),
+          );
         }}
         meta={
           <View className="pt-1">
@@ -55,6 +59,7 @@ export function TokenEfficiencySection(props: {
           </View>
         }
       />
+      <TokenEfficiencyProvenance environments={targets.map((target) => target.environment)} />
     </SettingsSection>
   );
 }
