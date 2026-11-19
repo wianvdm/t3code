@@ -42,6 +42,11 @@ describe("chunkProjectInstructions", () => {
     ]);
     assert.equal(chunks.join(""), text);
     assert.isTrue(chunks.every((chunk) => utf8Length(chunk) <= 35));
+    assert.deepEqual(chunkProjectInstructions("line one\nline two\nline three", 12), [
+      "line one\n",
+      "line two\n",
+      "line three",
+    ]);
   });
 
   it("splits only between code points when no line boundary fits", () => {

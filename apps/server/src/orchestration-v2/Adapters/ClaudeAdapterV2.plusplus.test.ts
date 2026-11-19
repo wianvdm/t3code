@@ -1,9 +1,8 @@
+import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import {
-  ClaudeSettings,
   MessageId,
   NodeId,
   ProjectId,
-  ProviderInstanceId,
   ProviderSessionId,
   type ProviderReplayTranscript,
   RunAttemptId,
@@ -18,12 +17,10 @@ import * as Deferred from "effect/Deferred";
 import * as Layer from "effect/Layer";
 import * as Queue from "effect/Queue";
 import * as Ref from "effect/Ref";
-import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
-import { makeProviderReplayGate } from "@t3tools/provider-testing/replayGate";
 
 import { claudeEffectiveQueryKey } from "../../plusplus/projectInstructions/claude.ts";
 import * as ClaudeAdapterV2 from "./ClaudeAdapterV2.ts";
@@ -34,7 +31,6 @@ const first = { id: "snapshot-1", text: "<token_efficiency>first</token_efficien
 const second = { id: "snapshot-2", text: "<token_efficiency>second</token_efficiency>" };
 const base = "claude-query-policy";
 const nativeThreadId = "native-claude-thread";
-const defaultSettings = Schema.decodeSync(ClaudeSettings)({});
 
 interface LiveQuery {
   readonly nativeThreadId: string;
@@ -60,20 +56,56 @@ const effectiveKey = (
     ),
   );
 
-const systemPromptAppend = (projectInstructions: ProjectInstructions | undefined) => {
-  const options = ClaudeAdapterV2.makeClaudeQueryOptions({
-    modelSelection: {
-      instanceId: ProviderInstanceId.make(ClaudeAdapterV2.CLAUDE_PROVIDER),
-      model: "claude-haiku-4-5-20251001",
+const systemPromptAppend = (options: ClaudeAdapterV2.ClaudeAgentSdkQueryOptions) =>
+  (options.systemPrompt as { readonly append?: string }).append ?? "";
+
+const resultMessage = (ordinal: number): SDKMessage =>
+  ({
+    type: "result",
+    subtype: "success",
+    duration_ms: 10,
+    duration_api_ms: 10,
+    is_error: false,
+    num_turns: 1,
+    result: `Turn ${ordinal} completed.`,
+    stop_reason: "end_turn",
+    total_cost_usd: 0,
+    usage: {
+      input_tokens: 1,
+      output_tokens: 1,
+      cache_creation_input_tokens: 0,
+      cache_read_input_tokens: 0,
     },
-    nativeThreadId,
-    resume: false,
-    cwd: "/workspace",
-    settings: defaultSettings,
-    projectInstructions: projectInstructions?.text,
-  });
-  return (options.systemPrompt as { readonly append?: string }).append ?? "";
-};
+    modelUsage: {},
+    permission_denials: [],
+    uuid: `result-${ordinal}`,
+    session_id: nativeThreadId,
+    terminal_reason: "completed",
+  }) as SDKMessage;
+
+const backgroundStarted = {
+  type: "system",
+  subtype: "task_started",
+  task_id: "background-task",
+  tool_use_id: "background-tool",
+  description: "Background build",
+  is_backgrounded: true,
+  task_type: "local_bash",
+  uuid: "background-started",
+  session_id: nativeThreadId,
+} as SDKMessage;
+
+const backgroundCompleted = {
+  type: "system",
+  subtype: "task_notification",
+  task_id: "background-task",
+  tool_use_id: "background-tool",
+  status: "completed",
+  output_file: "/tmp/background-task.output",
+  summary: "Background build completed",
+  uuid: "background-completed",
+  session_id: nativeThreadId,
+} as SDKMessage;
 
 describe("Claude project instruction delivery", () => {
   it.effect(
@@ -146,7 +178,7 @@ describe("Claude project instruction delivery", () => {
       }),
   );
 
-  it.effect("applies live-query changes around provider-native background work", () =>
+  it.effect("delivers instruction changes through live Claude queries", () =>
     Effect.scoped(
       Effect.gen(function* () {
         const transcript = yield* ClaudeOrchestratorReplayHarness.decodeTranscript({
@@ -155,133 +187,46 @@ describe("Claude project instruction delivery", () => {
           version: "1",
           scenario: "project_instructions_live_query",
           metadata: { nativeSessionId: nativeThreadId },
-          entries: [
-            {
-              type: "query.open",
-              options: {
-                model: "claude-haiku-5-5",
-                tools: { type: "preset", preset: "claude_code" },
-                permissionMode: "bypassPermissions",
-                allowDangerouslySkipPermissions: true,
-                settings: { showThinkingSummaries: true },
-                sessionId: nativeThreadId,
-              },
-            },
-            { type: "prompt.offer", text: "Start background work." },
-            { type: "task_started" },
-            { type: "result", text: "Background work started." },
-            { type: "prompt.offer", text: "Enable while background work runs." },
-            { type: "result", text: "Still on the original query." },
-            { type: "task_notification" },
-            { type: "runtime_exit" },
-            {
-              type: "query.open",
-              options: {
-                model: "claude-haiku-5-5",
-                tools: { type: "preset", preset: "claude_code" },
-                permissionMode: "bypassPermissions",
-                allowDangerouslySkipPermissions: true,
-                settings: { showThinkingSummaries: true },
-                resume: nativeThreadId,
-              },
-            },
-            { type: "prompt.offer", text: "Apply enabled instructions." },
-            { type: "result", text: "Enabled instructions applied." },
-            { type: "runtime_exit" },
-          ].flatMap((step, index): ReadonlyArray<ProviderReplayTranscript["entries"][number]> => {
-            if (step.type === "query.open") {
-              return [
-                { type: "expect_outbound", frame: { type: step.type, options: step.options } },
-              ];
-            }
-            if (step.type === "prompt.offer") {
-              return [
-                {
-                  type: "expect_outbound",
-                  frame: {
-                    type: step.type,
-                    message: {
-                      type: "user",
-                      message: { role: "user", content: step.text },
-                      parent_tool_use_id: null,
-                    },
-                  },
-                },
-              ];
-            }
-            if (step.type === "task_started") {
-              return [
-                {
-                  type: "emit_inbound",
-                  frame: {
-                    type: "system",
-                    subtype: "task_started",
-                    task_id: "background-task",
-                    tool_use_id: "background-tool",
-                    description: "Background build",
-                    is_backgrounded: true,
-                    task_type: "local_bash",
-                    uuid: "background-started",
-                    session_id: nativeThreadId,
-                  },
-                },
-              ];
-            }
-            if (step.type === "task_notification") {
-              return [
-                {
-                  type: "emit_inbound",
-                  label: "hold-background-completion",
-                  frame: {
-                    type: "system",
-                    subtype: "task_notification",
-                    task_id: "background-task",
-                    tool_use_id: "background-tool",
-                    status: "completed",
-                    output_file: "/tmp/background-task.output",
-                    summary: "Background build completed",
-                    uuid: "background-completed",
-                    session_id: nativeThreadId,
-                  },
-                },
-              ];
-            }
-            if (step.type === "runtime_exit") {
-              return [{ type: "runtime_exit", status: "success" }];
-            }
-            return [
-              {
-                type: "emit_inbound",
-                frame: {
-                  type: "result",
-                  subtype: "success",
-                  duration_ms: 10,
-                  duration_api_ms: 10,
-                  is_error: false,
-                  num_turns: 1,
-                  result: step.text,
-                  stop_reason: "end_turn",
-                  total_cost_usd: 0,
-                  usage: {
-                    input_tokens: 1,
-                    output_tokens: 1,
-                    cache_creation_input_tokens: 0,
-                    cache_read_input_tokens: 0,
-                  },
-                  modelUsage: {},
-                  permission_denials: [],
-                  uuid: `result-${index}`,
-                  session_id: nativeThreadId,
-                  terminal_reason: "completed",
-                },
-              },
-            ];
-          }),
+          entries: [],
         } satisfies ProviderReplayTranscript);
-        const replayGate = makeProviderReplayGate(["hold-background-completion"]);
+        const openedOptions: Array<ClaudeAdapterV2.ClaudeAgentSdkQueryOptions> = [];
+        const messageQueues = yield* Effect.all([
+          Queue.unbounded<SDKMessage>(),
+          Queue.unbounded<SDKMessage>(),
+          Queue.unbounded<SDKMessage>(),
+          Queue.unbounded<SDKMessage>(),
+        ]);
         const registryContext = yield* Layer.build(
           ClaudeOrchestratorReplayHarness.makeProviderAdapterRegistryLayer(transcript, {
-            replayGate,
+            queryRunner: {
+              open: (input) => {
+                const messages = messageQueues[openedOptions.length];
+                if (messages === undefined) {
+                  throw new Error("Unexpected additional Claude query.");
+                }
+                openedOptions.push(input.options);
+                return {
+                  messages: Stream.fromQueue(messages),
+                  offer: () => Effect.void,
+                  setModel: () => Effect.void,
+                  applyFlagSettings: () => Effect.void,
+                  setPermissionMode: () => Effect.void,
+                  stopTask: () => Effect.void,
+                  backgroundTasks: () => Effect.succeed(false),
+                  mcpServerStatus: Effect.succeed([]),
+                  readMcpResource: () => Effect.die("unexpected MCP resource read"),
+                  callMcpTool: () => Effect.die("unexpected MCP tool call"),
+                  listPermissionRules: Effect.die("unexpected permission rules read"),
+                  interrupt: Effect.void,
+                  close: Queue.shutdown(messages),
+                };
+              },
+              forkSession: () => {
+                throw new Error("Unexpected Claude session fork.");
+              },
+              subagentLaunchToolUseId: () => null,
+              assertComplete: () => undefined,
+            },
           }).pipe(Layer.provide(McpProviderSessions.layer)),
         );
         const registry = yield* ProviderAdapterRegistry.ProviderAdapterRegistryV2.pipe(
@@ -368,32 +313,52 @@ describe("Claude project instruction delivery", () => {
         };
 
         yield* runtime.startTurn(turn(1, "Start background work.", undefined));
+        yield* Queue.offer(messageQueues[0]!, backgroundStarted);
+        yield* Queue.offer(messageQueues[0]!, resultMessage(1));
         yield* Queue.take(terminals);
         assert.isTrue(yield* runtime.hasPendingBackgroundWork!);
+        assert.lengthOf(openedOptions, 1);
+        assert.notInclude(systemPromptAppend(openedOptions[0]!), "<token_efficiency>");
 
         yield* runtime.startTurn(turn(2, "Enable while background work runs.", first));
+        yield* Queue.offer(messageQueues[0]!, resultMessage(2));
         yield* Queue.take(terminals);
         assert.isTrue(yield* runtime.hasPendingBackgroundWork!);
+        assert.lengthOf(openedOptions, 1);
 
-        assert.isTrue(replayGate.release("hold-background-completion"));
+        yield* Queue.offer(messageQueues[0]!, backgroundCompleted);
         yield* Deferred.await(backgroundFinished);
         assert.isFalse(yield* runtime.hasPendingBackgroundWork!);
         yield* runtime.startTurn(turn(3, "Apply enabled instructions.", first));
+        assert.lengthOf(openedOptions, 2);
+        yield* Queue.offer(messageQueues[1]!, resultMessage(3));
         yield* Queue.take(terminals);
-        assert.isTrue(systemPromptAppend(first).endsWith(first.text));
-        assert.notInclude(systemPromptAppend(undefined), "<token_efficiency>");
+        assert.isTrue(systemPromptAppend(openedOptions[1]!).endsWith(first.text));
+
+        yield* runtime.startTurn(turn(4, "Reuse unchanged instructions.", first));
+        yield* Queue.offer(messageQueues[1]!, resultMessage(4));
+        yield* Queue.take(terminals);
+        assert.lengthOf(openedOptions, 2);
+
+        yield* runtime.startTurn(turn(5, "Refresh instructions.", second));
+        assert.lengthOf(openedOptions, 3);
+        yield* Queue.offer(messageQueues[2]!, resultMessage(5));
+        yield* Queue.take(terminals);
+        assert.isTrue(systemPromptAppend(openedOptions[2]!).endsWith(second.text));
+        assert.notInclude(systemPromptAppend(openedOptions[2]!), first.text);
+
+        yield* runtime.compactThread(turn(6, "Compact with current instructions.", second));
+        yield* Queue.offer(messageQueues[2]!, resultMessage(6));
+        yield* Queue.take(terminals);
+        assert.lengthOf(openedOptions, 3);
+        assert.isTrue(systemPromptAppend(openedOptions[2]!).endsWith(second.text));
+
+        yield* runtime.startTurn(turn(7, "Disable instructions.", undefined));
+        assert.lengthOf(openedOptions, 4);
+        yield* Queue.offer(messageQueues[3]!, resultMessage(7));
+        yield* Queue.take(terminals);
+        assert.notInclude(systemPromptAppend(openedOptions[3]!), "<token_efficiency>");
       }),
     ),
   );
-
-  it("appends the active block last and removes it when disabled", () => {
-    const disabled = systemPromptAppend(undefined);
-    const enabled = systemPromptAppend(first);
-    const refreshed = systemPromptAppend(second);
-
-    assert.isTrue(enabled.endsWith(first.text));
-    assert.isTrue(refreshed.endsWith(second.text));
-    assert.notInclude(disabled, "<token_efficiency>");
-    assert.notInclude(enabled, second.text);
-  });
 });
