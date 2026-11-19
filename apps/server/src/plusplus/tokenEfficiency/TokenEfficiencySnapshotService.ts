@@ -32,6 +32,7 @@ import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -52,8 +53,6 @@ export interface ActiveTokenEfficiencySnapshot {
   readonly provenance: TokenEfficiencyActiveSnapshot;
 }
 
-// The design fixes this service identifier independently of its file path.
-// @effect-diagnostics deterministicKeys:off
 export class TokenEfficiencySnapshotService extends Context.Service<
   TokenEfficiencySnapshotService,
   {
@@ -63,7 +62,7 @@ export class TokenEfficiencySnapshotService extends Context.Service<
     /** Manual refresh bypasses scheduling and joins the service-scoped in-flight operation. */
     readonly refresh: Effect.Effect<TokenEfficiencyRefreshResult>;
   }
->()("t3/plusplus/TokenEfficiencySnapshotService") {}
+>()("t3/plusplus/tokenEfficiency/TokenEfficiencySnapshotService") {}
 
 const CoreCacheFile = Schema.Struct({
   version: Schema.Literal(1),
@@ -418,6 +417,7 @@ const make = Effect.gen(function* () {
     }).pipe(
       Effect.scoped,
       Effect.provideService(FetchHttpClient.RequestInit, { redirect: "manual" }),
+      Effect.provideService(HttpClient.TracerPropagationEnabled, false),
       Effect.mapError((error) =>
         isRefreshFailure(error) ? error : new RefreshFailure({ reason: "network" }),
       ),
@@ -444,31 +444,43 @@ const make = Effect.gen(function* () {
     );
   });
 
-  const refresh = Effect.gen(function* () {
-    const [start, awaitResult] = yield* Effect.uninterruptible(
-      SynchronizedRef.modifyEffect(inFlight, (current) => {
+  const refresh = Effect.uninterruptibleMask((restore) =>
+    Effect.gen(function* () {
+      const [start, awaitResult] = yield* SynchronizedRef.modifyEffect(inFlight, (current) => {
         if (Option.isSome(current)) {
           return Effect.succeed([
-            [Effect.void, Deferred.await(current.value)] as const,
+            [Effect.void, restore(Deferred.await(current.value))] as const,
             current,
           ] as const);
         }
         const deferred = Deferred.makeUnsafe<TokenEfficiencyRefreshResult>();
-        const run = Effect.gen(function* () {
-          const outcome = yield* performRefresh();
-          yield* SynchronizedRef.set(inFlight, Option.none());
-          const result = { outcome, view: yield* view } satisfies TokenEfficiencyRefreshResult;
-          yield* Deferred.succeed(deferred, result);
-        }).pipe(Effect.forkIn(serviceScope), Effect.asVoid);
+        const run = performRefresh().pipe(
+          Effect.onExit((exit) =>
+            SynchronizedRef.set(inFlight, Option.none()).pipe(
+              Effect.andThen(
+                Exit.isSuccess(exit)
+                  ? Effect.gen(function* () {
+                      yield* Deferred.succeed(deferred, {
+                        outcome: exit.value,
+                        view: yield* view,
+                      });
+                    })
+                  : Deferred.failCause(deferred, exit.cause),
+              ),
+            ),
+          ),
+          Effect.forkIn(serviceScope, { startImmediately: true }),
+          Effect.asVoid,
+        );
         return Effect.succeed([
-          [run, Deferred.await(deferred)] as const,
+          [run, restore(Deferred.await(deferred))] as const,
           Option.some(deferred),
         ] as const);
-      }),
-    );
-    yield* Effect.uninterruptible(start);
-    return yield* awaitResult;
-  });
+      });
+      yield* start;
+      return yield* awaitResult;
+    }),
+  );
 
   const automaticEvaluation = Effect.fn("TokenEfficiencySnapshotService.automaticEvaluation")(
     function* () {

@@ -14,6 +14,7 @@ import { TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "../../appearanceFonts";
 import { writeLocalStorageValue } from "../../hooks/useLocalStorage";
 import { commandLabel } from "./KeybindingsSettings.logic";
 import type { ResolvedSettingsScope } from "./settingsScope";
+import { TOKEN_EFFICIENCY_SETTINGS_SEARCH_ITEMS } from "../../plusplus/settings/tokenEfficiencySearch";
 
 export type SettingsPath =
   | "/settings/projects"
@@ -294,6 +295,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     scope: "project-defaults",
     searchTerms: ["model workspace environments projects inheritance checkout"],
   },
+  ...TOKEN_EFFICIENCY_SETTINGS_SEARCH_ITEMS,
   {
     id: "project-overview",
     title: "Project overview",

@@ -21,6 +21,7 @@ import * as Stream from "effect/Stream";
 
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
+import { makeProviderReplayGate } from "@t3tools/provider-testing/replayGate";
 
 import { claudeEffectiveQueryKey } from "../../plusplus/projectInstructions/claude.ts";
 import * as ClaudeAdapterV2 from "./ClaudeAdapterV2.ts";
@@ -59,8 +60,12 @@ const effectiveKey = (
 const systemPromptAppend = (options: ClaudeAdapterV2.ClaudeAgentSdkQueryOptions) =>
   (options.systemPrompt as { readonly append?: string }).append ?? "";
 
+function claudeSdkFrame(frame: unknown): SDKMessage {
+  return frame as SDKMessage;
+}
+
 const resultMessage = (ordinal: number): SDKMessage =>
-  ({
+  claudeSdkFrame({
     type: "result",
     subtype: "success",
     duration_ms: 10,
@@ -81,9 +86,9 @@ const resultMessage = (ordinal: number): SDKMessage =>
     uuid: `result-${ordinal}`,
     session_id: nativeThreadId,
     terminal_reason: "completed",
-  }) as SDKMessage;
+  });
 
-const backgroundStarted = {
+const backgroundStarted = claudeSdkFrame({
   type: "system",
   subtype: "task_started",
   task_id: "background-task",
@@ -93,9 +98,9 @@ const backgroundStarted = {
   task_type: "local_bash",
   uuid: "background-started",
   session_id: nativeThreadId,
-} as SDKMessage;
+});
 
-const backgroundCompleted = {
+const backgroundCompleted = claudeSdkFrame({
   type: "system",
   subtype: "task_notification",
   task_id: "background-task",
@@ -105,7 +110,7 @@ const backgroundCompleted = {
   summary: "Background build completed",
   uuid: "background-completed",
   session_id: nativeThreadId,
-} as SDKMessage;
+});
 
 describe("Claude project instruction delivery", () => {
   it.effect(
@@ -196,38 +201,41 @@ describe("Claude project instruction delivery", () => {
           Queue.unbounded<SDKMessage>(),
           Queue.unbounded<SDKMessage>(),
         ]);
+        const queryRunner = {
+          open: (input: ClaudeAdapterV2.ClaudeAgentSdkQueryOpenInput) => {
+            const messages = messageQueues[openedOptions.length];
+            if (messages === undefined) {
+              throw new Error("Unexpected additional Claude query.");
+            }
+            openedOptions.push(input.options);
+            return {
+              messages: Stream.fromQueue(messages),
+              offer: () => Effect.void,
+              setModel: () => Effect.void,
+              applyFlagSettings: () => Effect.void,
+              setPermissionMode: () => Effect.void,
+              stopTask: () => Effect.void,
+              backgroundTasks: () => Effect.succeed(false),
+              mcpServerStatus: Effect.succeed([]),
+              readMcpResource: () => Effect.die("unexpected MCP resource read"),
+              callMcpTool: () => Effect.die("unexpected MCP tool call"),
+              listPermissionRules: Effect.die("unexpected permission rules read"),
+              interrupt: Effect.void,
+              close: Queue.shutdown(messages),
+            };
+          },
+          forkSession: () => {
+            throw new Error("Unexpected Claude session fork.");
+          },
+          subagentLaunchToolUseId: () => null,
+          assertComplete: () => undefined,
+        };
+        const replayOptions = { queryRunner, replayGate: makeProviderReplayGate([]) };
         const registryContext = yield* Layer.build(
-          ClaudeOrchestratorReplayHarness.makeProviderAdapterRegistryLayer(transcript, {
-            queryRunner: {
-              open: (input) => {
-                const messages = messageQueues[openedOptions.length];
-                if (messages === undefined) {
-                  throw new Error("Unexpected additional Claude query.");
-                }
-                openedOptions.push(input.options);
-                return {
-                  messages: Stream.fromQueue(messages),
-                  offer: () => Effect.void,
-                  setModel: () => Effect.void,
-                  applyFlagSettings: () => Effect.void,
-                  setPermissionMode: () => Effect.void,
-                  stopTask: () => Effect.void,
-                  backgroundTasks: () => Effect.succeed(false),
-                  mcpServerStatus: Effect.succeed([]),
-                  readMcpResource: () => Effect.die("unexpected MCP resource read"),
-                  callMcpTool: () => Effect.die("unexpected MCP tool call"),
-                  listPermissionRules: Effect.die("unexpected permission rules read"),
-                  interrupt: Effect.void,
-                  close: Queue.shutdown(messages),
-                };
-              },
-              forkSession: () => {
-                throw new Error("Unexpected Claude session fork.");
-              },
-              subagentLaunchToolUseId: () => null,
-              assertComplete: () => undefined,
-            },
-          }).pipe(Layer.provide(McpProviderSessions.layer)),
+          ClaudeOrchestratorReplayHarness.makeProviderAdapterRegistryLayer(
+            transcript,
+            replayOptions,
+          ).pipe(Layer.provide(McpProviderSessions.layer)),
         );
         const registry = yield* ProviderAdapterRegistry.ProviderAdapterRegistryV2.pipe(
           Effect.provide(registryContext),
@@ -347,7 +355,7 @@ describe("Claude project instruction delivery", () => {
         assert.isTrue(systemPromptAppend(openedOptions[2]!).endsWith(second.text));
         assert.notInclude(systemPromptAppend(openedOptions[2]!), first.text);
 
-        yield* runtime.compactThread(turn(6, "Compact with current instructions.", second));
+        yield* runtime.compactThread!(turn(6, "Compact with current instructions.", second));
         yield* Queue.offer(messageQueues[2]!, resultMessage(6));
         yield* Queue.take(terminals);
         assert.lengthOf(openedOptions, 3);
