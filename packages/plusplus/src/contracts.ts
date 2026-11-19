@@ -7,9 +7,12 @@
 import {
   ContextBridgeRoute,
   ContextBridgeSettings,
+  type ProjectId,
+  type ProjectSettingsOverrides,
   ServerProviderMonetaryUsage,
   type ServerProvider,
   type ServerProviderUsageLimits,
+  type ServerSettings,
   TrimmedNonEmptyString,
   UsageLimitSourceAccount,
 } from "@t3tools/contracts";
@@ -212,6 +215,69 @@ export function mergeContextBridgeSettingsPatch(
     defaultSource: area.defaultSource ?? base.defaultSource,
     routes: area.routes ?? base.routes,
   };
+}
+
+/** `true` is the only stored value; the whole area is deleted when disabled. */
+const TokenEfficiencySidecar = Schema.Literal(true);
+
+interface ProjectOverrideEntryCarrier {
+  readonly plusplus?: unknown;
+}
+
+function readsTokenEfficiency(entry: unknown): boolean {
+  const carrier = (entry as ProjectOverrideEntryCarrier | undefined)?.plusplus;
+  return decodeSidecarArea(TokenEfficiencySidecar, carrier, "tokenEfficiency") === true;
+}
+
+/** Project-only and default-off: only a stored `true` in that project's own override entry enables it. */
+export function readProjectTokenEfficiency(
+  settings: Pick<ServerSettings, "projectSettingsOverrides">,
+  projectId: ProjectId | null,
+): boolean {
+  if (projectId === null) return false;
+  return readsTokenEfficiency(settings.projectSettingsOverrides[projectId]);
+}
+
+/** True when any project in this environment is enabled; drives automatic refresh in #77. */
+export function anyProjectTokenEfficiencyEnabled(
+  settings: Pick<ServerSettings, "projectSettingsOverrides">,
+): boolean {
+  for (const entry of Object.values(settings.projectSettingsOverrides)) {
+    if (readsTokenEfficiency(entry)) return true;
+  }
+  return false;
+}
+
+/** Project ids enabled in `next` but not in `previous`; drives transition refresh in #77. */
+export function newlyEnabledTokenEfficiencyProjects(
+  previous: Pick<ServerSettings, "projectSettingsOverrides">,
+  next: Pick<ServerSettings, "projectSettingsOverrides">,
+): ReadonlyArray<ProjectId> {
+  const enabled: ProjectId[] = [];
+  for (const [projectId, entry] of Object.entries(next.projectSettingsOverrides)) {
+    if (!readsTokenEfficiency(entry)) continue;
+    if (readsTokenEfficiency(previous.projectSettingsOverrides[projectId as ProjectId])) continue;
+    enabled.push(projectId as ProjectId);
+  }
+  return enabled;
+}
+
+/**
+ * The entry with the area set (enabled) or removed (disabled). Upstream keys and other
+ * sidecar areas pass through untouched. Returns null when the entry ends up empty,
+ * matching upstream's "null removes the entry".
+ */
+export function withProjectTokenEfficiency(
+  entry: ProjectSettingsOverrides,
+  enabled: boolean,
+): ProjectSettingsOverrides | null {
+  const { plusplus: carrier, ...rest } = entry as ProjectSettingsOverrides &
+    ProjectOverrideEntryCarrier;
+  const plusplus = enabled
+    ? withArea(carrier, "tokenEfficiency", true)
+    : withoutArea(carrier, "tokenEfficiency");
+  const next = { ...rest, ...(plusplus === undefined ? {} : { plusplus }) };
+  return Object.keys(next).length === 0 ? null : (next as ProjectSettingsOverrides);
 }
 
 /** Shallow carrier merge where the patch record wins; `undefined` keeps output sparse. */

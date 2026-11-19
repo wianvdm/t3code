@@ -1,9 +1,12 @@
 import {
   type ContextBridgeSettings,
   OrchestrationV2PendingBackgroundTask,
+  ProjectId,
+  type ProjectSettingsOverrides,
   ProviderDriverKind,
   ProviderInstanceId,
   type ServerProvider,
+  type ServerSettings,
   ServerProviderUsageLimits,
   type UsageLimitSourceAccount,
 } from "@t3tools/contracts";
@@ -11,15 +14,19 @@ import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  anyProjectTokenEfficiencyEnabled,
   mergeContextBridgeSettingsPatch,
   mergeSidecarCarriers,
+  newlyEnabledTokenEfficiencyProjects,
   pendingBackgroundTaskStartedAtFields,
   readContextBridgeSettings,
   readMonetaryUsage,
   readPendingBackgroundTaskStartedAt,
+  readProjectTokenEfficiency,
   readUsageAccounts,
   usageAccountsFields,
   withMonetaryUsage,
+  withProjectTokenEfficiency,
   withUsageAccountSidecars,
   withUsageAccounts,
 } from "./contracts.ts";
@@ -295,6 +302,104 @@ describe("monetaryUsage", () => {
     const limits = { ...base, monetaryUsage: legacy, plusplus: { monetaryUsage: legacy } };
     expect(decode(encode(limits))).toEqual(limits);
     expect(decode({ ...base, monetaryUsage: legacy })).toEqual({ ...base, monetaryUsage: legacy });
+  });
+});
+
+describe("token efficiency", () => {
+  const projectA = ProjectId.make("project_a");
+  const projectB = ProjectId.make("project_b");
+
+  function settingsWith(
+    entries: Record<string, unknown>,
+  ): Pick<ServerSettings, "projectSettingsOverrides"> {
+    return {
+      projectSettingsOverrides: entries as Record<ProjectId, ProjectSettingsOverrides>,
+    };
+  }
+
+  it("resolves false for absent, false, malformed and null-project cases", () => {
+    expect(readProjectTokenEfficiency(settingsWith({}), projectA)).toBe(false);
+    expect(readProjectTokenEfficiency(settingsWith({}), null)).toBe(false);
+    expect(
+      readProjectTokenEfficiency(settingsWith({ [projectA]: { defaultAutoPull: true } }), projectA),
+    ).toBe(false);
+    expect(
+      readProjectTokenEfficiency(
+        settingsWith({ [projectA]: { plusplus: { tokenEfficiency: false } } }),
+        projectA,
+      ),
+    ).toBe(false);
+    for (const plusplus of ["yes", {}, []]) {
+      expect(
+        readProjectTokenEfficiency(
+          settingsWith({ [projectA]: { defaultAutoPull: true, plusplus } }),
+          projectA,
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("enabling one project leaves the others false", () => {
+    const settings = settingsWith({
+      [projectA]: { defaultAutoPull: true, plusplus: { tokenEfficiency: true } },
+    });
+    expect(readProjectTokenEfficiency(settings, projectA)).toBe(true);
+    expect(readProjectTokenEfficiency(settings, projectB)).toBe(false);
+    expect(anyProjectTokenEfficiencyEnabled(settings)).toBe(true);
+    expect(anyProjectTokenEfficiencyEnabled(settingsWith({}))).toBe(false);
+    expect(
+      anyProjectTokenEfficiencyEnabled(settingsWith({ [projectA]: { plusplus: "garbage" } })),
+    ).toBe(false);
+  });
+
+  it("never reads the environment-level carrier", () => {
+    const envCarrier = {
+      ...settingsWith({}),
+      plusplus: { tokenEfficiency: true },
+    };
+    expect(readProjectTokenEfficiency(envCarrier, projectA)).toBe(false);
+    expect(anyProjectTokenEfficiencyEnabled(envCarrier)).toBe(false);
+  });
+
+  it("writer round-trips other sidecar areas and unknown upstream keys", () => {
+    const entry = {
+      defaultAutoPull: true,
+      unknownUpstreamKey: 1,
+      plusplus: { future: { kept: 1 } },
+    } as unknown as ProjectSettingsOverrides;
+    const enabled = withProjectTokenEfficiency(entry, true);
+    expect(enabled).toEqual({
+      defaultAutoPull: true,
+      unknownUpstreamKey: 1,
+      plusplus: { future: { kept: 1 }, tokenEfficiency: true },
+    });
+    expect(withProjectTokenEfficiency(enabled!, false)).toEqual(entry);
+  });
+
+  it("writer returns null when disabling leaves an empty entry", () => {
+    const onlyArea = { plusplus: { tokenEfficiency: true } } as unknown as ProjectSettingsOverrides;
+    expect(withProjectTokenEfficiency(onlyArea, false)).toBeNull();
+    expect(withProjectTokenEfficiency(onlyArea, true)).toEqual(onlyArea);
+    expect(withProjectTokenEfficiency({} as ProjectSettingsOverrides, true)).toEqual({
+      plusplus: { tokenEfficiency: true },
+    });
+    expect(withProjectTokenEfficiency({} as ProjectSettingsOverrides, false)).toBeNull();
+  });
+
+  it("newlyEnabledTokenEfficiencyProjects detects only false-to-true transitions", () => {
+    const enabled = (ids: ReadonlyArray<string>) =>
+      settingsWith(
+        Object.fromEntries(ids.map((id) => [id, { plusplus: { tokenEfficiency: true } }])),
+      );
+    const previous = enabled(["a", "b"]);
+    expect(newlyEnabledTokenEfficiencyProjects(previous, enabled(["b", "c"]))).toEqual([
+      ProjectId.make("c"),
+    ]);
+    expect(newlyEnabledTokenEfficiencyProjects(previous, enabled(["a", "b"]))).toEqual([]);
+    expect(newlyEnabledTokenEfficiencyProjects(previous, settingsWith({}))).toEqual([]);
+    expect(newlyEnabledTokenEfficiencyProjects(enabled(["a"]), enabled(["a", "b"]))).toEqual([
+      ProjectId.make("b"),
+    ]);
   });
 });
 
