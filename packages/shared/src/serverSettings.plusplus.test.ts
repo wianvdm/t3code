@@ -82,8 +82,9 @@ describe("contextBridge sidecar patching", () => {
   });
 
   it("ignores a malformed carrier on current settings when patching other keys", () => {
-    const patched = applyServerSettingsPatch(seeded, { worktreesDirectory: "" });
+    const malformed: ServerSettings = { ...seeded, plusplus: "malformed" };
+    const patched = applyServerSettingsPatch(malformed, { worktreesDirectory: "" });
     expect(patched.contextBridge).toEqual(seeded.contextBridge);
-    expect(patched.plusplus).toEqual(seeded.plusplus);
+    expect(patched.plusplus).toBe("malformed");
   });
 });
