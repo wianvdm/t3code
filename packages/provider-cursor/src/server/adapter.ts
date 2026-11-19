@@ -58,6 +58,10 @@ import {
   currentContextBridgeSettings,
 } from "@t3tools/provider-core/server/contextBridgeRuntime";
 import { buildRuntimeInstructions } from "@t3tools/provider-core/server/runtimeInstructions";
+import {
+  makeProjectInstructionsDeliveryTracker,
+  type ProjectInstructionsDeliveryPlan,
+} from "@t3tools/provider-core/server/projectInstructions";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
 import { makeProviderFailure } from "@t3tools/provider-core/server/failure";
 import { turnScopedSelectionTransition } from "@t3tools/provider-core/server/selectionTransition";
@@ -952,6 +956,7 @@ interface ActiveCursorTurn {
   readonly reasoning: ActiveCursorTextStream;
   /** The user text this run sent, before runtime instructions; absent for /compress. */
   readonly prompt: string | undefined;
+  readonly projectDelivery: ProjectInstructionsDeliveryPlan | undefined;
   interrupted: boolean;
   finalized: boolean;
   /** The agent's latest turn ended and no new work has started since. */
@@ -976,6 +981,7 @@ export const makeCursorAdapterV2 = Effect.fn("makeCursorAdapterV2")(function* (
   const path = yield* Path.Path;
   const idAllocator = yield* IdAllocator.IdAllocatorV2;
   const runner = yield* CursorAgentSdk.CursorAgentSdkRunner;
+  const projectInstructionsDelivery = yield* makeProjectInstructionsDeliveryTracker;
   const platform = yield* HostProcess.Platform;
   const host = yield* ProviderHost.ProviderHost;
   const mcpSessions = yield* McpProviderSessions.McpProviderSessions;
@@ -2130,6 +2136,9 @@ export const makeCursorAdapterV2 = Effect.fn("makeCursorAdapterV2")(function* (
             return;
           }
           input.context.finalized = true;
+          if (input.status !== "interrupted" && input.status !== "cancelled") {
+            yield* input.context.projectDelivery?.commit ?? Effect.void;
+          }
           const completedAt = yield* DateTime.now;
           for (const tool of input.context.tools.values()) {
             yield* emitToolArtifacts({
@@ -2298,6 +2307,7 @@ export const makeCursorAdapterV2 = Effect.fn("makeCursorAdapterV2")(function* (
         let cursorSkillNames: ReadonlySet<string> | undefined;
         const resolveUserMessage = Effect.fnUntraced(function* (
           turnInput: ProviderAdapter.ProviderAdapterV2TurnInput,
+          nativeThreadId: string,
           mcpServers: Record<string, McpServerConfig> | undefined,
           hasDeviceTools: boolean,
           delivered: { readonly orchestration: boolean; readonly device: boolean },
@@ -2305,8 +2315,12 @@ export const makeCursorAdapterV2 = Effect.fn("makeCursorAdapterV2")(function* (
         ) {
           const rawText = turnInput.message.text;
           if (rawText.trim() === "/compress" && turnInput.message.attachments.length === 0) {
-            return { message: "/compress", prompt: undefined };
+            return { message: "/compress", prompt: undefined, projectDelivery: undefined };
           }
+          const projectDelivery = yield* projectInstructionsDelivery.plan(
+            nativeThreadId,
+            turnInput.projectInstructions,
+          );
           if (hasCursorSkillMention(rawText) && cursorSkillNames === undefined) {
             const skills = yield* discoverCursorSkills(
               turnInput.runtimePolicy.cwd ?? undefined,
@@ -2381,10 +2395,16 @@ export const makeCursorAdapterV2 = Effect.fn("makeCursorAdapterV2")(function* (
             targetDriver: CursorAgentSdk.CURSOR_PROVIDER,
             cwd: turnInput.runtimePolicy.cwd,
           });
-          const text = `${userText}\n\n${buildRuntimeInstructions({ harness: "Cursor", model: turnInput.modelSelection.model, bridgedContext })}`;
+          const text = `${userText}\n\n${buildRuntimeInstructions({
+            harness: "Cursor",
+            model: turnInput.modelSelection.model,
+            bridgedContext,
+            projectInstructions: projectDelivery.text,
+          })}`;
           return {
             message: images.length === 0 ? text : ({ text, images } satisfies SDKUserMessage),
             prompt: userText,
+            projectDelivery,
           };
         });
 
@@ -2417,8 +2437,9 @@ export const makeCursorAdapterV2 = Effect.fn("makeCursorAdapterV2")(function* (
                 ? known
                 : { orchestration: turnInput.runOrdinal > 1, device: false };
             const interrupted = yield* Ref.get(interruptedPrompt);
-            const { message, prompt } = yield* resolveUserMessage(
+            const { message, prompt, projectDelivery } = yield* resolveUserMessage(
               turnInput,
+              agent.nativeThreadId,
               mcpServers,
               hasDeviceTools,
               delivered,
@@ -2447,6 +2468,7 @@ export const makeCursorAdapterV2 = Effect.fn("makeCursorAdapterV2")(function* (
                 },
               })
               .pipe(Effect.mapError(classifyCursorModelRejection(turnInput.modelSelection)));
+            if (compacted) yield* projectInstructionsDelivery.forget(agent.nativeThreadId);
             yield* Ref.set(told, {
               agent: agent.nativeThreadId,
               orchestration: !compacted && (delivered.orchestration || mcpServers !== undefined),
@@ -2480,6 +2502,7 @@ export const makeCursorAdapterV2 = Effect.fn("makeCursorAdapterV2")(function* (
                 nextSegment: 0,
               },
               prompt,
+              projectDelivery,
               interrupted: false,
               finalized: false,
               turnEnded: false,

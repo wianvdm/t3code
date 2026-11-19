@@ -44,6 +44,7 @@ import * as McpProviderSession from "@t3tools/provider-core/server/mcpSession";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import { bridgedInstructionsForTurn } from "@t3tools/provider-core/server/contextBridgeRuntime";
 import { buildRuntimeInstructions } from "@t3tools/provider-core/server/runtimeInstructions";
+import { makeProjectInstructionsDeliveryTracker } from "@t3tools/provider-core/server/projectInstructions";
 import { museModelCapabilities, resolveMuseReasoningEffort } from "./modelCatalog.ts";
 import {
   MuseApproval,
@@ -297,6 +298,7 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
   const fileSystem = yield* FileSystem.FileSystem;
   const mcpSessions = yield* McpProviderSessions.McpProviderSessions;
   const agentScope = yield* AgentScope;
+  const projectInstructionsDelivery = yield* makeProjectInstructionsDeliveryTracker;
 
   const protocolError = (detail: string, payload?: unknown) =>
     new ProviderAdapter.ProviderAdapterProtocolError({
@@ -842,6 +844,8 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
         } else if (item.kind === "reasoning") {
           turnItem = { ...base, type: "reasoning", text, streaming };
         } else if (item.kind === "compaction") {
+          const sessionId = turn.input.providerThread.nativeThreadRef?.nativeId;
+          if (typeof sessionId === "string") yield* projectInstructionsDelivery.forget(sessionId);
           turnItem = {
             ...base,
             type: "compaction",
@@ -2177,6 +2181,9 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
               ),
               Effect.catch((error) => (broken ? Effect.fail(error) : Effect.succeed(error.detail))),
             );
+            const compactedSessionId = turn.input.providerThread.nativeThreadRef?.nativeId;
+            if (declined === undefined && typeof compactedSessionId === "string")
+              yield* projectInstructionsDelivery.forget(compactedSessionId);
             if (declined !== undefined)
               yield* eventPermit.withPermits(1)(finish(turn, "failed", declined));
           } else {
@@ -2185,6 +2192,14 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
               targetDriver: MUSE_PROVIDER,
               cwd: workspaceRoot,
             });
+            const projectDeliverySessionId = turnInput.providerThread.nativeThreadRef?.nativeId;
+            const projectDelivery =
+              typeof projectDeliverySessionId === "string"
+                ? yield* projectInstructionsDelivery.plan(
+                    projectDeliverySessionId,
+                    turnInput.projectInstructions,
+                  )
+                : undefined;
             const result = yield* request(
               "turn/start",
               {
@@ -2196,6 +2211,7 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
                       model: session.model ?? undefined,
                       reasoningEffort: effort,
                       bridgedContext,
+                      projectInstructions: projectDelivery?.text,
                     }),
                   },
                   ...parts,
@@ -2215,6 +2231,7 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
               );
               return yield* protocolError("Muse admitted the turn under an unexpected identity");
             }
+            yield* projectDelivery?.commit ?? Effect.void;
           }
         }).pipe(
           Effect.onError((cause) => {
