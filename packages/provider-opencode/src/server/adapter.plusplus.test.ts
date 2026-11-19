@@ -133,7 +133,7 @@ const makeHarness = Effect.fn("OpenCodeProjectInstructions.makeHarness")(functio
       },
       modelSelection,
       runtimePolicy,
-      projectInstructions,
+      ...(projectInstructions === undefined ? {} : { projectInstructions }),
     });
   return { providerThread, runtime, startTurn, threadId };
 });

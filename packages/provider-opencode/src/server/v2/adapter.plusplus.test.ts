@@ -212,7 +212,7 @@ const makeHarness = Effect.fn("OpenCode2ProjectInstructions.makeHarness")(functi
         },
         modelSelection,
         runtimePolicy,
-        projectInstructions,
+        ...(projectInstructions === undefined ? {} : { projectInstructions }),
       });
       assert.equal((yield* Fiber.join(terminal))?.status, "completed");
     });

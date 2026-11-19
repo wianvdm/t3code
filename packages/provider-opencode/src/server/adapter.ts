@@ -260,7 +260,7 @@ function accumulateOpenCodeStepUsage(
 
 interface ActiveOpenCodeTurn {
   readonly usage: OpenCodeTurnTokenUsageAccumulator;
-  readonly projectInstructions?: string;
+  readonly projectInstructions?: string | undefined;
   readonly isRoot: boolean;
   readonly threadId: ThreadId;
   readonly runId: ProviderAdapter.ProviderAdapterV2TurnInput["runId"] | null;
