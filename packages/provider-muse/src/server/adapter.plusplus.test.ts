@@ -169,7 +169,9 @@ const makeTurnInput = Effect.fnUntraced(function* (input: {
       text: input.text,
       attachments: [],
     },
-    projectInstructions: input.projectInstructions,
+    ...(input.projectInstructions === undefined
+      ? {}
+      : { projectInstructions: input.projectInstructions }),
   };
 });
 

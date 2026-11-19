@@ -1899,7 +1899,7 @@
       "legacy": true
     },
     "packages/provider-muse/src/server/adapter.ts": {
-      "delta": [19, 0],
+      "delta": [18, 0],
       "legacy": true
     },
     "packages/provider-muse/src/server/usageLimits.ts": {
