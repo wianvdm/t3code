@@ -16,7 +16,6 @@ import {
   type ResetCreditChoice,
   resetCreditChoices,
 } from "@t3tools/plusplus-extensions/usageReporting";
-import type { ProviderDriverKind } from "@t3tools/contracts";
 import type { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import { normalizeProviderAccentColor } from "@t3tools/client-runtime/state/provider-instance-display";
 import { AlertTriangleIcon, ExternalLinkIcon, TicketIcon } from "lucide-react";
@@ -545,7 +544,7 @@ function PoolWindowCard({
   label,
   description,
 }: {
-  readonly driver: ProviderDriverKind;
+  readonly driver: LimitPool["driver"];
   readonly pool: LimitPoolWindow;
   readonly color: string;
   readonly now: number;

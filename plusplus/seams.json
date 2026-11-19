@@ -1269,7 +1269,7 @@
       "legacy": true
     },
     "apps/web/src/components/usage/UsageLimitsPooled.tsx": {
-      "delta": [19, 2],
+      "delta": [18, 2],
       "seams": [
         {
           "id": "usage-limits.web-pooled-import",
@@ -1321,7 +1321,7 @@
             "symbol": "PoolSection",
             "text": "<PoolWindowCard"
           },
-          "reason": "The pool driver selects the model vendor icon in the ++ label mount.",
+          "reason": "Passes the pool driver into PoolWindowCard (including its prop declaration and destructure) so PoolWindowLabel can select the ++ model vendor icon.",
           "fingerprint": "sha256:134c48c807282b0e"
         },
         {

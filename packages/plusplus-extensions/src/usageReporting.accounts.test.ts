@@ -242,9 +242,21 @@ describe("usage accounts without a native identity", () => {
       ],
     });
     const input = presentations([anonymous]);
-    const expected = collectLimitAccounts(input);
     using collect = vi.spyOn(upstream, "collectLimitAccounts");
-    expect(collectLimitAccounts(input)).toEqual(expected);
+    expect(collectLimitAccounts(input)).toEqual([
+      {
+        key: "env-a:claude:anonymous.json",
+        driver: claude,
+        displayName: "anonymous",
+        email: undefined,
+        plan: undefined,
+        accentColor: undefined,
+        environments: [{ environmentId: EnvironmentId.make("env-a"), label: "Laptop" }],
+        sourceLabel: null,
+        redeem: null,
+        limits: { checkedAt, windows: [window] },
+      },
+    ]);
     expect(collect).toHaveBeenCalledTimes(1);
   });
 });

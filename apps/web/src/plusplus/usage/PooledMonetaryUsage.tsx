@@ -2,7 +2,6 @@ import type { ProviderDriverKind } from "@t3tools/contracts";
 import { formatUsd } from "@t3tools/shared/usageFormat";
 import type { LimitAccount } from "@t3tools/plusplus-extensions/usageReporting";
 
-import { MonetaryUsageAccounts } from "./MonetaryUsage";
 import { ModelVendorIcon, usesModelVendorIcon } from "./modelVendorIcon";
 import { monetaryUsageOf } from "./monetaryUsage.logic";
 
@@ -52,6 +51,4 @@ export function PoolWindowLabel({
   );
 }
 
-export function PooledMonetaryUsage(props: Parameters<typeof MonetaryUsageAccounts>[0]) {
-  return <MonetaryUsageAccounts {...props} />;
-}
+export { MonetaryUsageAccounts as PooledMonetaryUsage } from "./MonetaryUsage";
