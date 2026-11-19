@@ -577,6 +577,21 @@
         }
       ]
     },
+    "apps/mobile/vite.config.ts": {
+      "delta": [1, 0],
+      "seams": [
+        {
+          "id": "token-efficiency.mobile-provenance-test-config",
+          "feature": "token-efficiency",
+          "mechanism": "config",
+          "anchor": {
+            "text": "const reactTests = ["
+          },
+          "reason": "The ++ mobile provenance test needs the jsdom-backed React test project.",
+          "fingerprint": "sha256:de0042b2804032bc"
+        }
+      ]
+    },
     "apps/server/package.json": {
       "delta": [2, 0],
       "legacy": true
@@ -708,7 +723,7 @@
       "legacy": true
     },
     "apps/server/src/observability/RpcInstrumentation.ts": {
-      "delta": [1, 0],
+      "delta": [3, 0],
       "legacy": true
     },
     "apps/server/src/orchestration-v2/Adapters/AcpAdapterV2.test.ts": {
@@ -1060,11 +1075,11 @@
       "legacy": true
     },
     "apps/server/src/ws.test.ts": {
-      "delta": [2, 0],
+      "delta": [4, 0],
       "legacy": true
     },
     "apps/server/src/ws.ts": {
-      "delta": [4, 1],
+      "delta": [6, 1],
       "seams": [
         {
           "id": "usage-limits.ws-import",
@@ -1107,6 +1122,27 @@
           },
           "reason": "Issue #64 adds the ++ access check beside the source-control RPC handlers.",
           "fingerprint": "sha256:713a3cd58ee3887e"
+        },
+        {
+          "id": "token-efficiency.ws-import",
+          "feature": "token-efficiency",
+          "mechanism": "hook",
+          "anchor": {
+            "text": "import * as SourceControlSignIn from \"./sourceControl/SourceControlSignIn.ts\";"
+          },
+          "reason": "Issue #76 exposes the owning environment's token-efficiency snapshot service through WebSocket RPC handlers.",
+          "fingerprint": "sha256:55d3127acf0fc008"
+        },
+        {
+          "id": "token-efficiency.ws-handlers",
+          "feature": "token-efficiency",
+          "mechanism": "hook",
+          "anchor": {
+            "symbol": "layerWsRpc",
+            "text": "const handlers = ServerWsRpcGroup.of({"
+          },
+          "reason": "Issue #76 composes the thin token-efficiency handlers into the server RPC group.",
+          "fingerprint": "sha256:b708a0953c1c3a90"
         }
       ]
     },
@@ -1629,6 +1665,32 @@
         }
       ]
     },
+    "packages/contracts/src/clientRpcPermissions.ts": {
+      "delta": [2, 0],
+      "seams": [
+        {
+          "id": "token-efficiency.guarded-scopes-import",
+          "feature": "token-efficiency",
+          "mechanism": "hook",
+          "anchor": {
+            "text": "import { WS_METHODS } from \"./rpc.ts\";"
+          },
+          "reason": "Issue #76 shares the token-efficiency RPC scope declarations with client and server authorization.",
+          "fingerprint": "sha256:b32c5dc4f5cd2555"
+        },
+        {
+          "id": "token-efficiency.guarded-scopes",
+          "feature": "token-efficiency",
+          "mechanism": "hook",
+          "anchor": {
+            "symbol": "CLIENT_GUARDED_RPC_SCOPES",
+            "text": "[WS_METHODS.providerAuthRemoveMethod]:"
+          },
+          "reason": "Issue #76 guards inspection with orchestration-read and refresh with settings-write at the destination environment.",
+          "fingerprint": "sha256:1558ae8c661c5a0f"
+        }
+      ]
+    },
     "packages/contracts/src/orchestrationV2.test.ts": {
       "delta": [46, 0],
       "legacy": true
@@ -1644,7 +1706,7 @@
       "reason": "The only ++ contract data dual-written next to the typed plusplus sidecar carrier are the four released legacy seam groups: SEAM-185 contextBridge on ServerSettings and its patch, SEAM-181 startedAt on PendingBackgroundTask, SEAM-182 monetaryUsage on ServerProviderUsageLimits, and SEAM-183 usageAccounts on ServerProvider. Released clients and stored payloads read those fields directly, so writers keep emitting them while sidecar-first reads prefer the typed carrier. All future ++ data must be sidecar-only; no new direct ++ fields may be added to upstream structs."
     },
     "packages/contracts/src/rpc.ts": {
-      "delta": [8, 0],
+      "delta": [10, 0],
       "legacy": true
     },
     "packages/contracts/src/server.test.ts": {

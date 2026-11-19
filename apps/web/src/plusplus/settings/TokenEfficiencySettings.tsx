@@ -10,6 +10,7 @@ import {
   useRunScopedPlan,
   useScopedSettingsWriteAllowed,
 } from "../../components/settings/useScopedSettings";
+import { TokenEfficiencyProvenance } from "./TokenEfficiencyProvenance";
 import {
   planTokenEfficiencyPatch,
   tokenEfficiencyEnabled,
@@ -63,6 +64,7 @@ function TokenEfficiencySettingsContent() {
           />
         }
       />
+      {scopeSupportsToggle ? <TokenEfficiencyProvenance environments={environments} /> : null}
     </SettingsSection>
   );
 }
