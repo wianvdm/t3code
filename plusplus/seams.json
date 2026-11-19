@@ -699,7 +699,7 @@
       "legacy": true
     },
     "apps/server/src/orchestration-v2/Adapters/ClaudeAdapterV2.ts": {
-      "delta": [159, 13],
+      "delta": [173, 14],
       "legacy": true
     },
     "apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.test.ts": {
@@ -711,7 +711,7 @@
       "legacy": true
     },
     "apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.ts": {
-      "delta": [161, 1],
+      "delta": [179, 3],
       "legacy": true
     },
     "apps/server/src/orchestration-v2/ClaudeAutomaticDelivery.integration.test.ts": {
@@ -729,6 +729,43 @@
     "apps/server/src/orchestration-v2/ProjectionStore.test.ts": {
       "delta": [10, 1],
       "legacy": true
+    },
+    "apps/server/src/orchestration-v2/RunExecutionService.ts": {
+      "delta": [3, 0],
+      "seams": [
+        {
+          "id": "token-efficiency.run-execution-import",
+          "feature": "token-efficiency",
+          "mechanism": "hook",
+          "anchor": {
+            "text": "import * as PreviewAgentActivity from \"../preview/PreviewAgentActivity.ts\";"
+          },
+          "reason": "RunExecutionService resolves project instructions at the single provider-turn funnel.",
+          "fingerprint": "sha256:ba9e8caed792af9a"
+        },
+        {
+          "id": "token-efficiency.run-execution-resolver",
+          "feature": "token-efficiency",
+          "mechanism": "hook",
+          "anchor": {
+            "symbol": "layer",
+            "text": "const mcpAppModelContext = yield* McpAppModelContext.McpAppModelContext;"
+          },
+          "reason": "The disabled-by-default Reference is captured at construction without adding requirements to upstream harnesses.",
+          "fingerprint": "sha256:9902fc0f2b712fda"
+        },
+        {
+          "id": "token-efficiency.run-execution-turn-input",
+          "feature": "token-efficiency",
+          "mechanism": "hook",
+          "anchor": {
+            "symbol": "layer",
+            "text": "...(appContext.length === 0 ? {} : { appContext }),"
+          },
+          "reason": "Every start path and /compact receives the resolved instructions through the shared turn input.",
+          "fingerprint": "sha256:b7d95ef88bc1cd6a"
+        }
+      ]
     },
     "apps/server/src/orchestration-v2/runtimeLayer.ts": {
       "delta": [5, 0],
@@ -988,7 +1025,7 @@
       "legacy": true
     },
     "apps/server/src/server.ts": {
-      "delta": [10, 0],
+      "delta": [12, 0],
       "legacy": true
     },
     "apps/server/src/serverOwnership.ts": {
@@ -1494,6 +1531,36 @@
       "delta": [6, 0],
       "legacy": true
     },
+    "evals/README.md": {
+      "delta": [8, 7],
+      "seams": [
+        {
+          "id": "token-efficiency.eval-row",
+          "feature": "token-efficiency",
+          "mechanism": "config",
+          "anchor": {
+            "text": "| [test-signal](test-signal/)"
+          },
+          "reason": "The eval index links the initial token-efficiency behavior comparison.",
+          "fingerprint": "sha256:62f4887bfe61d5f9"
+        }
+      ]
+    },
+    "evals/package.json": {
+      "delta": [1, 0],
+      "seams": [
+        {
+          "id": "token-efficiency.eval-script",
+          "feature": "token-efficiency",
+          "mechanism": "config",
+          "anchor": {
+            "key": "scripts"
+          },
+          "reason": "The eval package exposes the token-efficiency runner without adding dependencies.",
+          "fingerprint": "sha256:b53cd9e8b8d5a56a"
+        }
+      ]
+    },
     "infra/relay/README.md": {
       "delta": [13, 17],
       "legacy": true
@@ -1653,8 +1720,34 @@
       "legacy": true
     },
     "packages/provider-core/package.json": {
-      "delta": [21, 0],
+      "delta": [25, 0],
       "legacy": true
+    },
+    "packages/provider-core/src/server/ProviderAdapter.ts": {
+      "delta": [2, 0],
+      "seams": [
+        {
+          "id": "token-efficiency.turn-input-import",
+          "feature": "token-efficiency",
+          "mechanism": "hook",
+          "anchor": {
+            "text": "import type { OrchestrationV2HistoricalMessage } from \"@t3tools/contracts\";"
+          },
+          "reason": "The shared turn-input contract uses the ++ project-instruction type.",
+          "fingerprint": "sha256:6f526ca04fcb4a3b"
+        },
+        {
+          "id": "token-efficiency.turn-input-field",
+          "feature": "token-efficiency",
+          "mechanism": "mount",
+          "anchor": {
+            "symbol": "ProviderAdapterV2TurnInput",
+            "text": "readonly appContext?:"
+          },
+          "reason": "Application-owned instructions stay separate from Codex's untrusted appContext.",
+          "fingerprint": "sha256:4f2a9f5ebaa51316"
+        }
+      ]
     },
     "packages/provider-core/src/server/instanceEnvironment.test.ts": {
       "delta": [3, 1],
