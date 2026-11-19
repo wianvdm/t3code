@@ -1,4 +1,11 @@
+import * as Rpc from "effect/rpc/Rpc";
 import * as Schema from "effect/Schema";
+
+import {
+  AuthOrchestrationReadScope,
+  AuthSettingsWriteScope,
+  EnvironmentAuthorizationError,
+} from "../auth.ts";
 
 export const TokenEfficiencySource = Schema.Literals(["bundled", "upstream"]);
 export type TokenEfficiencySource = typeof TokenEfficiencySource.Type;
@@ -63,3 +70,25 @@ export const TokenEfficiencyRefreshResult = Schema.Struct({
   view: TokenEfficiencyView,
 });
 export type TokenEfficiencyRefreshResult = typeof TokenEfficiencyRefreshResult.Type;
+
+export const TOKEN_EFFICIENCY_WS_METHODS = {
+  view: "plusplus.tokenEfficiency.view",
+  refresh: "plusplus.tokenEfficiency.refresh",
+} as const;
+
+const TokenEfficiencyViewRpc = Rpc.make(TOKEN_EFFICIENCY_WS_METHODS.view, {
+  payload: Schema.Struct({}),
+  success: TokenEfficiencyView,
+  error: EnvironmentAuthorizationError,
+});
+const TokenEfficiencyRefreshRpc = Rpc.make(TOKEN_EFFICIENCY_WS_METHODS.refresh, {
+  payload: Schema.Struct({}),
+  success: TokenEfficiencyRefreshResult,
+  error: EnvironmentAuthorizationError,
+});
+export const TokenEfficiencyRpcs = [TokenEfficiencyViewRpc, TokenEfficiencyRefreshRpc] as const;
+
+export const TOKEN_EFFICIENCY_GUARDED_RPC_SCOPES = {
+  [TOKEN_EFFICIENCY_WS_METHODS.view]: AuthOrchestrationReadScope,
+  [TOKEN_EFFICIENCY_WS_METHODS.refresh]: AuthSettingsWriteScope,
+} as const;
