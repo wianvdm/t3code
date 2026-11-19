@@ -1871,7 +1871,7 @@
       "legacy": true
     },
     "packages/provider-cursor/src/server/adapter.ts": {
-      "delta": [11, 1],
+      "delta": [29, 3],
       "legacy": true
     },
     "packages/provider-cursor/src/server/driver.ts": {
@@ -1899,7 +1899,7 @@
       "legacy": true
     },
     "packages/provider-muse/src/server/adapter.ts": {
-      "delta": [7, 0],
+      "delta": [19, 0],
       "legacy": true
     },
     "packages/provider-muse/src/server/usageLimits.ts": {
