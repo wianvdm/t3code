@@ -52,6 +52,10 @@
     "shared-persistence": {
       "title": "Shared database compatibility with stock T3 Code",
       "issue": 119
+    },
+    "token-efficiency": {
+      "title": "Opt-in token-efficiency project instructions",
+      "issue": 72
     }
   },
   "files": {
@@ -984,7 +988,7 @@
       "legacy": true
     },
     "apps/server/src/server.ts": {
-      "delta": [8, 0],
+      "delta": [10, 0],
       "legacy": true
     },
     "apps/server/src/serverOwnership.ts": {
@@ -1528,6 +1532,21 @@
     "packages/client-runtime/src/preview/serverBrowserStream.ts": {
       "delta": [2, 1],
       "legacy": true
+    },
+    "packages/contracts/package.json": {
+      "delta": [4, 0],
+      "seams": [
+        {
+          "id": "token-efficiency.contracts-subpath",
+          "feature": "token-efficiency",
+          "mechanism": "config",
+          "anchor": {
+            "key": "exports"
+          },
+          "reason": "Server, web and mobile import the ++ schemas through a narrow contracts subpath.",
+          "fingerprint": "sha256:d0ee87b0c1e5701e"
+        }
+      ]
     },
     "packages/contracts/src/orchestrationV2.test.ts": {
       "delta": [46, 0],

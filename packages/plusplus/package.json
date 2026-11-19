@@ -27,6 +27,26 @@
       "types": "./src/runtimeInstructions.ts",
       "import": "./src/runtimeInstructions.ts"
     },
+    "./projectInstructions": {
+      "types": "./src/projectInstructions.ts",
+      "import": "./src/projectInstructions.ts"
+    },
+    "./tokenEfficiency/source": {
+      "types": "./src/tokenEfficiency/source.ts",
+      "import": "./src/tokenEfficiency/source.ts"
+    },
+    "./tokenEfficiency/core": {
+      "types": "./src/tokenEfficiency/core.ts",
+      "import": "./src/tokenEfficiency/core.ts"
+    },
+    "./tokenEfficiency/bundledCore": {
+      "types": "./src/tokenEfficiency/bundledCore.ts",
+      "import": "./src/tokenEfficiency/bundledCore.ts"
+    },
+    "./tokenEfficiency/policy": {
+      "types": "./src/tokenEfficiency/policy.ts",
+      "import": "./src/tokenEfficiency/policy.ts"
+    },
     "./openCodeContextBridge": {
       "types": "./src/openCodeContextBridge.ts",
       "import": "./src/openCodeContextBridge.ts"

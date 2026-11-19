@@ -72,6 +72,7 @@ import * as CheckpointStore from "./checkpointing/CheckpointStore.ts";
 import * as SourceControlBuiltInDrivers from "./sourceControl/builtInDrivers.ts";
 import * as SourceControlSignIn from "./sourceControl/SourceControlSignIn.ts";
 import * as UpstreamMergeAccess from "./plusplus/UpstreamMergeAccess.ts";
+import * as TokenEfficiencySnapshotService from "./plusplus/tokenEfficiency/TokenEfficiencySnapshotService.ts";
 import { BUILT_IN_SOURCE_CONTROL_DRIVER_LIST } from "./sourceControl/sourceControlDefinitions.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
 import * as SecretResolver from "./secrets/SecretResolver.ts";
@@ -476,6 +477,7 @@ const layerVcs = Layer.empty.pipe(
   Layer.provideMerge(
     UpstreamMergeAccess.layer.pipe(Layer.provide(layerSourceControlProviderRegistry)),
   ),
+  Layer.provideMerge(TokenEfficiencySnapshotService.layerLive),
   Layer.provideMerge(
     VcsStatusBroadcaster.layer.pipe(
       Layer.provide(layerGitWorkflow),
