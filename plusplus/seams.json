@@ -1977,7 +1977,7 @@
       "legacy": true
     },
     "packages/provider-opencode/src/server/adapter.ts": {
-      "delta": [19, 4],
+      "delta": [22, 4],
       "legacy": true
     },
     "packages/provider-opencode/src/server/driver.test.ts": {
@@ -1993,7 +1993,7 @@
       "legacy": true
     },
     "packages/provider-opencode/src/server/v2/adapter.ts": {
-      "delta": [91, 5],
+      "delta": [92, 5],
       "legacy": true
     },
     "packages/provider-pi/package.json": {

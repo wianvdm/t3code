@@ -1,4 +1,4 @@
-import { ProviderDriverKind, type ProviderDriverKind as DriverKind } from "@t3tools/contracts";
+import { ProviderDriverKind } from "@t3tools/contracts";
 
 export interface ProjectInstructionsDelivery {
   readonly mechanism:
@@ -13,24 +13,54 @@ export interface ProjectInstructionsDelivery {
 }
 
 /**
- * How each built-in provider delivers application-owned project instructions (design-72 §2.4).
+ * A provider whose delivery mechanism differs across major versions, e.g. OpenCode 1.x vs 2.x.
+ * Versions map to the single-row shape minus nativeSubagents, which stays row-level.
+ */
+export interface ProjectInstructionsDeliveryByVersion {
+  readonly versions: Readonly<Record<string, Omit<ProjectInstructionsDelivery, "nativeSubagents">>>;
+  readonly nativeSubagents: "not-covered";
+}
+
+export type ProjectInstructionsDeliveryRow =
+  | ProjectInstructionsDelivery
+  | ProjectInstructionsDeliveryByVersion;
+
+/**
+ * How each built-in provider delivers application-owned project instructions (#78).
  * Keyed by the driver kind the provider registry uses.
  */
 export const PROJECT_INSTRUCTIONS_DELIVERY: Partial<
-  Record<DriverKind, ProjectInstructionsDelivery>
+  Record<ProviderDriverKind, ProjectInstructionsDeliveryRow>
 > = {
   [ProviderDriverKind.make("claudeAgent")]: {
     mechanism: "system-prompt",
     cadence:
-      "Every query: appended via buildRuntimeInstructions to systemPrompt.append, and the query reuse key includes the instructions id so a change starts a new query",
+      "Every query: appended via buildRuntimeInstructions to systemPrompt.append, and the query reuse key includes the instructions id so a changed id starts a new query once the live query has no provider-native background work (claude.ts defers replacement)",
     compaction: "not-needed",
     nativeSubagents: "not-covered",
   },
   [ProviderDriverKind.make("codex")]: {
     mechanism: "developer-context",
     cadence:
-      "additionalContext entries keyed t3_project_instructions_NN; Codex resends them only when the instructions id changes",
+      "additionalContext entries keyed t3_project_instructions_NN; the adapter sends the entries on every turn/start and Codex dedupes them by content",
     compaction: "reinject",
+    nativeSubagents: "not-covered",
+  },
+  [ProviderDriverKind.make("opencode")]: {
+    versions: {
+      "1.x": {
+        mechanism: "system-prompt",
+        cadence:
+          "OpenCode's per-prompt `system` field; every prompt in a turn, steers included, repeats it",
+        compaction: "not-needed",
+      },
+      "2.x": {
+        mechanism: "session-instructions",
+        cadence:
+          "session.instructions.entry.put only when the instructions string changes; entries persist across compaction",
+        compaction: "not-needed",
+      },
+    },
     nativeSubagents: "not-covered",
   },
   [ProviderDriverKind.make("acpRegistry")]: {
@@ -71,8 +101,7 @@ export const PROJECT_INSTRUCTIONS_DELIVERY: Partial<
 };
 
 /** Built-in driver kinds without a row yet. #78 PRs move kinds from this list into rows; it must be empty before the feature is described as cross-provider. */
-export const PROJECT_INSTRUCTIONS_PENDING: ReadonlyArray<DriverKind> = [
-  ProviderDriverKind.make("opencode"),
+export const PROJECT_INSTRUCTIONS_PENDING: ReadonlyArray<ProviderDriverKind> = [
   ProviderDriverKind.make("cursor"),
   ProviderDriverKind.make("muse"),
   ProviderDriverKind.make("pi"),
