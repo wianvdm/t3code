@@ -112,9 +112,14 @@ export const PROJECT_INSTRUCTIONS_DELIVERY: Partial<
     compaction: "unsupported",
     nativeSubagents: "not-covered",
   },
+  [ProviderDriverKind.make("pi")]: {
+    mechanism: "pi-system-prompt",
+    cadence:
+      "Extension command sent on Deliver or Withdraw, and resent after a session switch, new session, fork or process start; before_agent_start rebuilds the system prompt at each agent start",
+    compaction: "not-needed",
+    nativeSubagents: "not-covered",
+  },
 };
 
 /** Built-in driver kinds without a row yet. #78 PRs move kinds from this list into rows; it must be empty before the feature is described as cross-provider. */
-export const PROJECT_INSTRUCTIONS_PENDING: ReadonlyArray<ProviderDriverKind> = [
-  ProviderDriverKind.make("pi"),
-];
+export const PROJECT_INSTRUCTIONS_PENDING: ReadonlyArray<ProviderDriverKind> = [];

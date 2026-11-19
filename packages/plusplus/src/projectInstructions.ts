@@ -5,6 +5,8 @@ export interface ProjectInstructions {
   readonly text: string;
 }
 
+export const PI_T3_PROJECT_INSTRUCTIONS_COMMAND = "t3-project-instructions";
+
 export type ProjectInstructionsChange =
   | { readonly _tag: "Unchanged" }
   | { readonly _tag: "Deliver"; readonly instructions: ProjectInstructions }
