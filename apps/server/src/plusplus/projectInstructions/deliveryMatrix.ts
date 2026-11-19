@@ -63,6 +63,41 @@ export const PROJECT_INSTRUCTIONS_DELIVERY: Partial<
     },
     nativeSubagents: "not-covered",
   },
+  [ProviderDriverKind.make("acpRegistry")]: {
+    mechanism: "prompt-block",
+    cadence:
+      "Shared ACP trailing runtime block once per native session and on instructions id change; native slash turns defer delivery to the next ordinary turn; observed compaction triggers reinjection",
+    compaction: "reinject",
+    nativeSubagents: "not-covered",
+  },
+  [ProviderDriverKind.make("grok")]: {
+    mechanism: "prompt-block",
+    cadence:
+      "Shared ACP trailing runtime block once per native session and on instructions id change; $skill rewrites to native /skill skip the block until the next ordinary turn; observed compaction triggers reinjection",
+    compaction: "reinject",
+    nativeSubagents: "not-covered",
+  },
+  [ProviderDriverKind.make("kiro")]: {
+    mechanism: "prompt-block",
+    cadence:
+      "Shared ACP trailing runtime block once per native session and on instructions id change; native slash turns defer delivery to the next ordinary turn",
+    compaction: "reinject",
+    nativeSubagents: "not-covered",
+  },
+  [ProviderDriverKind.make("fx")]: {
+    mechanism: "prompt-block",
+    cadence:
+      "Shared ACP trailing runtime block once per native session and on instructions id change; native slash turns defer delivery to the next ordinary turn",
+    compaction: "unsupported",
+    nativeSubagents: "not-covered",
+  },
+  [ProviderDriverKind.make("antigravity")]: {
+    mechanism: "prompt-block",
+    cadence:
+      "Shared ACP trailing runtime block once per native session and on instructions id change, not the fixed native system-prompt append; native slash turns defer delivery",
+    compaction: "unsupported",
+    nativeSubagents: "not-covered",
+  },
   [ProviderDriverKind.make("pi")]: {
     mechanism: "pi-system-prompt",
     cadence:
@@ -76,9 +111,4 @@ export const PROJECT_INSTRUCTIONS_DELIVERY: Partial<
 export const PROJECT_INSTRUCTIONS_PENDING: ReadonlyArray<ProviderDriverKind> = [
   ProviderDriverKind.make("cursor"),
   ProviderDriverKind.make("muse"),
-  ProviderDriverKind.make("acpRegistry"),
-  ProviderDriverKind.make("grok"),
-  ProviderDriverKind.make("kiro"),
-  ProviderDriverKind.make("fx"),
-  ProviderDriverKind.make("antigravity"),
 ];
