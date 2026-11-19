@@ -10,10 +10,13 @@ import {
   RunId,
   ThreadId,
   type OrchestrationV2ProviderThread,
+  type OrchestrationV2ProviderTurn,
 } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
+import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
 
 import * as TestProviderHost from "@t3tools/provider-testing/TestProviderHost";
@@ -139,7 +142,6 @@ describe("CursorAdapterV2 project instructions ++", () => {
         modelSelection,
         runtimePolicy,
       });
-      const inputs: ProviderAdapter.ProviderAdapterV2TurnInput[] = [];
       let runOrdinal = 0;
       const send = Effect.fnUntraced(function* (input: {
         readonly text: string;
@@ -153,7 +155,6 @@ describe("CursorAdapterV2 project instructions ++", () => {
           text: input.text,
           projectInstructions: input.projectInstructions,
         });
-        inputs.push(turn);
         if (input.mode === "compact") yield* runtime.compactThread!(turn);
         else yield* runtime.startTurn(turn);
         yield* runtime.events.pipe(
@@ -211,20 +212,189 @@ describe("CursorAdapterV2 project instructions ++", () => {
         mode: "turn",
       });
       assert.isTrue(afterCompact.endsWith(SECOND.text), "compression reinjects the block");
+    }).pipe(Effect.scoped, Effect.provide(testLayer)),
+  );
 
-      assert.deepStrictEqual(
-        inputs.map((input) => input.message.text),
-        [
-          "/status",
-          "Second request",
-          "Changed request",
-          "Disabled request",
-          "Reenabled request",
-          "Compact request",
-          "After compact",
-        ],
-        "persisted user text remains unchanged",
+  it.effect("replays delivery after interruption without copying it on later steers", () =>
+    Effect.gen(function* () {
+      const sent: string[] = [];
+      const runEnds: Array<Deferred.Deferred<"finished" | "cancelled">> = [];
+      const adapter = yield* makeCursorAdapterV2({ instanceId, environment: {} }).pipe(
+        Effect.provideService(CursorAgentSdk.CursorAgentSdkRunner, {
+          assertComplete: Effect.void,
+          open: () =>
+            Effect.succeed({
+              agentId: "native-cursor-project-instructions",
+              listMessages: Effect.succeed([]),
+              close: Effect.void,
+              send: (input) =>
+                Effect.gen(function* () {
+                  sent.push(typeof input.message === "string" ? input.message : input.message.text);
+                  const runId = `native-cursor-project-run-${sent.length}`;
+                  const ended = yield* Deferred.make<"finished" | "cancelled">();
+                  runEnds.push(ended);
+                  return {
+                    agentId: "native-cursor-project-instructions",
+                    runId,
+                    wait: Deferred.await(ended).pipe(
+                      Effect.map((status) => ({
+                        id: runId,
+                        requestId: `native-cursor-project-request-${runId}`,
+                        status,
+                        model: { id: "composer-2.5" },
+                        durationMs: 1,
+                      })),
+                    ),
+                    cancel: Deferred.succeed(ended, "cancelled"),
+                  };
+                }),
+            }),
+        }),
       );
+      const runtime = yield* adapter.openSession({
+        threadId,
+        providerSessionId: ProviderSessionId.make("cursor-project-instructions-interrupt"),
+        modelSelection,
+        runtimePolicy,
+      });
+      const providerThread = yield* runtime.ensureThread({
+        threadId,
+        modelSelection,
+        runtimePolicy,
+      });
+      const emitted = yield* Queue.unbounded<ProviderAdapter.ProviderAdapterV2Event>();
+      yield* runtime.events.pipe(
+        Stream.runForEach((event) => Queue.offer(emitted, event)),
+        Effect.forkScoped,
+      );
+      const start = Effect.fnUntraced(function* (runOrdinal: number, text: string) {
+        yield* runtime.startTurn(
+          yield* makeTurnInput({
+            providerThread,
+            runOrdinal,
+            text,
+            projectInstructions: FIRST,
+          }),
+        );
+        while (true) {
+          const event = yield* Queue.take(emitted);
+          if (event.type === "provider_turn.updated" && event.providerTurn.status === "running") {
+            return event.providerTurn;
+          }
+        }
+      });
+      const takeTerminal = Effect.fnUntraced(function* (providerTurnId: string) {
+        while (true) {
+          const event = yield* Queue.take(emitted);
+          if (event.type === "turn.terminal" && event.providerTurnId === providerTurnId) {
+            return event;
+          }
+        }
+      });
+      const interrupt = Effect.fnUntraced(function* (providerTurn: OrchestrationV2ProviderTurn) {
+        yield* runtime.interruptTurn({ providerThread, providerTurnId: providerTurn.id });
+        assert.strictEqual((yield* takeTerminal(providerTurn.id)).status, "interrupted");
+      });
+
+      const first = yield* start(1, "First interrupted request");
+      yield* interrupt(first);
+      const replayed = yield* start(2, "Replacement request");
+      assert.include(sent[1], "First interrupted request");
+      assert.include(sent[1], "Replacement request");
+      assert.strictEqual(sent[1]!.split(FIRST.text).length - 1, 1);
+      yield* Deferred.succeed(runEnds[1]!, "finished");
+      assert.strictEqual((yield* takeTerminal(replayed.id)).status, "completed");
+
+      const unchanged = yield* start(3, "Unchanged interrupted request");
+      assert.notInclude(sent[2], FIRST.text);
+      yield* interrupt(unchanged);
+      const afterUnchangedSteer = yield* start(4, "After unchanged interruption");
+      assert.include(sent[3], "Unchanged interrupted request");
+      assert.include(sent[3], "After unchanged interruption");
+      assert.notInclude(sent[3], FIRST.text);
+      yield* Deferred.succeed(runEnds[3]!, "finished");
+      assert.strictEqual((yield* takeTerminal(afterUnchangedSteer.id)).status, "completed");
+    }).pipe(Effect.scoped, Effect.provide(testLayer)),
+  );
+
+  it.effect("commits delivery only after Cursor accepts the send", () =>
+    Effect.gen(function* () {
+      const sent: string[] = [];
+      let rejectSend = true;
+      const adapter = yield* makeCursorAdapterV2({ instanceId, environment: {} }).pipe(
+        Effect.provideService(CursorAgentSdk.CursorAgentSdkRunner, {
+          assertComplete: Effect.void,
+          open: () =>
+            Effect.succeed({
+              agentId: "native-cursor-project-instructions",
+              listMessages: Effect.succeed([]),
+              close: Effect.void,
+              send: (input) =>
+                Effect.gen(function* () {
+                  sent.push(typeof input.message === "string" ? input.message : input.message.text);
+                  if (rejectSend) {
+                    rejectSend = false;
+                    return yield* new CursorAgentSdk.CursorAgentSdkRunnerError({
+                      method: "send",
+                      cause: new Error("send rejected"),
+                    });
+                  }
+                  const runId = "native-cursor-project-accepted";
+                  return {
+                    agentId: "native-cursor-project-instructions",
+                    runId,
+                    wait: Effect.succeed({
+                      id: runId,
+                      requestId: "native-cursor-project-request-accepted",
+                      status: "finished" as const,
+                      model: { id: "composer-2.5" },
+                      durationMs: 1,
+                    }),
+                    cancel: Effect.void,
+                  };
+                }),
+            }),
+        }),
+      );
+      const runtime = yield* adapter.openSession({
+        threadId,
+        providerSessionId: ProviderSessionId.make("cursor-project-instructions-rejected"),
+        modelSelection,
+        runtimePolicy,
+      });
+      const providerThread = yield* runtime.ensureThread({
+        threadId,
+        modelSelection,
+        runtimePolicy,
+      });
+      const rejected = yield* runtime
+        .startTurn(
+          yield* makeTurnInput({
+            providerThread,
+            runOrdinal: 1,
+            text: "Rejected request",
+            projectInstructions: FIRST,
+          }),
+        )
+        .pipe(Effect.exit);
+      assert.strictEqual(rejected._tag, "Failure");
+
+      yield* runtime.startTurn(
+        yield* makeTurnInput({
+          providerThread,
+          runOrdinal: 2,
+          text: "Accepted request",
+          projectInstructions: FIRST,
+        }),
+      );
+      yield* runtime.events.pipe(
+        Stream.filter((event) => event.type === "turn.terminal"),
+        Stream.runHead,
+      );
+      assert.lengthOf(sent, 2);
+      assert.include(sent[0], FIRST.text);
+      assert.strictEqual(sent[1]!.split(FIRST.text).length - 1, 1);
+      assert.include(sent[1], "Accepted request");
     }).pipe(Effect.scoped, Effect.provide(testLayer)),
   );
 });

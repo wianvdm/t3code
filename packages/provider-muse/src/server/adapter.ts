@@ -844,7 +844,8 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
         } else if (item.kind === "reasoning") {
           turnItem = { ...base, type: "reasoning", text, streaming };
         } else if (item.kind === "compaction") {
-          yield* projectInstructionsDelivery.forget(nativeSessionId!);
+          const sessionId = turn.input.providerThread.nativeThreadRef?.nativeId;
+          if (typeof sessionId === "string") yield* projectInstructionsDelivery.forget(sessionId);
           turnItem = {
             ...base,
             type: "compaction",
@@ -1934,7 +1935,6 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
         let missingNativeSession = false;
         return yield* Effect.gen(function* () {
           nativeSessionId = requestedId ?? host.connection.mintCommandId();
-          yield* projectInstructionsDelivery.forget(nativeSessionId);
           const mcpSession = yield* mcpSessions.read(args.threadId);
           if (mcpSession && !host.initializeResult.grantedCapabilities.includes("sessionMcp"))
             return yield* protocolError(
@@ -2181,7 +2181,9 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
               ),
               Effect.catch((error) => (broken ? Effect.fail(error) : Effect.succeed(error.detail))),
             );
-            if (declined === undefined) yield* projectInstructionsDelivery.forget(nativeSessionId!);
+            const compactedSessionId = turn.input.providerThread.nativeThreadRef?.nativeId;
+            if (declined === undefined && typeof compactedSessionId === "string")
+              yield* projectInstructionsDelivery.forget(compactedSessionId);
             if (declined !== undefined)
               yield* eventPermit.withPermits(1)(finish(turn, "failed", declined));
           } else {
@@ -2190,10 +2192,14 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
               targetDriver: MUSE_PROVIDER,
               cwd: workspaceRoot,
             });
-            const projectDelivery = yield* projectInstructionsDelivery.plan(
-              nativeSessionId!,
-              turnInput.projectInstructions,
-            );
+            const projectDeliverySessionId = turnInput.providerThread.nativeThreadRef?.nativeId;
+            const projectDelivery =
+              typeof projectDeliverySessionId === "string"
+                ? yield* projectInstructionsDelivery.plan(
+                    projectDeliverySessionId,
+                    turnInput.projectInstructions,
+                  )
+                : undefined;
             const result = yield* request(
               "turn/start",
               {
@@ -2205,7 +2211,7 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
                       model: session.model ?? undefined,
                       reasoningEffort: effort,
                       bridgedContext,
-                      projectInstructions: projectDelivery.text,
+                      projectInstructions: projectDelivery?.text,
                     }),
                   },
                   ...parts,
@@ -2225,7 +2231,7 @@ export const makeMuseAdapterV2 = Effect.fn("makeMuseAdapterV2")(function* (
               );
               return yield* protocolError("Muse admitted the turn under an unexpected identity");
             }
-            yield* projectDelivery.commit;
+            yield* projectDelivery?.commit ?? Effect.void;
           }
         }).pipe(
           Effect.onError((cause) => {

@@ -43,7 +43,7 @@ export const PROJECT_INSTRUCTIONS_DELIVERY: Partial<
   [ProviderDriverKind.make("muse")]: {
     mechanism: "prompt-block",
     cadence:
-      "Once per session and on change; reinjected after observed compaction items and session/compact",
+      "Once per native session and on change, without resending on resume; reinjected after observed compaction items and session/compact",
     compaction: "reinject",
     nativeSubagents: "not-covered",
   },

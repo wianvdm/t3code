@@ -1933,7 +1933,7 @@
       "legacy": true
     },
     "packages/provider-cursor/src/server/adapter.ts": {
-      "delta": [29, 3],
+      "delta": [36, 3],
       "legacy": true
     },
     "packages/provider-cursor/src/server/driver.ts": {
@@ -1961,7 +1961,7 @@
       "legacy": true
     },
     "packages/provider-muse/src/server/adapter.ts": {
-      "delta": [18, 0],
+      "delta": [24, 0],
       "legacy": true
     },
     "packages/provider-muse/src/server/usageLimits.ts": {

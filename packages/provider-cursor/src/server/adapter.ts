@@ -58,7 +58,10 @@ import {
   currentContextBridgeSettings,
 } from "@t3tools/provider-core/server/contextBridgeRuntime";
 import { buildRuntimeInstructions } from "@t3tools/provider-core/server/runtimeInstructions";
-import { makeProjectInstructionsDeliveryTracker } from "@t3tools/provider-core/server/projectInstructions";
+import {
+  makeProjectInstructionsDeliveryTracker,
+  type ProjectInstructionsDeliveryPlan,
+} from "@t3tools/provider-core/server/projectInstructions";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
 import { makeProviderFailure } from "@t3tools/provider-core/server/failure";
 import { turnScopedSelectionTransition } from "@t3tools/provider-core/server/selectionTransition";
@@ -953,6 +956,7 @@ interface ActiveCursorTurn {
   readonly reasoning: ActiveCursorTextStream;
   /** The user text this run sent, before runtime instructions; absent for /compress. */
   readonly prompt: string | undefined;
+  readonly projectDelivery: ProjectInstructionsDeliveryPlan | undefined;
   interrupted: boolean;
   finalized: boolean;
   /** The agent's latest turn ended and no new work has started since. */
@@ -2132,6 +2136,9 @@ export const makeCursorAdapterV2 = Effect.fn("makeCursorAdapterV2")(function* (
             return;
           }
           input.context.finalized = true;
+          if (input.status !== "interrupted" && input.status !== "cancelled") {
+            yield* input.context.projectDelivery?.commit ?? Effect.void;
+          }
           const completedAt = yield* DateTime.now;
           for (const tool of input.context.tools.values()) {
             yield* emitToolArtifacts({
@@ -2462,7 +2469,6 @@ export const makeCursorAdapterV2 = Effect.fn("makeCursorAdapterV2")(function* (
               })
               .pipe(Effect.mapError(classifyCursorModelRejection(turnInput.modelSelection)));
             if (compacted) yield* projectInstructionsDelivery.forget(agent.nativeThreadId);
-            yield* projectDelivery?.commit ?? Effect.void;
             yield* Ref.set(told, {
               agent: agent.nativeThreadId,
               orchestration: !compacted && (delivered.orchestration || mcpServers !== undefined),
@@ -2496,6 +2502,7 @@ export const makeCursorAdapterV2 = Effect.fn("makeCursorAdapterV2")(function* (
                 nextSegment: 0,
               },
               prompt,
+              projectDelivery,
               interrupted: false,
               finalized: false,
               turnEnded: false,

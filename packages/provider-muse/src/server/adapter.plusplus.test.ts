@@ -15,6 +15,7 @@ import {
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
@@ -68,6 +69,7 @@ function makeFakeMuse() {
   let notify: Parameters<MuseSdkHost["connection"]["onNotification"]>[0] = () => {};
   let sequence = 0;
   let sessionId = "";
+  let shouldRejectTurnStart = false;
   const respond = async (call: NativeCall): Promise<Record<string, unknown>> => {
     calls.push(call);
     switch (call.method) {
@@ -80,6 +82,10 @@ function makeFakeMuse() {
           history: { items: [] },
         };
       case "turn/start":
+        if (shouldRejectTurnStart) {
+          shouldRejectTurnStart = false;
+          throw new Error("turn rejected");
+        }
         return { turnId: call.commandId };
       case "session/compact":
         return { status: "accepted" };
@@ -114,6 +120,9 @@ function makeFakeMuse() {
   return {
     host,
     calls,
+    rejectTurnStart: () => {
+      shouldRejectTurnStart = true;
+    },
     emit: (method: string, params: Record<string, unknown>) =>
       Effect.sync(() => {
         notify({ jsonrpc: "2.0", method, params: { sessionId, ...params } });
@@ -184,6 +193,70 @@ function runtimeText(call: NativeCall): string {
   return parts[0]?.text ?? "";
 }
 
+type FakeMuse = ReturnType<typeof makeFakeMuse>;
+type MuseAdapter = Effect.Success<ReturnType<typeof makeMuseAdapterV2>>;
+
+function makeAdapterWithHosts(hosts: ReadonlyArray<FakeMuse>) {
+  let hostIndex = 0;
+  return makeMuseAdapterV2({
+    instanceId,
+    settings: museSettings,
+    environment: { PATH: "/fake/bin" },
+    createHost: async () => hosts[hostIndex++]!.host,
+  });
+}
+
+const openRuntime = Effect.fnUntraced(function* (input: {
+  readonly adapter: MuseAdapter;
+  readonly providerSessionId: string;
+  readonly existingProviderThread?: OrchestrationV2ProviderThread;
+}) {
+  const runtime = yield* input.adapter.openSession({
+    threadId,
+    providerSessionId: ProviderSessionId.make(input.providerSessionId),
+    modelSelection,
+    runtimePolicy,
+  });
+  const providerThread = yield* runtime.ensureThread({
+    threadId,
+    modelSelection,
+    runtimePolicy,
+    ...(input.existingProviderThread === undefined
+      ? {}
+      : { existingProviderThread: input.existingProviderThread }),
+  });
+  return { runtime, providerThread };
+});
+
+const startMuseTurn = Effect.fnUntraced(function* (input: {
+  readonly runtime: ProviderAdapter.ProviderAdapterV2SessionRuntime;
+  readonly fake: FakeMuse;
+  readonly turn: ProviderAdapter.ProviderAdapterV2TurnInput;
+}) {
+  yield* input.runtime.startTurn(input.turn);
+  const call = input.fake.calls.findLast((call) => call.method === "turn/start");
+  assert.isDefined(call);
+  return call;
+});
+
+const completeMuseTurn = Effect.fnUntraced(function* (input: {
+  readonly runtime: ProviderAdapter.ProviderAdapterV2SessionRuntime;
+  readonly fake: FakeMuse;
+  readonly call: NativeCall;
+}) {
+  yield* input.fake.emit("turn/completed", {
+    turnId: input.call.commandId,
+    terminal: "completed",
+  });
+  const terminal = Option.getOrThrow(
+    yield* input.runtime.events.pipe(
+      Stream.filter((event) => event.type === "turn.terminal"),
+      Stream.runHead,
+    ),
+  );
+  assert.strictEqual(terminal.status, "completed");
+});
+
 describe("MuseAdapterV2 project instructions ++", () => {
   it.effect("delivers only on change or compaction without changing user text", () =>
     Effect.gen(function* () {
@@ -216,7 +289,6 @@ describe("MuseAdapterV2 project instructions ++", () => {
           if (event.type === "turn.terminal") return event;
         }
       });
-      const inputs: ProviderAdapter.ProviderAdapterV2TurnInput[] = [];
       let runOrdinal = 0;
       const nextInput = Effect.fnUntraced(function* (input: {
         readonly text: string;
@@ -229,7 +301,6 @@ describe("MuseAdapterV2 project instructions ++", () => {
           text: input.text,
           projectInstructions: input.projectInstructions,
         });
-        inputs.push(turn);
         return turn;
       });
       const start = Effect.fnUntraced(function* (input: {
@@ -275,6 +346,7 @@ describe("MuseAdapterV2 project instructions ++", () => {
         "<project_instructions>",
         "second turn omits block",
       );
+      assert.strictEqual(unchanged.params.displayText, "Second request");
 
       const changed = yield* send({ text: "Changed request", projectInstructions: SECOND });
       assert.isTrue(runtimeText(changed).endsWith(SECOND.text), "changed id resends the block");
@@ -315,22 +387,165 @@ describe("MuseAdapterV2 project instructions ++", () => {
         runtimeText(afterManualCompaction).endsWith(SECOND.text),
         "session/compact reinjects the block",
       );
+    }).pipe(Effect.scoped, Effect.provide(testLayer)),
+  );
 
-      assert.deepStrictEqual(
-        inputs.map((input) => input.message.text),
-        [
-          "First request",
-          "Second request",
-          "Changed request",
-          "Disabled request",
-          "Reenabled request",
-          "Before auto compaction",
-          "After auto compaction",
-          "Compact request",
-          "After manual compaction",
-        ],
-        "persisted user text remains unchanged",
+  it.effect("does not resend unchanged instructions when a native session resumes", () =>
+    Effect.gen(function* () {
+      const firstFake = makeFakeMuse();
+      const resumedFake = makeFakeMuse();
+      const adapter = yield* makeAdapterWithHosts([firstFake, resumedFake]);
+      const providerThread = yield* Effect.scoped(
+        Effect.gen(function* () {
+          const { runtime, providerThread } = yield* openRuntime({
+            adapter,
+            providerSessionId: "muse-project-instructions-original",
+          });
+          const call = yield* startMuseTurn({
+            runtime,
+            fake: firstFake,
+            turn: yield* makeTurnInput({
+              providerThread,
+              runOrdinal: 1,
+              text: "Before resume",
+              projectInstructions: FIRST,
+            }),
+          });
+          assert.isTrue(runtimeText(call).endsWith(FIRST.text));
+          yield* completeMuseTurn({ runtime, fake: firstFake, call });
+          return providerThread;
+        }),
       );
+
+      yield* Effect.scoped(
+        Effect.gen(function* () {
+          const { runtime, providerThread: resumedThread } = yield* openRuntime({
+            adapter,
+            providerSessionId: "muse-project-instructions-resumed",
+            existingProviderThread: providerThread,
+          });
+          assert.isTrue(resumedFake.calls.some((call) => call.method === "session/resume"));
+          const call = yield* startMuseTurn({
+            runtime,
+            fake: resumedFake,
+            turn: yield* makeTurnInput({
+              providerThread: resumedThread,
+              runOrdinal: 2,
+              text: "After resume",
+              projectInstructions: FIRST,
+            }),
+          });
+          assert.notInclude(runtimeText(call), FIRST.text);
+          assert.strictEqual(call.params.displayText, "After resume");
+          yield* completeMuseTurn({ runtime, fake: resumedFake, call });
+        }),
+      );
+    }).pipe(Effect.scoped, Effect.provide(testLayer)),
+  );
+
+  it.effect("reinjects after accepted session compaction without a compaction item", () =>
+    Effect.gen(function* () {
+      const compactedFake = makeFakeMuse();
+      const resumedFake = makeFakeMuse();
+      const adapter = yield* makeAdapterWithHosts([compactedFake, resumedFake]);
+      const providerThread = yield* Effect.scoped(
+        Effect.gen(function* () {
+          const { runtime, providerThread } = yield* openRuntime({
+            adapter,
+            providerSessionId: "muse-project-instructions-before-compact",
+          });
+          const first = yield* startMuseTurn({
+            runtime,
+            fake: compactedFake,
+            turn: yield* makeTurnInput({
+              providerThread,
+              runOrdinal: 1,
+              text: "Before compact",
+              projectInstructions: FIRST,
+            }),
+          });
+          yield* completeMuseTurn({ runtime, fake: compactedFake, call: first });
+          yield* runtime.compactThread!(
+            yield* makeTurnInput({
+              providerThread,
+              runOrdinal: 2,
+              text: "Compact request",
+              projectInstructions: FIRST,
+            }),
+          );
+          const compact = compactedFake.calls.findLast((call) => call.method === "session/compact");
+          assert.isDefined(compact);
+          return providerThread;
+        }),
+      );
+      yield* Effect.scoped(
+        Effect.gen(function* () {
+          const { runtime, providerThread: resumedThread } = yield* openRuntime({
+            adapter,
+            providerSessionId: "muse-project-instructions-after-compact",
+            existingProviderThread: providerThread,
+          });
+          const call = yield* startMuseTurn({
+            runtime,
+            fake: resumedFake,
+            turn: yield* makeTurnInput({
+              providerThread: resumedThread,
+              runOrdinal: 3,
+              text: "After compact",
+              projectInstructions: FIRST,
+            }),
+          });
+          assert.isTrue(runtimeText(call).endsWith(FIRST.text));
+          yield* completeMuseTurn({ runtime, fake: resumedFake, call });
+        }),
+      );
+    }).pipe(Effect.scoped, Effect.provide(testLayer)),
+  );
+
+  it.effect("commits delivery only after Muse accepts turn/start", () =>
+    Effect.gen(function* () {
+      const fake = makeFakeMuse();
+      const adapter = yield* makeAdapterWithHosts([fake]);
+      const { runtime, providerThread } = yield* openRuntime({
+        adapter,
+        providerSessionId: "muse-project-instructions-rejected",
+      });
+      fake.rejectTurnStart();
+      const rejectedStart = yield* runtime
+        .startTurn(
+          yield* makeTurnInput({
+            providerThread,
+            runOrdinal: 1,
+            text: "Rejected request",
+            projectInstructions: FIRST,
+          }),
+        )
+        .pipe(Effect.exit);
+      assert.strictEqual(rejectedStart._tag, "Failure");
+      const rejected = fake.calls.findLast((call) => call.method === "turn/start");
+      assert.isDefined(rejected);
+      const failed = Option.getOrThrow(
+        yield* runtime.events.pipe(
+          Stream.filter((event) => event.type === "turn.terminal"),
+          Stream.runHead,
+        ),
+      );
+      assert.strictEqual(failed.status, "failed");
+      assert.isTrue(runtimeText(rejected).endsWith(FIRST.text));
+
+      const accepted = yield* startMuseTurn({
+        runtime,
+        fake,
+        turn: yield* makeTurnInput({
+          providerThread,
+          runOrdinal: 2,
+          text: "Accepted request",
+          projectInstructions: FIRST,
+        }),
+      });
+      assert.isTrue(runtimeText(accepted).endsWith(FIRST.text));
+      assert.strictEqual(accepted.params.displayText, "Accepted request");
+      yield* completeMuseTurn({ runtime, fake, call: accepted });
     }).pipe(Effect.scoped, Effect.provide(testLayer)),
   );
 });
