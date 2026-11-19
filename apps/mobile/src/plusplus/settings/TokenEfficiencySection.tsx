@@ -1,9 +1,6 @@
 import { AuthSettingsWriteScope } from "@t3tools/contracts";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
-import {
-  readProjectTokenEfficiency,
-  TOKEN_EFFICIENCY_LINKS,
-} from "@t3tools/plusplus-extensions/tokenEfficiency";
+import { TOKEN_EFFICIENCY_LINKS } from "@t3tools/plusplus-extensions/tokenEfficiency";
 import { Linking, View } from "react-native";
 
 import { AppText as Text } from "../../components/ui/AppText";
@@ -13,7 +10,10 @@ import type { SettingsTarget } from "../../features/settings/settings-environmen
 import { resolveMobileSettingsTargets } from "../../features/settings/settings-scoped-server";
 import { useSettingsWriter } from "../../features/settings/useSettingsWriter";
 import { useEnvironmentsWithScope } from "../../state/session";
-import { planMobileTokenEfficiencyWrites } from "./tokenEfficiencyWrites";
+import {
+  planMobileTokenEfficiencyWrites,
+  readMobileTokenEfficiencyState,
+} from "./tokenEfficiencyWrites";
 
 export function TokenEfficiencySection(props: {
   readonly members: readonly EnvironmentProject[];
@@ -24,17 +24,14 @@ export function TokenEfficiencySection(props: {
   const canWrite =
     targets.length > 0 &&
     targets.every((target) => writableEnvironments.has(target.environment.environmentId));
-  const values = targets.map((target) =>
-    readProjectTokenEfficiency(target.environment.serverConfig.settings, target.projectId),
-  );
-  const mixed = values.some((value) => value !== values[0]);
+  const enabled = readMobileTokenEfficiencyState(targets);
   const writeSettings = useSettingsWriter();
 
   return (
     <SettingsSection title="Agent instructions">
       <SettingsSwitchRow
         label="Token efficiency"
-        value={mixed ? null : targets.length > 0 && values.every(Boolean)}
+        value={enabled}
         disabled={!canWrite}
         onValueChange={(enabled) => {
           void writeSettings(targets, planMobileTokenEfficiencyWrites(targets, enabled));

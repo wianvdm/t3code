@@ -29,6 +29,8 @@ function TokenEfficiencySettingsContent() {
   const mixed = tokenEfficiencyMixed(targets);
   const enabled = tokenEfficiencyEnabled(targets);
 
+  const scopeSupportsToggle = scope.kind === "project" || scope.kind === "checkout";
+
   return (
     <SettingsSection id="token-efficiency" title="Agent instructions">
       <SettingsRow
@@ -51,11 +53,11 @@ function TokenEfficiencySettingsContent() {
         control={
           <Switch
             aria-label="Token efficiency"
-            checked={!mixed && enabled}
+            checked={enabled}
             mixed={mixed}
-            disabled={!writeAllowed}
+            disabled={!writeAllowed || !scopeSupportsToggle}
             onCheckedChange={(enabled) => {
-              if (scope.kind !== "project" && scope.kind !== "checkout") return;
+              if (!scopeSupportsToggle) return;
               run(planTokenEfficiencyPatch(scope, environments, enabled));
             }}
           />

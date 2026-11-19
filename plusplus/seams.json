@@ -413,10 +413,10 @@
           "feature": "token-efficiency",
           "mechanism": "hook",
           "anchor": {
-            "text": "import { ScreenScrollView as ScrollView }"
+            "text": "import { readUnloadedThreadCount }"
           },
           "reason": "The project settings mount needs its ++ component import.",
-          "fingerprint": "sha256:ab6e0c8a6664ebda"
+          "fingerprint": "sha256:cf46b00cd039900d"
         },
         {
           "id": "token-efficiency.mobile-projects-mount",
