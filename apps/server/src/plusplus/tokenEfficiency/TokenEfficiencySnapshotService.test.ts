@@ -94,7 +94,10 @@ type Handler = (
   fiber: Fiber.Fiber<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>,
 ) => Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>;
 
-const settingsLayer = (initial: ServerSettingsValue) =>
+const settingsLayer = (
+  initial: ServerSettingsValue,
+  beforeGetSettings: Effect.Effect<void> = Effect.void,
+) =>
   Layer.effect(
     ServerSettings.ServerSettingsService,
     Effect.gen(function* () {
@@ -116,7 +119,7 @@ const settingsLayer = (initial: ServerSettingsValue) =>
       return {
         start: Effect.void,
         ready: Effect.void,
-        getSettings: Ref.get(ref),
+        getSettings: beforeGetSettings.pipe(Effect.andThen(Ref.get(ref))),
         updateSettings,
         updateProviderInstance: () => Effect.die(new Error("Not used by this test")),
         withSettingsSnapshot: (use) => Ref.get(ref).pipe(Effect.flatMap(use)),
@@ -131,6 +134,7 @@ const testLayer = (options: {
   readonly enabled?: boolean;
   readonly seed?: string;
   readonly blockCacheDirectory?: boolean;
+  readonly beforeGetSettings?: Effect.Effect<void>;
 }) => {
   const client = HttpClient.make((request, _url, _signal, fiber) =>
     options.handler(request, fiber),
@@ -161,7 +165,7 @@ const testLayer = (options: {
         NodeServices.layer,
         configLayer,
         Layer.succeed(HttpClient.HttpClient, client),
-        settingsLayer(enabledSettings(options.enabled ?? false)),
+        settingsLayer(enabledSettings(options.enabled ?? false), options.beforeGetSettings),
       ),
     ),
     Layer.provideMerge(TestClock.layer()),
@@ -627,6 +631,44 @@ describe("automatic scheduling", () => {
 });
 
 describe("refresh coalescing", () => {
+  it.effect("completes current waiters when the post-refresh settings read defects", () => {
+    const failSettingsReads = Ref.makeUnsafe(false);
+    const settingsReadAttempted = Deferred.makeUnsafe<void>();
+    let armSettingsDefect = true;
+    const beforeGetSettings = Ref.get(failSettingsReads).pipe(
+      Effect.flatMap((fail) =>
+        fail
+          ? Deferred.succeed(settingsReadAttempted, undefined).pipe(
+              Effect.andThen(Effect.die(new Error("settings read defect"))),
+            )
+          : Effect.void,
+      ),
+    );
+    return Effect.gen(function* () {
+      const snapshots = yield* TokenEfficiencySnapshotService.TokenEfficiencySnapshotService;
+      const first = yield* Effect.forkChild(snapshots.refresh);
+      yield* Deferred.await(settingsReadAttempted);
+      yield* TestClock.adjust("0 millis");
+      const firstExit = first.pollUnsafe();
+      expect(firstExit).toBeDefined();
+      expect(firstExit !== undefined && Exit.isFailure(firstExit)).toBe(true);
+      armSettingsDefect = false;
+      yield* Ref.set(failSettingsReads, false);
+      const second = yield* snapshots.refresh;
+      expect(second.outcome).toBe("unchanged");
+    }).pipe(
+      Effect.provide(
+        testLayer({
+          beforeGetSettings,
+          handler: (request) =>
+            (armSettingsDefect ? Ref.set(failSettingsReads, true) : Effect.void).pipe(
+              Effect.andThen(response(request)),
+            ),
+        }),
+      ),
+    );
+  });
+
   it.effect("releases the single-flight slot when a refresh defects", () => {
     const started = Deferred.makeUnsafe<void>();
     let calls = 0;
