@@ -7,6 +7,10 @@
       "types": "./src/forkInstallCommands.ts",
       "import": "./src/forkInstallCommands.ts"
     },
+    "./tokenEfficiency": {
+      "types": "./src/tokenEfficiency.ts",
+      "import": "./src/tokenEfficiency.ts"
+    },
     "./usageReporting": {
       "types": "./src/usageReporting.ts",
       "import": "./src/usageReporting.ts"

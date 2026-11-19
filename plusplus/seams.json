@@ -405,6 +405,31 @@
       "delta": [3, 14],
       "legacy": true
     },
+    "apps/mobile/src/features/settings/SettingsProjectOverviewRouteScreen.tsx": {
+      "delta": [2, 0],
+      "seams": [
+        {
+          "id": "token-efficiency.mobile-projects-import",
+          "feature": "token-efficiency",
+          "mechanism": "hook",
+          "anchor": {
+            "text": "import { ScreenScrollView as ScrollView }"
+          },
+          "reason": "The project settings mount needs its ++ component import.",
+          "fingerprint": "sha256:ab6e0c8a6664ebda"
+        },
+        {
+          "id": "token-efficiency.mobile-projects-mount",
+          "feature": "token-efficiency",
+          "mechanism": "mount",
+          "anchor": {
+            "text": "<SettingsSection title=\"Checkouts\">"
+          },
+          "reason": "The project overview is the one place mobile project rows render.",
+          "fingerprint": "sha256:05db61b3c35edf55"
+        }
+      ]
+    },
     "apps/mobile/src/features/settings/environment-maintenance.test.ts": {
       "delta": [7, 5],
       "legacy": true
@@ -1228,6 +1253,32 @@
       "delta": [1, 1],
       "legacy": true
     },
+    "apps/web/src/components/settings/ProjectSettingsPanel.tsx": {
+      "delta": [2, 0],
+      "seams": [
+        {
+          "id": "token-efficiency.web-projects-import",
+          "feature": "token-efficiency",
+          "mechanism": "hook",
+          "anchor": {
+            "text": "import { ProjectDefaultsSettings } from \"./ProjectDefaultsSettings\""
+          },
+          "reason": "The Projects settings mount needs its ++ component import.",
+          "fingerprint": "sha256:b6e1ee2bf851fa35"
+        },
+        {
+          "id": "token-efficiency.web-projects-mount",
+          "feature": "token-efficiency",
+          "mechanism": "mount",
+          "anchor": {
+            "symbol": "ProjectDetail",
+            "text": "<ProjectDefaultsSettings category=\"project\" />"
+          },
+          "reason": "ProjectDetail is the one place Projects settings rows render.",
+          "fingerprint": "sha256:1767a39cc3d3b1a1"
+        }
+      ]
+    },
     "apps/web/src/components/settings/ProviderInstanceCard.tsx": {
       "delta": [8, 0],
       "legacy": true
@@ -1244,9 +1295,39 @@
       "delta": [15, 9],
       "legacy": true
     },
+    "apps/web/src/components/settings/scopedSettings.ts": {
+      "delta": [1, 1],
+      "seams": [
+        {
+          "id": "token-efficiency.web-export-project-override-writes",
+          "feature": "token-efficiency",
+          "mechanism": "override",
+          "anchor": {
+            "symbol": "projectOverrideWrites"
+          },
+          "reason": "++ needs upstream's grouped, offline-aware writes for a sidecar key planScopedSettingsPatch rejects as unscopable; copying the body is forbidden.",
+          "fingerprint": "sha256:0253d76d90c830c5"
+        }
+      ]
+    },
     "apps/web/src/components/settings/settingsSearch.ts": {
-      "delta": [21, 0],
+      "delta": [23, 0],
       "legacy": true
+    },
+    "apps/web/src/components/settings/useScopedSettings.ts": {
+      "delta": [1, 1],
+      "seams": [
+        {
+          "id": "token-efficiency.web-export-run-scoped-plan",
+          "feature": "token-efficiency",
+          "mechanism": "override",
+          "anchor": {
+            "symbol": "useRunScopedPlan"
+          },
+          "reason": "++ needs upstream's scope checks, failure toasts and dropped-key detection; copying the hook is forbidden.",
+          "fingerprint": "sha256:7d0766091cb30e7e"
+        }
+      ]
     },
     "apps/web/src/components/sidebar/SidebarChrome.tsx": {
       "delta": [2, 0],

@@ -176,7 +176,7 @@ interface ScopedServerWrite {
   readonly previous: ServerSettings;
 }
 
-function projectOverrideWrites(
+export function projectOverrideWrites(
   scope: Extract<ResolvedSettingsScope, { kind: "project" | "checkout" }>,
   environments: readonly ScopedSettingsEnvironment[],
   update: (
