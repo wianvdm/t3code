@@ -65,7 +65,6 @@ const harness = vi.hoisted(() => ({
   canWrite: true,
   enabled: false,
   refresh: vi.fn(),
-  refreshViews: vi.fn(),
   writeSettings: vi.fn(),
   alert: vi.fn(),
   openURL: vi.fn(),
@@ -81,7 +80,6 @@ vi.mock("@effect/atom-react", () => ({
 vi.mock("../state/tokenEfficiency", () => ({
   tokenEfficiencyView: () => harness.viewAtom,
   refreshTokenEfficiency: { permissionAtom: () => harness.permissionAtom },
-  refreshTokenEfficiencyViews: harness.refreshViews,
 }));
 vi.mock("../../state/use-atom-command", () => ({ useAtomCommand: () => harness.refresh }));
 vi.mock("../../state/session", () => ({
@@ -190,7 +188,6 @@ function setup(
       ? AsyncResult.success(options.refreshResult ?? { outcome: "unchanged", view: bundledView })
       : AsyncResult.failure(Cause.fail(new Error(options.refreshFailure))),
   );
-  harness.refreshViews.mockReset();
   harness.writeSettings.mockReset();
   harness.writeSettings.mockResolvedValue(undefined);
   harness.alert.mockReset();
@@ -251,16 +248,16 @@ it.each([
 it.each([
   {
     name: "unsupported stock server",
-    error: "Unknown request tag: plusplus.tokenEfficiency.view",
+    cause: Cause.die("Unknown request tag: plusplus.tokenEfficiency.view"),
     label: "Not supported on Test",
   },
   {
     name: "unavailable environment",
-    error: "This connection requires orchestration:read.",
+    cause: Cause.fail(new Error("This connection requires orchestration:read.")),
     label: "Unavailable on Test",
   },
-] as const)("identifies an $name", ({ error, label }) => {
-  setup({ view: AsyncResult.failure(Cause.fail(new Error(error))) });
+] as const)("identifies an $name", ({ cause, label }) => {
+  setup({ view: AsyncResult.failure(cause) });
   renderSection();
   expect(container.textContent).toContain(label);
 });
@@ -286,9 +283,10 @@ it.each([
   },
   {
     name: "transport failure",
-    requestFailure: "Connection lost",
+    requestFailure: "Test is not connected.",
     view: upstreamView,
-    message: "Refresh failed. Connection lost Cached upstream revision 416ae43 stays active.",
+    message:
+      "Refresh failed. Test is not connected. Cached upstream revision 416ae43 stays active.",
   },
 ] as const)("reports a $name refresh", async (row) => {
   setup({
@@ -315,6 +313,17 @@ it("disables refresh without destination settings-write authority", () => {
   expect(harness.refresh).not.toHaveBeenCalled();
 });
 
+it("keeps refresh available during a server refresh", () => {
+  setup({
+    view: AsyncResult.success({
+      ...bundledView,
+      status: { ...bundledView.status, refreshing: true },
+    }),
+  });
+  renderSection();
+  expect(button("Refresh now").disabled).toBe(false);
+});
+
 it("opens exact instructions as plain text and exposes every attribution link", async () => {
   const instructions =
     "<token_efficiency>\n**Keep Markdown literal** <img src=x onerror=alert(1)>\n</token_efficiency>";
@@ -339,14 +348,6 @@ it("opens exact instructions as plain text and exposes every attribution link", 
     await act(async () => (link as HTMLElement).click());
     expect(harness.openURL).toHaveBeenLastCalledWith(url);
   }
-});
-
-it("refreshes provenance after a toggle write", async () => {
-  setup();
-  renderSection();
-  await act(async () => container.querySelector<HTMLElement>('[role="switch"]')?.click());
-  expect(harness.writeSettings).toHaveBeenCalledTimes(1);
-  expect(harness.refreshViews).toHaveBeenCalledExactlyOnceWith([environmentId]);
 });
 
 it("refreshes a disabled project without enabling delivery", async () => {
