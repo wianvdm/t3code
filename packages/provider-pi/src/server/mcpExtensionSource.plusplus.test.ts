@@ -115,4 +115,18 @@ describe("Pi project instructions extension", () => {
     await command("   ");
     assert.isUndefined(hook({ systemPrompt: "base", systemPromptOptions }, ctx));
   });
+
+  it("delivers instructions on the first turn in an untrusted project", async () => {
+    const { command, hook } = await loadProjectInstructions();
+    await command(encode("Untrusted project instructions"));
+    const sections: Record<string, string> = {};
+
+    const result = hook(
+      { systemPrompt: "base", systemPromptOptions: { sections } },
+      { ...ctx, isProjectTrusted: () => false, ui: { notify: () => undefined } },
+    );
+
+    assert.isUndefined(result);
+    assert.equal(sections.t3_project_instructions, "Untrusted project instructions");
+  });
 });

@@ -101,7 +101,7 @@ export const PROJECT_INSTRUCTIONS_DELIVERY: Partial<
   [ProviderDriverKind.make("pi")]: {
     mechanism: "pi-system-prompt",
     cadence:
-      "Extension command sent only on Deliver or Withdraw; before_agent_start rebuilds the system prompt at each agent start",
+      "Extension command sent on Deliver or Withdraw, and resent after a session switch, new session, fork or process start; before_agent_start rebuilds the system prompt at each agent start",
     compaction: "not-needed",
     nativeSubagents: "not-covered",
   },

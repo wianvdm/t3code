@@ -1,16 +1,19 @@
 import { assert, describe, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
+  CheckpointId,
   DEFAULT_SERVER_SETTINGS,
   NodeId,
   ProviderInstanceId,
   ProviderSessionId,
+  ProviderTurnId,
   RunAttemptId,
   RunId,
   ThreadId,
   type ModelSelection,
   type OrchestrationV2AppThread,
   type OrchestrationV2ProviderThread,
+  type OrchestrationV2ProviderTurn,
 } from "@t3tools/contracts";
 import { PI_T3_PROJECT_INSTRUCTIONS_COMMAND } from "@t3tools/plusplus/projectInstructions";
 import type { ProjectInstructions } from "@t3tools/plusplus/projectInstructions";
@@ -254,6 +257,7 @@ const startTurn = Effect.fnUntraced(function* (
   providerThread: OrchestrationV2ProviderThread,
   runOrdinal: number,
   projectInstructions?: ProjectInstructions,
+  messageKind: "user" | "continuation" = "user",
 ) {
   const appThread = yield* makeAppThread();
   const runId = RunId.make(`run:${THREAD_ID}:${runOrdinal}`);
@@ -270,8 +274,8 @@ const startTurn = Effect.fnUntraced(function* (
       messageId: `message:${THREAD_ID}:${runOrdinal}` as never,
       text: `Turn ${runOrdinal}`,
       attachments: [],
-      createdBy: "user",
-      creationSource: "web",
+      createdBy: messageKind === "continuation" ? "agent" : "user",
+      creationSource: messageKind === "continuation" ? "provider" : "web",
     },
     modelSelection: modelSelection("default"),
     runtimePolicy,
@@ -361,36 +365,35 @@ describe("PiAdapterV2 ++", () => {
     }).pipe(Effect.scoped, Effect.provide(layerTest)),
   );
 
-  it.effect(
-    "delivers only changes, withdraws once, and preserves delivery across a plain resume",
-    () =>
-      Effect.gen(function* () {
-        const fake = yield* makeFakePi;
-        const adapter = yield* makeAdapter(fake);
-        const { runtime, takeEvent } = yield* openRuntime(adapter);
-        let providerThread = yield* ensureThread(runtime);
-        const first = { id: "first", text: "First π instructions\nSecond line" };
-        const updated = { id: "updated", text: "Updated instructions" };
+  it.effect("delivers only changes, withdraws once, and resends after a plain resume", () =>
+    Effect.gen(function* () {
+      const fake = yield* makeFakePi;
+      const adapter = yield* makeAdapter(fake);
+      const { runtime, takeEvent } = yield* openRuntime(adapter);
+      let providerThread = yield* ensureThread(runtime);
+      const first = { id: "first", text: "First π instructions\nSecond line" };
+      const updated = { id: "updated", text: "Updated instructions" };
 
-        yield* runTurn(fake, runtime, takeEvent, providerThread, 1, first);
-        yield* runTurn(fake, runtime, takeEvent, providerThread, 2, first);
-        assert.deepEqual(projectInstructionArguments(fake), [
-          Buffer.from(first.text, "utf8").toString("base64url"),
-        ]);
+      yield* runTurn(fake, runtime, takeEvent, providerThread, 1, first);
+      yield* runTurn(fake, runtime, takeEvent, providerThread, 2, first);
+      assert.deepEqual(projectInstructionArguments(fake), [
+        Buffer.from(first.text, "utf8").toString("base64url"),
+      ]);
 
-        providerThread = yield* runtime.resumeThread({ providerThread });
-        yield* runTurn(fake, runtime, takeEvent, providerThread, 3, first);
-        assert.equal(projectInstructionArguments(fake).length, 1);
+      providerThread = yield* runtime.resumeThread({ providerThread });
+      yield* runTurn(fake, runtime, takeEvent, providerThread, 3, first);
+      assert.equal(projectInstructionArguments(fake).length, 2);
 
-        yield* runTurn(fake, runtime, takeEvent, providerThread, 4, updated);
-        yield* runTurn(fake, runtime, takeEvent, providerThread, 5);
-        yield* runTurn(fake, runtime, takeEvent, providerThread, 6);
-        assert.deepEqual(projectInstructionArguments(fake), [
-          Buffer.from(first.text, "utf8").toString("base64url"),
-          Buffer.from(updated.text, "utf8").toString("base64url"),
-          "",
-        ]);
-      }).pipe(Effect.scoped, Effect.provide(layerTest)),
+      yield* runTurn(fake, runtime, takeEvent, providerThread, 4, updated);
+      yield* runTurn(fake, runtime, takeEvent, providerThread, 5);
+      yield* runTurn(fake, runtime, takeEvent, providerThread, 6);
+      assert.deepEqual(projectInstructionArguments(fake), [
+        Buffer.from(first.text, "utf8").toString("base64url"),
+        Buffer.from(first.text, "utf8").toString("base64url"),
+        Buffer.from(updated.text, "utf8").toString("base64url"),
+        "",
+      ]);
+    }).pipe(Effect.scoped, Effect.provide(layerTest)),
   );
 
   it.effect("forgets delivered instructions when the Pi process restarts", () =>
@@ -421,6 +424,49 @@ describe("PiAdapterV2 ++", () => {
     }).pipe(Effect.scoped, Effect.provide(layerTest)),
   );
 
+  it.effect("forgets delivered instructions when Pi forks for rollback", () =>
+    Effect.gen(function* () {
+      const fake = yield* makeFakePi;
+      const adapter = yield* makeAdapter(fake);
+      const { runtime, takeEvent } = yield* openRuntime(adapter);
+      const providerThread = yield* ensureThread(runtime);
+      const instructions = { id: "rollback", text: "Rollback instructions" };
+      yield* runTurn(fake, runtime, takeEvent, providerThread, 1, instructions);
+
+      const discardedTurn = {
+        id: ProviderTurnId.make("rollback-turn"),
+        providerThreadId: providerThread.id,
+        nodeId: NodeId.make("rollback-node"),
+        runAttemptId: null,
+        nativeTurnRef: {
+          driver: providerThread.driver,
+          nativeId: "rollback-entry",
+          strength: "strong",
+        },
+        ordinal: 1,
+        status: "completed",
+        startedAt: null,
+        completedAt: null,
+      } satisfies OrchestrationV2ProviderTurn;
+      yield* runtime.rollbackThread({
+        providerThread,
+        target: {
+          type: "thread_start",
+          checkpointId: CheckpointId.make("rollback-checkpoint"),
+          appRunOrdinal: 0,
+        },
+        providerThreadTurns: [discardedTurn],
+      });
+      yield* runTurn(fake, runtime, takeEvent, providerThread, 2, instructions);
+
+      assert.deepEqual(projectInstructionArguments(fake), [
+        Buffer.from(instructions.text, "utf8").toString("base64url"),
+        Buffer.from(instructions.text, "utf8").toString("base64url"),
+      ]);
+      assert.equal(fake.allRequests().filter((request) => request["type"] === "fork").length, 1);
+    }).pipe(Effect.scoped, Effect.provide(layerTest)),
+  );
+
   it.effect("fails a non-handled command without committing it or sending the user prompt", () =>
     Effect.gen(function* () {
       const fake = yield* makeFakePi;
@@ -445,21 +491,72 @@ describe("PiAdapterV2 ++", () => {
     }).pipe(Effect.scoped, Effect.provide(layerTest)),
   );
 
-  it.effect(
-    "accepts a legacy acknowledgement but commits only an explicit handled disposition",
-    () =>
-      Effect.gen(function* () {
-        const fake = yield* makeFakePi;
-        fake.setProjectInstructionsDisposition("omit");
-        const adapter = yield* makeAdapter(fake);
-        const { runtime, takeEvent } = yield* openRuntime(adapter);
-        const providerThread = yield* ensureThread(runtime);
-        const instructions = { id: "legacy", text: "Legacy acknowledgement" };
+  it.effect("aborts a non-handled project-instructions command before failing", () =>
+    Effect.gen(function* () {
+      const fake = yield* makeFakePi;
+      fake.setProjectInstructionsDisposition("queued");
+      const adapter = yield* makeAdapter(fake);
+      const { runtime } = yield* openRuntime(adapter);
+      const providerThread = yield* ensureThread(runtime);
 
-        yield* runTurn(fake, runtime, takeEvent, providerThread, 1, instructions);
-        yield* runTurn(fake, runtime, takeEvent, providerThread, 2, instructions);
+      const exit = yield* startTurn(runtime, providerThread, 1, {
+        id: "abort",
+        text: "Abort instructions",
+      }).pipe(Effect.exit);
 
-        assert.equal(projectInstructionArguments(fake).length, 2);
-      }).pipe(Effect.scoped, Effect.provide(layerTest)),
+      assert.isTrue(Exit.isFailure(exit));
+      const requests = fake.allRequests();
+      const commandIndex = requests.findIndex((request) =>
+        String(request["message"]).startsWith(`/${PI_T3_PROJECT_INSTRUCTIONS_COMMAND}`),
+      );
+      const abortIndex = requests.findIndex((request) => request["type"] === "abort");
+      assert.isAbove(commandIndex, -1);
+      assert.isAbove(abortIndex, commandIndex);
+    }).pipe(Effect.scoped, Effect.provide(layerTest)),
+  );
+
+  it.effect("commits a legacy acknowledgement so withdrawal reaches older Pi", () =>
+    Effect.gen(function* () {
+      const fake = yield* makeFakePi;
+      fake.setProjectInstructionsDisposition("omit");
+      const adapter = yield* makeAdapter(fake);
+      const { runtime, takeEvent } = yield* openRuntime(adapter);
+      const providerThread = yield* ensureThread(runtime);
+      const instructions = { id: "legacy", text: "Legacy acknowledgement" };
+
+      yield* runTurn(fake, runtime, takeEvent, providerThread, 1, instructions);
+      yield* runTurn(fake, runtime, takeEvent, providerThread, 2);
+
+      assert.deepEqual(projectInstructionArguments(fake), [
+        Buffer.from(instructions.text, "utf8").toString("base64url"),
+        "",
+      ]);
+    }).pipe(Effect.scoped, Effect.provide(layerTest)),
+  );
+
+  it.effect("does not plan project instructions for provider continuation turns", () =>
+    Effect.gen(function* () {
+      const fake = yield* makeFakePi;
+      const adapter = yield* makeAdapter(fake);
+      const { runtime, takeEvent } = yield* openRuntime(adapter);
+      const providerThread = yield* ensureThread(runtime);
+      const instructions = { id: "initial", text: "Initial instructions" };
+      yield* runTurn(fake, runtime, takeEvent, providerThread, 1, instructions);
+
+      yield* startTurn(
+        runtime,
+        providerThread,
+        2,
+        { id: "continuation", text: "Continuation instructions" },
+        "continuation",
+      );
+      const terminal = yield* takeEvent((event) => event.type === "turn.terminal");
+
+      assert.equal(terminal.type, "turn.terminal");
+      if (terminal.type === "turn.terminal") assert.equal(terminal.status, "completed");
+      assert.deepEqual(projectInstructionArguments(fake), [
+        Buffer.from(instructions.text, "utf8").toString("base64url"),
+      ]);
+    }).pipe(Effect.scoped, Effect.provide(layerTest)),
   );
 });

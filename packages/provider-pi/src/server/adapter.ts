@@ -2553,6 +2553,7 @@ export const makePiAdapterV2 = Effect.fn("makePiAdapterV2")(function* (
           baselineModel = null;
           baselineThinking = null;
           contextWindow = null;
+          yield* projectInstructionsDelivery.forget(input.providerSessionId);
           const result = yield* lifecycleRequest(
             resumeId != null
               ? { type: "switch_session", sessionPath: resumeId }
@@ -2837,11 +2838,12 @@ export const makePiAdapterV2 = Effect.fn("makePiAdapterV2")(function* (
               });
               const disposition = recordString(result, "disposition");
               if (disposition !== undefined && disposition !== "handled") {
+                yield* request({ type: "abort" }).pipe(Effect.ignore);
                 return yield* protocolError(
                   "T3 Code's Pi extension did not apply the project instructions",
                 );
               }
-              if (disposition === "handled") yield* projectDelivery.commit;
+              yield* projectDelivery.commit;
             }
             if (turnInput.appThread.title !== appliedSessionName) {
               yield* request({
@@ -3298,6 +3300,7 @@ export const makePiAdapterV2 = Effect.fn("makePiAdapterV2")(function* (
               ),
               (barrier) =>
                 Effect.gen(function* () {
+                  yield* projectInstructionsDelivery.forget(input.providerSessionId);
                   const forkData = yield* lifecycleRequest({ type: "fork", entryId: forkEntryId });
                   if (recordField(forkData, "cancelled") === true)
                     return yield* protocolError("A Pi extension cancelled the session fork");

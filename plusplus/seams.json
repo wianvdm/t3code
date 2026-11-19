@@ -2001,7 +2001,7 @@
       "legacy": true
     },
     "packages/provider-pi/src/server/adapter.ts": {
-      "delta": [71, 3],
+      "delta": [74, 3],
       "legacy": true
     },
     "packages/provider-pi/src/server/driver.test.ts": {
