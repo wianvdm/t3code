@@ -66,25 +66,55 @@ export const PROJECT_INSTRUCTIONS_DELIVERY: Partial<
   [ProviderDriverKind.make("cursor")]: {
     mechanism: "prompt-block",
     cadence:
-      "Once per native session, on change, and after T3-initiated /compress; native auto-compaction is not observable",
+      "Once per native session, on change, and after T3-initiated /compress; native auto-compaction is not observable (per server process; a restart resends once)",
     compaction: "reinject",
     nativeSubagents: "not-covered",
   },
   [ProviderDriverKind.make("muse")]: {
     mechanism: "prompt-block",
     cadence:
-      "Once per native session and on change, without resending on resume; reinjected after observed compaction items and session/compact",
+      "Once per native session and on change, without resending on resume; reinjected after observed compaction items and session/compact (per server process; a restart resends once)",
     compaction: "reinject",
+    nativeSubagents: "not-covered",
+  },
+  [ProviderDriverKind.make("acpRegistry")]: {
+    mechanism: "prompt-block",
+    cadence:
+      "Shared ACP trailing runtime block once per native session and on instructions id change; native slash turns defer delivery to the next ordinary turn; observed compaction triggers reinjection",
+    compaction: "reinject",
+    nativeSubagents: "not-covered",
+  },
+  [ProviderDriverKind.make("grok")]: {
+    mechanism: "prompt-block",
+    cadence:
+      "Shared ACP trailing runtime block once per native session and on instructions id change; $skill rewrites to native /skill skip the block until the next ordinary turn; observed compaction triggers reinjection",
+    compaction: "reinject",
+    nativeSubagents: "not-covered",
+  },
+  [ProviderDriverKind.make("kiro")]: {
+    mechanism: "prompt-block",
+    cadence:
+      "Shared ACP trailing runtime block once per native session and on instructions id change; native slash turns defer delivery to the next ordinary turn",
+    compaction: "reinject",
+    nativeSubagents: "not-covered",
+  },
+  [ProviderDriverKind.make("fx")]: {
+    mechanism: "prompt-block",
+    cadence:
+      "Shared ACP trailing runtime block once per native session and on instructions id change; native slash turns defer delivery to the next ordinary turn",
+    compaction: "unsupported",
+    nativeSubagents: "not-covered",
+  },
+  [ProviderDriverKind.make("antigravity")]: {
+    mechanism: "prompt-block",
+    cadence:
+      "Shared ACP trailing runtime block once per native session and on instructions id change, not the fixed native system-prompt append; native slash turns defer delivery",
+    compaction: "unsupported",
     nativeSubagents: "not-covered",
   },
 };
 
 /** Built-in driver kinds without a row yet. #78 PRs move kinds from this list into rows; it must be empty before the feature is described as cross-provider. */
 export const PROJECT_INSTRUCTIONS_PENDING: ReadonlyArray<ProviderDriverKind> = [
-  ProviderDriverKind.make("acpRegistry"),
-  ProviderDriverKind.make("grok"),
-  ProviderDriverKind.make("kiro"),
-  ProviderDriverKind.make("fx"),
-  ProviderDriverKind.make("antigravity"),
   ProviderDriverKind.make("pi"),
 ];
