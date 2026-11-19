@@ -245,6 +245,19 @@ const grew = (before: Delta, after: Delta): boolean => after[0] > before[0] || a
 
 const sameDelta = (a: Delta, b: Delta): boolean => a[0] === b[0] && a[1] === b[1];
 
+const recordedDeltaProblems = (
+  registry: SeamRegistry,
+  deltas: ReadonlyMap<string, Delta>,
+): Array<string> =>
+  Object.entries(registry.files).flatMap(([path, entry]) => {
+    const actual = deltas.get(path);
+    return actual === undefined || sameDelta(actual, entry.delta)
+      ? []
+      : [
+          `${path}: recorded delta ${deltaText(entry.delta)} does not match actual ${deltaText(actual)}`,
+        ];
+  });
+
 export interface PathFacts {
   readonly path: string;
   readonly change: ChangeStatus | undefined;
@@ -432,22 +445,22 @@ function siblingChanges(
   return [...changed, ...removed];
 }
 
-// Check 5: every entry a PR adds, raises or edits is a maintainer decision.
+// Check 5: every entry a PR adds, raises, removes or edits is a maintainer decision.
 // Unchanged and lowered entries are not listed.
 export function summarizeRegistryChanges(
   baseRegistry: SeamRegistry,
   headRegistry: SeamRegistry,
   actualDeltas: ReadonlyMap<string, Delta>,
 ): Array<RegistryChange> {
+  const paths = new Set([...Object.keys(baseRegistry.files), ...Object.keys(headRegistry.files)]);
   const changes = [
-    ...Object.keys(headRegistry.files).flatMap((path) =>
-      entryChanges(
-        path,
-        entryOf(baseRegistry, path),
-        headRegistry.files[path]!,
-        actualDeltas.get(path),
-      ),
-    ),
+    ...[...paths].flatMap((path) => {
+      const after = entryOf(headRegistry, path);
+      if (after === undefined) {
+        return [{ path, kind: "changed" as const, detail: "entry removed" }];
+      }
+      return entryChanges(path, entryOf(baseRegistry, path), after, actualDeltas.get(path));
+    }),
     ...siblingChanges(baseRegistry.siblings, headRegistry.siblings),
   ];
   return changes.sort(
@@ -736,11 +749,15 @@ export const checkForkBoundaries = Effect.fn("forkBoundaries.check")(function* (
   const headRegistry = headLoad.registry;
 
   if (exempt) {
+    const deltas = yield* forkDeltas(cwd, headRegistry.upstreamRef, headTree).pipe(
+      Effect.mapError(registryError),
+    );
     const problems = [
       ...(yield* syncParentProblems(cwd, headSha ?? "HEAD", headRegistry)),
       ...(yield* registryProblems({ cwd, registry: headRegistry, forkTree: headTree }).pipe(
         Effect.mapError(registryError),
       )),
+      ...recordedDeltaProblems(headRegistry, deltas),
     ];
     const findings = problems.map((detail) => ({
       path: SEAM_REGISTRY_PATH,
