@@ -478,7 +478,7 @@ const layerVcs = Layer.empty.pipe(
   Layer.provideMerge(
     UpstreamMergeAccess.layer.pipe(Layer.provide(layerSourceControlProviderRegistry)),
   ),
-  Layer.provideMerge(ProjectInstructions.layer),
+  ProjectInstructions.provideResolver,
   Layer.provideMerge(TokenEfficiencySnapshotService.layerLive),
   Layer.provideMerge(
     VcsStatusBroadcaster.layer.pipe(

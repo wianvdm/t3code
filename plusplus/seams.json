@@ -1532,7 +1532,7 @@
       "legacy": true
     },
     "evals/README.md": {
-      "delta": [8, 7],
+      "delta": [2, 0],
       "seams": [
         {
           "id": "token-efficiency.eval-row",

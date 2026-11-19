@@ -16,7 +16,12 @@ import { HttpClient, HttpClientRequest } from "effect/http";
 import * as Schema from "effect/Schema";
 import { proxyConfig } from "../shared/proxy.ts";
 import { cases, type TokenEfficiencyCase } from "./cases.ts";
-import { calculatePromptOverhead, gradeTranscript, type ToolExchange } from "./grade.ts";
+import {
+  calculatePromptOverhead,
+  gradeTranscript,
+  summarizeTokenEfficiency,
+  type ToolExchange,
+} from "./grade.ts";
 
 const { values } = NodeUtil.parseArgs({
   options: {
@@ -316,6 +321,7 @@ const summary = {
   samples,
   tokens: results.reduce((total, row) => total + row.tokens, 0),
   cost: "not calculated",
+  ...summarizeTokenEfficiency(results),
   comparisons,
   overhead,
 };

@@ -89,6 +89,49 @@ export function gradeTranscript(
   };
 }
 
+export interface TokenEfficiencySummaryResult {
+  readonly case: string;
+  readonly model: string;
+  readonly arm: "disabled" | "enabled";
+  readonly tokens: number;
+  readonly grade: Pick<Grade, "pass" | "toolCalls">;
+}
+
+export function summarizeTokenEfficiency(results: ReadonlyArray<TokenEfficiencySummaryResult>) {
+  const pairs = [
+    ...new Map(results.map((row) => [`${row.model}\0${row.case}`, row] as const)).values(),
+  ];
+  const verdicts = pairs.flatMap(({ model, case: caseId }) =>
+    (["disabled", "enabled"] as const).map((arm) => {
+      const own = results.filter(
+        (row) => row.model === model && row.case === caseId && row.arm === arm,
+      );
+      const passedSamples = own.filter((row) => row.grade.pass).length;
+      return {
+        model,
+        case: caseId,
+        arm,
+        passedSamples,
+        samples: own.length,
+        pass: (own.length - passedSamples) * 2 < own.length,
+      };
+    }),
+  );
+  const deltas = pairs.map(({ model, case: caseId }) => {
+    const total = (arm: "disabled" | "enabled", metric: "tokens" | "toolCalls") =>
+      results
+        .filter((row) => row.model === model && row.case === caseId && row.arm === arm)
+        .reduce((sum, row) => sum + (metric === "tokens" ? row.tokens : row.grade.toolCalls), 0);
+    return {
+      model,
+      case: caseId,
+      tokenDelta: total("enabled", "tokens") - total("disabled", "tokens"),
+      toolCallDelta: total("enabled", "toolCalls") - total("disabled", "toolCalls"),
+    };
+  });
+  return { verdicts, deltas };
+}
+
 export function calculatePromptOverhead(
   text: string,
   options: {

@@ -1,13 +1,30 @@
-import { ProviderInstanceId } from "@t3tools/contracts";
+import {
+  MessageId,
+  NodeId,
+  ProjectId,
+  ProviderInstanceId,
+  ProviderSessionId,
+  RunAttemptId,
+  RunId,
+  ThreadId,
+} from "@t3tools/contracts";
 import type { ProjectInstructions } from "@t3tools/plusplus/projectInstructions";
 import { assert, describe, it } from "@effect/vitest";
 import type { V2TurnStartParams__AdditionalContextEntry } from "effect-codex-app-server/schema";
+import * as CodexReplay from "effect-codex-app-server/replay";
 import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
 import * as Ref from "effect/Ref";
+
+import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
+import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
+import packageJson from "../../../package.json" with { type: "json" };
 
 import { CODEX_ADDITIONAL_CONTEXT_VALUE_MAX_BYTES } from "../../provider/CodexDeveloperInstructions.ts";
 import { refreshCodexProjectInstructionsCache } from "../../plusplus/projectInstructions/codex.ts";
 import * as CodexAdapterV2 from "./CodexAdapterV2.ts";
+import * as CodexAdapterV2Testkit from "./CodexAdapterV2.testkit.ts";
+import * as ProviderAdapterRegistry from "../ProviderAdapterRegistry.ts";
 
 const first = { id: "snapshot-1", text: "<token_efficiency>first</token_efficiency>" };
 const second = { id: "snapshot-2", text: "<token_efficiency>second</token_efficiency>" };
@@ -136,5 +153,205 @@ describe("Codex project instruction delivery", () => {
           ["t3_project_instructions_01", { kind: "application", value: second.text }],
         ]);
       }),
+  );
+
+  it.effect("refreshes instructions before Codex starts compaction", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const nativeThreadId = "native-codex-project-instructions-compaction";
+        const transcript: CodexReplay.CodexAppServerReplayTranscript = {
+          provider: "codex",
+          protocol: "codex.app-server",
+          version: "0.144.0",
+          scenario: "project_instructions_compaction_order",
+          entries: [
+            {
+              type: "expect_outbound",
+              label: "initialize",
+              frame: {
+                id: 1,
+                method: "initialize",
+                params: {
+                  clientInfo: { name: "T3 Code", title: "T3 Code", version: packageJson.version },
+                  capabilities: {
+                    experimentalApi: true,
+                    optOutNotificationMethods: ["turn/diff/updated"],
+                    extensions: {
+                      "io.modelcontextprotocol/ui": { mimeTypes: ["text/html;profile=mcp-app"] },
+                    },
+                  },
+                },
+              },
+            },
+            {
+              type: "emit_inbound",
+              label: "initialize",
+              frame: {
+                id: 1,
+                result: {
+                  userAgent: "T3 Code/0.156.1",
+                  codexHome: "/tmp/codex-home",
+                  platformFamily: "unix",
+                  platformOs: "macos",
+                },
+              },
+            },
+            { type: "expect_outbound", label: "initialized", frame: { method: "initialized" } },
+            {
+              type: "expect_outbound",
+              label: "thread/start",
+              frame: {
+                id: 2,
+                method: "thread/start",
+                params: { config: CodexAdapterV2.CODEX_THREAD_CONFIG },
+              },
+            },
+            {
+              type: "emit_inbound",
+              label: "thread/start",
+              frame: {
+                id: 2,
+                result: {
+                  thread: {
+                    id: nativeThreadId,
+                    sessionId: nativeThreadId,
+                    projectId: null,
+                    forkedFromId: null,
+                    preview: "",
+                    ephemeral: false,
+                    modelProvider: "openai",
+                    createdAt: 1782622440,
+                    updatedAt: 1782622440,
+                    status: { type: "idle" },
+                    path: `/tmp/${nativeThreadId}.jsonl`,
+                    cwd: "/workspace",
+                    cliVersion: "0.144.0",
+                    source: "vscode",
+                    threadSource: null,
+                    agentNickname: null,
+                    agentRole: null,
+                    gitInfo: null,
+                    name: null,
+                    turns: [],
+                  },
+                  model: "gpt-5.4",
+                  modelProvider: "openai",
+                  serviceTier: null,
+                  cwd: "/workspace",
+                  instructionSources: [],
+                  approvalPolicy: "on-request",
+                  approvalsReviewer: "user",
+                  sandbox: { type: "workspaceWrite", writableRoots: [], networkAccess: false },
+                  reasoningEffort: "medium",
+                },
+              },
+            },
+            {
+              type: "expect_outbound",
+              label: "compact",
+              frame: {
+                id: 3,
+                method: "thread/compact/start",
+                params: { threadId: nativeThreadId },
+              },
+            },
+            {
+              type: "emit_inbound",
+              label: "compacted before compact response",
+              frame: {
+                method: "item/completed",
+                params: {
+                  threadId: nativeThreadId,
+                  turnId: "compact-turn",
+                  item: { type: "contextCompaction", id: "compact-item" },
+                },
+              },
+            },
+            {
+              type: "expect_outbound",
+              label: "restore refreshed instructions",
+              frame: {
+                id: 4,
+                method: "thread/inject_items",
+                params: {
+                  threadId: nativeThreadId,
+                  items: [
+                    {
+                      type: "message",
+                      role: "developer",
+                      content: [
+                        {
+                          type: "input_text",
+                          text: `<t3_project_instructions_01>${first.text}</t3_project_instructions_01>`,
+                        },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+            { type: "emit_inbound", label: "restored", frame: { id: 4, result: {} } },
+            { type: "emit_inbound", label: "compact response", frame: { id: 3, result: {} } },
+          ],
+        };
+        const driver = yield* CodexReplay.makeReplayDriver(transcript);
+        const registryContext = yield* Layer.build(
+          CodexAdapterV2Testkit.layer({ transcript, driver }).pipe(
+            Layer.provide(McpProviderSessions.layer),
+          ),
+        );
+        const registry = yield* ProviderAdapterRegistry.ProviderAdapterRegistryV2.pipe(
+          Effect.provide(registryContext),
+        );
+        const adapter = yield* registry.get(CodexAdapterV2.CODEX_DEFAULT_INSTANCE_ID);
+        const threadId = ThreadId.make("thread-codex-project-instructions-compaction");
+        const runtimePolicy = ProviderAdapter.ProviderAdapterV2RuntimePolicy.make({
+          runtimeMode: "full-access",
+          interactionMode: "default",
+          cwd: "/workspace",
+        });
+        const runtime = yield* adapter.openSession({
+          threadId,
+          providerSessionId: ProviderSessionId.make("provider-session-codex-compaction"),
+          modelSelection,
+          runtimePolicy,
+        });
+        const providerThread = yield* runtime.ensureThread({
+          threadId,
+          modelSelection,
+          runtimePolicy,
+        });
+        const attemptId = RunAttemptId.make("attempt-codex-project-instructions-compaction");
+        const result = yield* runtime.compactThread!({
+          appThread: {
+            id: threadId,
+            projectId: ProjectId.make("project-codex-project-instructions"),
+            lineage: {
+              parentThreadId: null,
+              relationshipToParent: null,
+              rootThreadId: threadId,
+            },
+          } as ProviderAdapter.ProviderAdapterV2TurnInput["appThread"],
+          threadId,
+          runId: RunId.make("run-codex-project-instructions-compaction"),
+          runOrdinal: 1,
+          providerTurnOrdinal: 1,
+          attemptId,
+          rootNodeId: NodeId.make("node-codex-project-instructions-compaction"),
+          providerThread,
+          message: {
+            createdBy: "user",
+            creationSource: "web",
+            messageId: MessageId.make("message-codex-project-instructions-compaction"),
+            text: "/compact",
+            attachments: [],
+          },
+          modelSelection,
+          runtimePolicy,
+          projectInstructions: first,
+        });
+        assert.isUndefined(result);
+      }),
+    ),
   );
 });

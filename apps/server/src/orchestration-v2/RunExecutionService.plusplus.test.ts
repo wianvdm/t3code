@@ -172,11 +172,8 @@ const makeLayer = (
   const settingsService = Layer.mock(ServerSettings.ServerSettingsService)({
     getSettings: Ref.get(settings),
   });
-  const resolver = Layer.empty.pipe(
-    Layer.provideMerge(ProjectInstructions.layer),
-    Layer.provideMerge(snapshots),
-  );
   return RunExecutionService.layer.pipe(
+    ProjectInstructions.provideResolver,
     Layer.provide(
       Layer.mergeAll(
         McpAppModelContext.layerEmpty,
@@ -192,7 +189,7 @@ const makeLayer = (
         }),
       ),
     ),
-    Layer.provide(resolver),
+    Layer.provide(snapshots),
     Layer.provide(settingsService),
   );
 };
@@ -278,26 +275,6 @@ describe("RunExecutionService project instructions", () => {
   it.effect(
     "resolves every entry point from its own project and each turn's snapshot",
     () => runMatrix,
-  );
-
-  it.effect("delivers through the resolver provided at the server composition boundary", () =>
-    Effect.gen(function* () {
-      const settings = yield* Ref.make<ServerSettingsValue>(enabledSettings);
-      const instructions = yield* Ref.make(firstInstructions);
-      const snapshotReads = yield* Ref.make(0);
-      const captured: Array<CapturedTurn> = [];
-      const runExecution = yield* RunExecutionService.RunExecutionServiceV2.pipe(
-        Effect.provide(makeLayer(settings, instructions, snapshotReads)),
-      );
-
-      yield* runExecution.startRootRun({
-        ...startInput({ key: "server-composition" }),
-        session: capturingSession(captured),
-      });
-
-      assert.deepEqual(captured[0]?.input.projectInstructions, firstInstructions);
-      assert.equal(yield* Ref.get(snapshotReads), 1);
-    }),
   );
 
   it("requires no filesystem or HTTP services in the turn resolver", () => {

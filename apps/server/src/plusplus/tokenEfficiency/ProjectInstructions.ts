@@ -40,3 +40,5 @@ export const layer = Layer.effect(
     return { forProject };
   }),
 );
+
+export const provideResolver = Layer.provideMerge(layer);
