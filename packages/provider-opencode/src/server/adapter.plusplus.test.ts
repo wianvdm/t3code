@@ -13,8 +13,10 @@ import {
 import type { ProjectInstructions } from "@t3tools/plusplus/projectInstructions";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
+import * as Stream from "effect/Stream";
 
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
@@ -28,6 +30,10 @@ const PROJECT_INSTRUCTIONS: ProjectInstructions = {
   id: "project-instructions-1",
   text: "<token_efficiency>Prefer concise changes.</token_efficiency>",
 };
+const CHANGED_PROJECT_INSTRUCTIONS: ProjectInstructions = {
+  id: "project-instructions-2",
+  text: "<token_efficiency>Prefer focused changes.</token_efficiency>",
+};
 
 const OPEN_CODE_TEST_SETTINGS = Schema.decodeSync(OpenCodeSettings)({
   serverUrl: "http://test.invalid",
@@ -40,8 +46,9 @@ const layerTest = Layer.mergeAll(
   TestProviderHost.layer({ cwd: "/workspace" }).pipe(Layer.provide(NodeServices.layer)),
 );
 
-function emptyEventStream() {
+function nativeEventStream() {
   let closed = false;
+  const values: unknown[] = [];
   const waiters = new Set<(result: IteratorResult<unknown>) => void>();
   return {
     close() {
@@ -49,11 +56,24 @@ function emptyEventStream() {
       for (const resolve of waiters) resolve({ done: true, value: undefined });
       waiters.clear();
     },
+    push(value: unknown) {
+      const waiter = waiters.values().next().value;
+      if (waiter === undefined) {
+        values.push(value);
+        return;
+      }
+      waiters.delete(waiter);
+      waiter({ done: false, value });
+    },
     stream: {
       [Symbol.asyncIterator]() {
         return {
           next: () => {
             if (closed) return Promise.resolve({ done: true as const, value: undefined });
+            const value = values.shift();
+            if (value !== undefined) {
+              return Promise.resolve({ done: false as const, value });
+            }
             return new Promise<IteratorResult<unknown>>((resolve) => waiters.add(resolve));
           },
         };
@@ -92,8 +112,11 @@ const makeHarness = Effect.fn("OpenCodeProjectInstructions.makeHarness")(functio
   });
   const providerThread = yield* runtime.ensureThread({ threadId, modelSelection, runtimePolicy });
   const now = yield* DateTime.now;
-  const startTurn = (text: string, projectInstructions?: ProjectInstructions) =>
-    runtime.startTurn({
+  let turnOrdinal = 0;
+  const startTurn = (text: string, projectInstructions?: ProjectInstructions) => {
+    turnOrdinal += 1;
+    const suffixWithOrdinal = turnOrdinal === 1 ? suffix : `${suffix}-${turnOrdinal}`;
+    return runtime.startTurn({
       appThread: {
         id: threadId,
         projectId: ProjectId.make(`project-opencode-${suffix}`),
@@ -118,16 +141,16 @@ const makeHarness = Effect.fn("OpenCodeProjectInstructions.makeHarness")(functio
         deletedAt: null,
       },
       threadId,
-      runId: RunId.make(`run-opencode-${suffix}`),
-      runOrdinal: 1,
-      providerTurnOrdinal: 1,
-      attemptId: RunAttemptId.make(`attempt-opencode-${suffix}`),
-      rootNodeId: NodeId.make(`node-opencode-${suffix}`),
+      runId: RunId.make(`run-opencode-${suffixWithOrdinal}`),
+      runOrdinal: turnOrdinal,
+      providerTurnOrdinal: turnOrdinal,
+      attemptId: RunAttemptId.make(`attempt-opencode-${suffixWithOrdinal}`),
+      rootNodeId: NodeId.make(`node-opencode-${suffixWithOrdinal}`),
       providerThread,
       message: {
         createdBy: "user",
         creationSource: "web",
-        messageId: MessageId.make(`message-opencode-${suffix}`),
+        messageId: MessageId.make(`message-opencode-${suffixWithOrdinal}`),
         text,
         attachments: [],
       },
@@ -135,17 +158,18 @@ const makeHarness = Effect.fn("OpenCodeProjectInstructions.makeHarness")(functio
       runtimePolicy,
       ...(projectInstructions === undefined ? {} : { projectInstructions }),
     });
+  };
   return { providerThread, runtime, startTurn, threadId };
 });
 
 describe("OpenCode 1.x project instructions", () => {
-  it.effect("repeats the block on prompts and steers, and omits it when disabled", () =>
+  it.effect("repeats, changes and withdraws the block across prompts and steers", () =>
     Effect.gen(function* () {
       const prompts: Array<{
         readonly system?: string;
         readonly parts?: ReadonlyArray<{ readonly type: string; readonly text?: string }>;
       }> = [];
-      const nativeEvents = emptyEventStream();
+      const nativeEvents = nativeEventStream();
       const harness = yield* makeHarness("enabled", {
         event: {
           subscribe: async (_input: unknown, options: { signal?: AbortSignal }) => {
@@ -164,6 +188,29 @@ describe("OpenCode 1.x project instructions", () => {
           abort: async () => ({ data: true }),
           children: async () => ({ data: [] }),
         },
+      });
+
+      const finishTurn = Effect.fnUntraced(function* (ordinal: number) {
+        const terminal = yield* harness.runtime.events.pipe(
+          Stream.filter((event) => event.type === "turn.terminal"),
+          Stream.runHead,
+          Effect.forkChild,
+        );
+        yield* Effect.sync(() => {
+          nativeEvents.push({
+            type: "message.updated",
+            properties: {
+              info: {
+                id: `assistant-${ordinal}`,
+                sessionID: "root",
+                role: "assistant",
+                time: { created: ordinal, completed: ordinal },
+              },
+            },
+          });
+          nativeEvents.push({ type: "session.idle", properties: { sessionID: "root" } });
+        });
+        assert.equal((yield* Fiber.join(terminal))._tag, "Some");
       });
 
       yield* harness.startTurn("hello", PROJECT_INSTRUCTIONS);
@@ -189,24 +236,16 @@ describe("OpenCode 1.x project instructions", () => {
       assert.equal(prompts[0]?.parts?.[0]?.text, "hello");
       assert.equal(prompts[1]?.parts?.[0]?.text, "steer");
 
-      const disabledPrompts: Array<{ readonly system?: string }> = [];
-      const disabledEvents = emptyEventStream();
-      const disabled = yield* makeHarness("disabled", {
-        event: {
-          subscribe: async (_input: unknown, options: { signal?: AbortSignal }) => {
-            options.signal?.addEventListener("abort", () => disabledEvents.close(), { once: true });
-            return { stream: disabledEvents.stream };
-          },
-        },
-        session: {
-          create: async () => ({ data: { id: "root", time: { created: 1, updated: 1 } } }),
-          promptAsync: async (input: { readonly system?: string }) => {
-            disabledPrompts.push(input);
-            return { data: true };
-          },
-        },
-      });
-      yield* disabled.startTurn("hello");
+      yield* finishTurn(1);
+      yield* harness.startTurn("changed", CHANGED_PROJECT_INSTRUCTIONS);
+      assert.lengthOf(prompts, 3);
+      assert.isTrue(prompts[2]?.system?.endsWith(CHANGED_PROJECT_INSTRUCTIONS.text));
+      assert.notInclude(prompts[2]?.system ?? "", PROJECT_INSTRUCTIONS.text);
+
+      yield* finishTurn(2);
+      yield* harness.startTurn("disabled");
+      const disabledPrompts = prompts.slice(3);
+      assert.lengthOf(disabledPrompts, 1);
       assert.notInclude(disabledPrompts[0]?.system ?? "", "<token_efficiency>");
     }).pipe(Effect.provide(layerTest), Effect.scoped),
   );
@@ -214,7 +253,7 @@ describe("OpenCode 1.x project instructions", () => {
   it.effect("keeps native command prompts free of a system field", () =>
     Effect.gen(function* () {
       const commands: Array<Record<string, unknown>> = [];
-      const nativeEvents = emptyEventStream();
+      const nativeEvents = nativeEventStream();
       const harness = yield* makeHarness("native-command", {
         event: {
           subscribe: async (_input: unknown, options: { signal?: AbortSignal }) => {
