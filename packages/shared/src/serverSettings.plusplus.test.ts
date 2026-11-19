@@ -134,5 +134,11 @@ describe("token-efficiency project override entry", () => {
     expect("tokenEfficiency" in resolved.sources).toBe(false);
     expect(resolved.overrides).toEqual(entry);
     expect(readProjectTokenEfficiency(resolved.settings, projectId)).toBe(true);
+
+    // A project with no stored area must stay disabled even when t3.json claims it.
+    const bareProjectId = ProjectId.make("project_b");
+    const bare = resolveProjectSettings(DEFAULT_SERVER_SETTINGS, bareProjectId, null, projectFile);
+    expect("plusplus" in bare.overrides).toBe(false);
+    expect(readProjectTokenEfficiency(bare.settings, bareProjectId)).toBe(false);
   });
 });

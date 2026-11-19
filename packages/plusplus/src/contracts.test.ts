@@ -319,7 +319,12 @@ describe("token efficiency", () => {
 
   it("resolves false for absent, false, malformed and null-project cases", () => {
     expect(readProjectTokenEfficiency(settingsWith({}), projectA)).toBe(false);
-    expect(readProjectTokenEfficiency(settingsWith({}), null)).toBe(false);
+    expect(
+      readProjectTokenEfficiency(
+        settingsWith({ [projectA]: { plusplus: { tokenEfficiency: true } } }),
+        null,
+      ),
+    ).toBe(false);
     expect(
       readProjectTokenEfficiency(settingsWith({ [projectA]: { defaultAutoPull: true } }), projectA),
     ).toBe(false);
@@ -329,7 +334,7 @@ describe("token efficiency", () => {
         projectA,
       ),
     ).toBe(false);
-    for (const plusplus of ["yes", {}, []]) {
+    for (const plusplus of [{ tokenEfficiency: "true" }, { tokenEfficiency: 1 }, "yes", {}, []]) {
       expect(
         readProjectTokenEfficiency(
           settingsWith({ [projectA]: { defaultAutoPull: true, plusplus } }),
@@ -384,6 +389,13 @@ describe("token efficiency", () => {
       plusplus: { tokenEfficiency: true },
     });
     expect(withProjectTokenEfficiency({} as ProjectSettingsOverrides, false)).toBeNull();
+    // Disabling on a malformed carrier drops the carrier; it is never preserved.
+    expect(
+      withProjectTokenEfficiency(
+        { defaultAutoPull: true, plusplus: "garbage" } as unknown as ProjectSettingsOverrides,
+        false,
+      ),
+    ).toEqual({ defaultAutoPull: true });
   });
 
   it("newlyEnabledTokenEfficiencyProjects detects only false-to-true transitions", () => {
