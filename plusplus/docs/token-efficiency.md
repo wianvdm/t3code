@@ -15,17 +15,17 @@ The feature is off by default and applies per project.
 2. Turn on **Token efficiency** under **Agent instructions**.
 
 On mobile, the same switch is on the project's settings screen. The change
-applies to turns that start after you toggle it, on every environment attached
-to the project.
+applies to turns that start after you toggle it, on the selected environments.
 
 ## Automatic updates
 
-Only the project's copy of the upstream **CORE** checklist is installed. While
-at least one project has the feature enabled, the owning server fetches the
-CORE file from the upstream repository's `main` branch about every six hours
-and picks up changes on its own. That means the instructions can change agent
-behaviour without a T3 Code++ release; enabling the feature is a decision to
-trust those updates. While every project has it off, nothing is fetched.
+Each server installs its own copy of the upstream **CORE** checklist. While
+at least one project has the feature enabled, each server fetches the CORE
+file from the upstream repository's `main` branch about every six hours and
+picks up changes on its own. That means the instructions can change agent
+behaviour without a T3 Code ++ release; enabling the feature is a decision to
+trust those updates. While every project has it off, nothing is fetched
+automatically.
 
 ## Offline fallback and refresh
 
@@ -54,11 +54,14 @@ instructions**, not installed or fetched.
 ## Which providers are covered
 
 All built-in providers receive the checklist: Claude, Codex, OpenCode, Cursor,
-Muse, Pi, and the ACP family (ACP Registry, Grok, Kiro, FX, Antigravity).
+Muse Code, Pi, and the ACP family (ACP Registry, Grok, Kiro, fx, Antigravity).
 
-Most providers re-add the checklist after compacting a session's context. On
-FX and Antigravity that reinjection is not supported, so a long session may
-lose the checklist when the provider compacts its context.
+Most providers re-add the checklist after compacting a session's context.
+Cursor reinjects it after T3's own /compress, but its native auto-compaction
+is not observable, so a long Cursor session can lose the checklist too. On fx
+and Antigravity reinjection is not supported, so a long session there can lose
+the checklist as well. Native slash or command turns (OpenCode commands, ACP
+slash commands) run without the checklist.
 
 ## Limits
 
@@ -67,5 +70,5 @@ lose the checklist when the provider compacts its context.
   turns in their own thread and follow their own project's setting.
 - Disabling stops the checklist from being added to future turns, but it
   cannot retract instructions already present in a conversation.
-- In a mixed environment group, a stock T3 Code server does not have this
+- When a project spans a stock T3 Code server, that server does not have this
   feature; its provenance card shows **Not supported on \<environment\>**.
