@@ -5061,6 +5061,58 @@
   "84f8481f49bd28ec": "Préparation",
   "cd5d90cbbfae32f6": "Enregistrement {time}",
   "6236e2f587bc4eb4": "Transcription",
+  "0282ffbc3c8f5146": "CORE upstream",
+  "706084d25f85dd5a": "Dépôt",
+  "188383e350daf9e1": "Guide complet",
+  "1932b29c61860db6": "Licence MIT",
+  "18383d62691bf4e9": "Jamais",
+  "d740ba635a1fdffd": "Échec de l’actualisation. {detail} {source}, révision {revision}, reste active.",
+  "b0a029ac8c279cf5": "Échec de l’actualisation. {source}, révision {revision}, reste active.",
+  "cf146654c3e8faea": "Chargement de la provenance de l’efficacité des tokens sur {environment}…",
+  "80ebcaed67f5445c": "Non pris en charge sur {environment}",
+  "9492d5a6d43e53b3": "Indisponible sur {environment}",
+  "943e00c4e733d237": "{source} · Révision {revision} · Épinglée {pinned}",
+  "8f9a366d9f44a14d": "{source} · Révision {revision}",
+  "a2bded0a93096ada": "Actualisation…",
+  "015f325d30ad6192": "Actualiser maintenant",
+  "4236bb08618527f3": "Instructions d’efficacité des tokens",
+  "5bf4ff621a4697e6": [
+    "il y a",
+    " ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "1585864d5005ce2d": [
+    "Dernière vérification réussie :",
+    " ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "aeddf4420f291989": "Instructions des agents",
+  "573b5ee9ae1a24c6": "Efficacité des tokens",
+  "d9a1b1ac9fb559ce": [
+    "Donne aux agents une courte liste de contrôle pour réduire le contexte et les sorties d’outils superflus. Adapté de",
+    " ",
+    {
+      "t": "Text",
+      "i": 1,
+      "c": {
+        "i": 2,
+        "k": "_gt_value_2",
+        "v": "v"
+      }
+    },
+    ". Désactivé par défaut."
+  ],
+  "20e58d2c3bc5ee66": "{amount} utilisés",
+  "081dc1461c04211b": "{amount} restants",
+  "d985b6d9bce69299": "Limite de {amount}",
   "86798f07ba2d7f4d": "Rechercher des tickets",
   "484cd83bb303bab8": "Rechercher des pull requests",
   "75ed31fcea4f741a": "Filtrer les tickets",

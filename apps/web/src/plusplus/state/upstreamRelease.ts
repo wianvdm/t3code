@@ -8,6 +8,7 @@ import {
 } from "@t3tools/client-runtime/operations";
 import { runAtomCommand, squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import { AsyncResult, Atom } from "effect/reactivity";
+import { msg } from "gt-react";
 import { useEffect } from "react";
 
 import {
@@ -49,8 +50,18 @@ import {
   upstreamMergeAccess,
 } from "./upstreamMergeAccess";
 
-const NO_PROJECT_FOUND_MESSAGE = `No project found for github.com/${FORK_REPOSITORY}. Add the fork checkout as a project first.`;
-const START_MERGE_FAILED_MESSAGE = "Could not start upstream merge";
+const NO_PROJECT_FOUND_MESSAGE = msg(
+  "No project found for github.com/{repository}. Add the fork checkout as a project first.",
+  { repository: FORK_REPOSITORY },
+);
+const START_MERGE_FAILED_MESSAGE = msg("Could not start upstream merge");
+const UPDATE_FORK_FIRST_TITLE = msg("Update the fork first");
+const UPDATE_FORK_FIRST_DESCRIPTION = msg(
+  "A desktop update is ready. Update the fork before merging upstream.",
+);
+const MERGE_DRAFT_INCOMPLETE_MESSAGE = msg(
+  "The merge draft is missing its project, model, or workspace settings.",
+);
 
 export type NewThreadRunner = ReturnType<typeof useNewThreadHandler>;
 interface StartUpstreamMergeOptions {
@@ -144,8 +155,8 @@ async function startUpstreamMergeUnchecked(
     toastManager.add(
       stackedThreadToast({
         type: "error",
-        title: "Update the fork first",
-        description: "A desktop update is ready. Update the fork before merging upstream.",
+        title: m(UPDATE_FORK_FIRST_TITLE),
+        description: m(UPDATE_FORK_FIRST_DESCRIPTION),
       }),
     );
     return;
@@ -158,7 +169,7 @@ async function startUpstreamMergeUnchecked(
     toastManager.add(
       stackedThreadToast({
         type: "error",
-        title: NO_PROJECT_FOUND_MESSAGE,
+        title: m(NO_PROJECT_FOUND_MESSAGE),
       }),
     );
     return;
@@ -171,8 +182,8 @@ async function startUpstreamMergeUnchecked(
         type: "error",
         title:
           pushAccess === undefined
-            ? "Couldn't check push access to WianVDM/t3code"
-            : "No push access to WianVDM/t3code",
+            ? m(msg("Couldn't check push access to {repository}"), { repository: FORK_REPOSITORY })
+            : m(msg("No push access to {repository}"), { repository: FORK_REPOSITORY }),
       }),
     );
     return;
@@ -182,7 +193,7 @@ async function startUpstreamMergeUnchecked(
     toastManager.add(
       stackedThreadToast({
         type: "error",
-        title: START_MERGE_FAILED_MESSAGE,
+        title: m(START_MERGE_FAILED_MESSAGE),
         description: m(ORCHESTRATION_OPERATE_DENIED_MESSAGE),
       }),
     );
@@ -193,7 +204,7 @@ async function startUpstreamMergeUnchecked(
     toastManager.add(
       stackedThreadToast({
         type: "error",
-        title: "Could not open a new thread. Open the sidebar and try again.",
+        title: m(msg("Could not open a new thread. Open the sidebar and try again.")),
       }),
     );
     return;
@@ -227,8 +238,8 @@ async function startUpstreamMergeUnchecked(
     toastManager.add(
       stackedThreadToast({
         type: "error",
-        title: START_MERGE_FAILED_MESSAGE,
-        description: "The merge draft is missing its project, model, or workspace settings.",
+        title: m(START_MERGE_FAILED_MESSAGE),
+        description: m(MERGE_DRAFT_INCOMPLETE_MESSAGE),
       }),
     );
     return;
@@ -260,8 +271,8 @@ async function startUpstreamMergeUnchecked(
     toastManager.add(
       stackedThreadToast({
         type: "error",
-        title: START_MERGE_FAILED_MESSAGE,
-        description: "The merge draft is missing its project, model, or workspace settings.",
+        title: m(START_MERGE_FAILED_MESSAGE),
+        description: m(MERGE_DRAFT_INCOMPLETE_MESSAGE),
       }),
     );
     return;
@@ -314,8 +325,8 @@ async function startUpstreamMergeUnchecked(
     toastManager.add(
       stackedThreadToast({
         type: "error",
-        title: "Update the fork first",
-        description: "A desktop update is ready. Update the fork before merging upstream.",
+        title: m(UPDATE_FORK_FIRST_TITLE),
+        description: m(UPDATE_FORK_FIRST_DESCRIPTION),
       }),
     );
     return;
@@ -341,8 +352,9 @@ async function startUpstreamMergeUnchecked(
   toastManager.add(
     stackedThreadToast({
       type: "error",
-      title: START_MERGE_FAILED_MESSAGE,
-      description: error instanceof Error ? error.message : "Failed to start the merge agent.",
+      title: m(START_MERGE_FAILED_MESSAGE),
+      description:
+        error instanceof Error ? error.message : m(msg("Failed to start the merge agent.")),
     }),
   );
 }
@@ -360,7 +372,7 @@ export async function runManualUpstreamCheck(): Promise<void> {
     toastManager.add(
       stackedThreadToast({
         type: "error",
-        title: "Could not check upstream releases",
+        title: m(msg("Could not check upstream releases")),
         description: result.reason,
       }),
     );
@@ -372,12 +384,16 @@ export async function runManualUpstreamCheck(): Promise<void> {
     const toastId = toastManager.add(
       stackedThreadToast({
         type: "info",
-        title: `Upstream ${result.tag} is ready to merge`,
+        title: m(msg("Upstream {tag} is ready to merge"), { tag: result.tag }),
         ...(shouldDeferMerge
-          ? { description: "Update the fork first, then create a local upstream merge draft." }
+          ? {
+              description: m(
+                msg("Update the fork first, then create a local upstream merge draft."),
+              ),
+            }
           : {
               actionProps: {
-                children: "Create local upstream merge draft",
+                children: m(msg("Create local upstream merge draft")),
                 onClick: () => {
                   toastManager.close(toastId);
                   void startUpstreamMerge(result.tag);

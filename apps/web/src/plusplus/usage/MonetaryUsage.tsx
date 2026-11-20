@@ -1,4 +1,5 @@
 import type { LimitAccount, LimitPool } from "@t3tools/shared/usageLimits";
+import { T, useMessages } from "gt-react";
 import type { ReactNode } from "react";
 
 import { monetaryUsageOf, monetaryUsageText } from "./monetaryUsage.logic";
@@ -13,6 +14,7 @@ export function MonetaryUsageAccounts({
   readonly showEmptyLabel: boolean;
   readonly renderAccountName: (account: LimitAccount, className: string) => ReactNode;
 }) {
+  const m = useMessages();
   const rows = pool.accounts.flatMap((account) => {
     const monetary = monetaryUsageOf(account.limits);
     return monetary ? [{ account, monetary }] : [];
@@ -21,13 +23,15 @@ export function MonetaryUsageAccounts({
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border/60 p-4">
       {showEmptyLabel ? (
-        <span className="text-xs text-muted-foreground">No rate-limit windows reported</span>
+        <span className="text-xs text-muted-foreground">
+          <T>No rate-limit windows reported</T>
+        </span>
       ) : null}
       {rows.map(({ account, monetary }) => (
         <span key={account.key} className="flex items-baseline justify-between gap-3 text-xs">
           {renderAccountName(account, "min-w-0 truncate font-medium text-foreground")}
           <span className="shrink-0 text-foreground tabular-nums">
-            {monetaryUsageText(monetary)}
+            {monetaryUsageText(monetary, m)}
           </span>
         </span>
       ))}

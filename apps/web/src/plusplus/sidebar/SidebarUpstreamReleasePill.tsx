@@ -1,3 +1,5 @@
+import { useGT } from "gt-react";
+
 import { useNewThreadHandler } from "~/hooks/useHandleNewThread";
 import {
   startUpstreamMerge,
@@ -15,6 +17,7 @@ import {
 } from "../upstreamRelease.logic";
 
 function SidebarUpstreamReleasePillContent() {
+  const gt = useGT();
   useUpstreamReleasePolling();
   const eligible = useUpstreamMergeEligible();
   const newThread = useNewThreadHandler();
@@ -28,11 +31,17 @@ function SidebarUpstreamReleasePillContent() {
   const { tag } = result;
   const deferred = shouldDeferUpstreamMerge(desktopUpdateState);
   const title = deferred
-    ? `Upstream ${tag} ready, install fork update first`
-    : `Upstream ${tag} ready to merge`;
+    ? gt("Upstream {tag} ready, install fork update first", { tag })
+    : gt("Upstream {tag} ready to merge", { tag });
   const description = deferred
-    ? `Upstream release ${tag} is not yet merged into main. Install the pending fork update before merging upstream.`
-    : `Upstream release ${tag} is not yet merged into main. Click to create a local merge draft thread in your fork checkout. Nothing is pushed.`;
+    ? gt(
+        "Upstream release {tag} is not yet merged into main. Install the pending fork update before merging upstream.",
+        { tag },
+      )
+    : gt(
+        "Upstream release {tag} is not yet merged into main. Click to create a local merge draft thread in your fork checkout. Nothing is pushed.",
+        { tag },
+      );
 
   const handleClick = () => {
     if (deferred) {

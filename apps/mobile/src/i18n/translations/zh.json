@@ -5051,6 +5051,58 @@
   "84f8481f49bd28ec": "正在准备",
   "cd5d90cbbfae32f6": "正在录制 {time}",
   "6236e2f587bc4eb4": "正在转写",
+  "0282ffbc3c8f5146": "上游 CORE",
+  "706084d25f85dd5a": "仓库",
+  "188383e350daf9e1": "完整手册",
+  "1932b29c61860db6": "MIT 许可证",
+  "18383d62691bf4e9": "从未",
+  "d740ba635a1fdffd": "刷新失败。{detail} {source} 修订版 {revision} 仍处于活动状态。",
+  "b0a029ac8c279cf5": "刷新失败。{source} 修订版 {revision} 仍处于活动状态。",
+  "cf146654c3e8faea": "正在 {environment} 上加载 Token 效率来源…",
+  "80ebcaed67f5445c": "{environment} 上不支持",
+  "9492d5a6d43e53b3": "{environment} 上不可用",
+  "943e00c4e733d237": "{source} · 修订版 {revision} · 固定于 {pinned}",
+  "8f9a366d9f44a14d": "{source} · 修订版 {revision}",
+  "a2bded0a93096ada": "正在刷新…",
+  "015f325d30ad6192": "立即刷新",
+  "4236bb08618527f3": "Token 效率指令",
+  "5bf4ff621a4697e6": [
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " ",
+    "前"
+  ],
+  "1585864d5005ce2d": [
+    "上次成功检查：",
+    " ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "aeddf4420f291989": "智能体指令",
+  "573b5ee9ae1a24c6": "Token 效率",
+  "d9a1b1ac9fb559ce": [
+    "为智能体提供一份简短清单，减少不必要的上下文和工具输出。改编自",
+    " ",
+    {
+      "t": "Text",
+      "i": 1,
+      "c": {
+        "i": 2,
+        "k": "_gt_value_2",
+        "v": "v"
+      }
+    },
+    "。默认关闭。"
+  ],
+  "20e58d2c3bc5ee66": "已用 {amount}",
+  "081dc1461c04211b": "剩余 {amount}",
+  "d985b6d9bce69299": "上限 {amount}",
   "86798f07ba2d7f4d": "搜索 issue",
   "484cd83bb303bab8": "搜索 PR",
   "75ed31fcea4f741a": "筛选 issue",

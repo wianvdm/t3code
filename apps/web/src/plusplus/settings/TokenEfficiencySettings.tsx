@@ -1,4 +1,5 @@
 import { TOKEN_EFFICIENCY_LINKS } from "@t3tools/plusplus-extensions/tokenEfficiency";
+import { T, useGT, Var } from "gt-react";
 
 import { SettingsRow, SettingsSection } from "../../components/settings/settingsLayout";
 import { Switch } from "../../components/ui/switch";
@@ -17,6 +18,8 @@ import {
   tokenEfficiencyMixed,
 } from "./tokenEfficiencySettings.logic";
 
+const TOKEN_EFFICIENCY_REPOSITORY_NAME = "undefdev/token-efficiency";
+
 export function TokenEfficiencySettings() {
   const context = useOptionalSettingsScope();
   if (context === null) return null;
@@ -24,6 +27,7 @@ export function TokenEfficiencySettings() {
 }
 
 function TokenEfficiencySettingsContent() {
+  const gt = useGT();
   const { scope, environments, connectedEnvironments, targets } = useSettingsScope();
   const run = useRunScopedPlan();
   const writeAllowed = useScopedSettingsWriteAllowed();
@@ -33,11 +37,11 @@ function TokenEfficiencySettingsContent() {
   const scopeSupportsToggle = scope.kind === "project" || scope.kind === "checkout";
 
   return (
-    <SettingsSection id="token-efficiency" title="Agent instructions">
+    <SettingsSection id="token-efficiency" title={gt("Agent instructions")}>
       <SettingsRow
-        title="Token efficiency"
+        title={gt("Token efficiency")}
         description={
-          <>
+          <T>
             Give agents a short checklist for reducing unnecessary context and tool output. Adapted
             from{" "}
             <a
@@ -46,14 +50,14 @@ function TokenEfficiencySettingsContent() {
               rel="noreferrer noopener"
               className="underline underline-offset-2 hover:text-foreground"
             >
-              undefdev/token-efficiency
+              <Var>{TOKEN_EFFICIENCY_REPOSITORY_NAME}</Var>
             </a>
             . Disabled by default.
-          </>
+          </T>
         }
         control={
           <Switch
-            aria-label="Token efficiency"
+            aria-label={gt("Token efficiency")}
             checked={enabled}
             mixed={mixed}
             disabled={!writeAllowed || !scopeSupportsToggle}

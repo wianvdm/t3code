@@ -1,6 +1,7 @@
 import type { ProviderDriverKind } from "@t3tools/contracts";
 import { formatUsd } from "@t3tools/shared/usageFormat";
 import type { LimitAccount } from "@t3tools/plusplus-extensions/usageReporting";
+import { useGT } from "gt-react";
 
 import { ModelVendorIcon, usesModelVendorIcon } from "./modelVendorIcon";
 import { monetaryUsageOf } from "./monetaryUsage.logic";
@@ -15,18 +16,22 @@ function MonetaryRow({ label, value }: { readonly label: string; readonly value:
 }
 
 export function SegmentMonetaryUsage({ limits }: { readonly limits: LimitAccount["limits"] }) {
+  const gt = useGT();
   const monetary = monetaryUsageOf(limits);
   if (!monetary) return null;
   return (
     <div className="flex flex-col gap-1 border-t border-border/60 pt-2.5">
       {monetary.usedUsd !== undefined ? (
-        <MonetaryRow label="Used" value={monetary.usedUsd} />
+        <MonetaryRow label={gt("Used", { $context: "money spent" })} value={monetary.usedUsd} />
       ) : null}
       {monetary.remainingUsd !== undefined ? (
-        <MonetaryRow label="Remaining" value={monetary.remainingUsd} />
+        <MonetaryRow
+          label={gt("Remaining", { $context: "money left" })}
+          value={monetary.remainingUsd}
+        />
       ) : null}
       {monetary.limitUsd !== undefined ? (
-        <MonetaryRow label="Limit" value={monetary.limitUsd} />
+        <MonetaryRow label={gt("Limit", { $context: "spending cap" })} value={monetary.limitUsd} />
       ) : null}
     </div>
   );

@@ -1,3 +1,4 @@
+import { T, useGT, Var } from "gt-react";
 import { FolderIcon, GitBranchIcon, TerminalIcon } from "lucide-react";
 
 import { ThreadHoverCard } from "~/components/ThreadHoverCard";
@@ -29,11 +30,12 @@ export function ProcessTooltipContent(props: {
   readonly preview?: string | null;
   readonly note?: string | null;
 }) {
+  const gt = useGT();
   // An unknown start is still reported, as a dash, matching the row, which never
   // fabricates a 0m or falls back to a proxy like updatedAt.
   const elapsed =
     props.startedAt === null ? (
-      <span className="shrink-0 text-muted-foreground" aria-label="Elapsed time unavailable">
+      <span className="shrink-0 text-muted-foreground" aria-label={gt("Elapsed time unavailable")}>
         –
       </span>
     ) : (
@@ -58,33 +60,45 @@ export function ProcessTooltipContent(props: {
       ) : null}
       {props.identity ? (
         <div className="flex min-w-0 items-center gap-2">
-          <span className="sr-only">Running</span>
+          <span className="sr-only">
+            <T>Running</T>
+          </span>
           <MiddleTruncate value={props.identity} className="flex" showTitle={false} />
         </div>
       ) : null}
       {props.cwd ? (
         <div className="flex min-w-0 items-center gap-2">
           <FolderIcon aria-hidden className="size-3 shrink-0" />
-          <span className="sr-only">Working directory</span>
+          <span className="sr-only">
+            <T>Working directory</T>
+          </span>
           <MiddleTruncate value={props.cwd} className="flex" showTitle={false} />
         </div>
       ) : null}
       {props.worktreePath ? (
         <div className="flex min-w-0 items-center gap-2">
           <GitBranchIcon aria-hidden className="size-3 shrink-0" />
-          <span className="sr-only">Worktree</span>
+          <span className="sr-only">
+            <T>Worktree</T>
+          </span>
           <MiddleTruncate value={props.worktreePath} className="flex" showTitle={false} />
         </div>
       ) : null}
       {props.pid !== null && props.pid !== undefined ? (
         <div className="flex min-w-0 items-center gap-2">
-          <span>PID {props.pid}</span>
+          <span>
+            <T>
+              PID <Var>{props.pid}</Var>
+            </T>
+          </span>
         </div>
       ) : null}
       {props.preview ? (
         <div className="flex min-w-0 items-center gap-2">
           <TerminalIcon aria-hidden className="size-3 shrink-0" />
-          <span className="sr-only">Latest output</span>
+          <span className="sr-only">
+            <T>Latest output</T>
+          </span>
           <MiddleTruncate value={props.preview} className="flex" showTitle={false} />
         </div>
       ) : null}

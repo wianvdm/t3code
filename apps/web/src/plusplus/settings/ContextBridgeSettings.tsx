@@ -1,5 +1,6 @@
 import { useAtomValue } from "@effect/atom-react";
 import type { EnvironmentId } from "@t3tools/contracts";
+import { msg, useGT, useMessages } from "gt-react";
 import { readContextBridgeSettings } from "@t3tools/shared/serverSettings";
 
 import { useEnvironmentSettings, useUpdateEnvironmentSettings } from "../../hooks/useSettings";
@@ -39,6 +40,7 @@ export function ContextBridgeSettingsSection({
   readonly environmentId: EnvironmentId;
   readonly readOnly?: boolean;
 }) {
+  const gt = useGT();
   const searchableSetting = useSearchableSetting();
   const settings = useEnvironmentSettings(environmentId);
   const updateSettings = useUpdateEnvironmentSettings(environmentId);
@@ -52,20 +54,20 @@ export function ContextBridgeSettingsSection({
     <SettingsSection {...searchableSetting("context-bridge")}>
       <SettingsRow
         {...searchableSetting("context-bridge-enabled")}
-        description="Providers can use another provider's instructions and skills."
+        description={gt("Providers can use another provider's instructions and skills.")}
         control={
           <span inert={readOnly} className={readOnly ? "opacity-50" : undefined}>
             <Switch
               checked={contextBridge.enabled}
               onCheckedChange={(enabled) => updateSettings({ contextBridge: { enabled } })}
-              aria-label="Enable context bridge"
+              aria-label={gt("Enable context bridge")}
             />
           </span>
         }
       />
       <SettingsRow
         {...searchableSetting("context-bridge-default-source")}
-        description="Fallback source when a route is set to Default."
+        description={gt("Fallback source when a route is set to Default.")}
         control={
           <Select
             value={defaultSource}
@@ -74,7 +76,7 @@ export function ContextBridgeSettingsSection({
             }}
             disabled={!contextBridge.enabled || readOnly}
           >
-            <SelectTrigger size="sm" className="w-48" aria-label="Default context source">
+            <SelectTrigger size="sm" className="w-48" aria-label={gt("Default context source")}>
               <SelectValue>{resolveDriverLabel(defaultSource, availableDrivers)}</SelectValue>
             </SelectTrigger>
             <SelectPopup>
@@ -92,12 +94,25 @@ export function ContextBridgeSettingsSection({
 }
 
 const BRIDGE_FEATURE_ROWS = [
-  { feature: "instructions", title: "Instructions" },
-  { feature: "skills", title: "Skills" },
-  { feature: "hooks", title: "Hooks" },
+  {
+    feature: "instructions",
+    title: msg("Instructions"),
+    description: msg("Where {provider} loads instructions from when the context bridge is on."),
+  },
+  {
+    feature: "skills",
+    title: msg("Skills"),
+    description: msg("Where {provider} loads skills from when the context bridge is on."),
+  },
+  {
+    feature: "hooks",
+    title: msg("Hooks"),
+    description: msg("Where {provider} loads hooks from when the context bridge is on."),
+  },
 ] as const satisfies ReadonlyArray<{
   feature: ContextBridgeFeature;
   title: string;
+  description: string;
 }>;
 
 export function ProviderContextBridgeSection({
@@ -109,22 +124,25 @@ export function ProviderContextBridgeSection({
   readonly driver: string;
   readonly readOnly?: boolean;
 }) {
+  const gt = useGT();
+  const m = useMessages();
   const settings = useEnvironmentSettings(environmentId);
   const updateSettings = useUpdateEnvironmentSettings(environmentId);
   const availableDrivers = useAvailableBridgeDrivers(environmentId);
 
   const contextBridge = readContextBridgeSettings(settings);
   const route = contextBridge.routes[driver];
-  const routeOptions = buildRouteOptions(driver, contextBridge.defaultSource, availableDrivers);
+  const routeOptions = buildRouteOptions(driver, contextBridge.defaultSource, availableDrivers, m);
 
   return (
     <SettingsSection
-      title="Context"
+      title={gt("Context", { $context: "settings section for instruction and skill sources" })}
       inert={readOnly}
       aria-disabled={readOnly || undefined}
       className={readOnly ? "opacity-50 select-none" : undefined}
     >
-      {BRIDGE_FEATURE_ROWS.map(({ feature, title }) => {
+      {BRIDGE_FEATURE_ROWS.map(({ feature, title: featureTitle, description }) => {
+        const title = m(featureTitle);
         const value = route?.[feature] ?? "native";
         const unsupported =
           (feature === "hooks" && !supportsContextBridgeHooks(driver)) ||
@@ -133,7 +151,7 @@ export function ProviderContextBridgeSection({
           <SettingsRow
             key={feature}
             title={title}
-            description={`Where ${resolveDriverLabel(driver, availableDrivers)} loads ${feature} from when the context bridge is on.`}
+            description={m(description, { provider: resolveDriverLabel(driver, availableDrivers) })}
             control={
               <Select
                 value={value}
@@ -147,9 +165,9 @@ export function ProviderContextBridgeSection({
                 }}
                 disabled={!contextBridge.enabled || unsupported}
               >
-                <SelectTrigger size="sm" aria-label={`${title} source`}>
+                <SelectTrigger size="sm" aria-label={gt("{feature} source", { feature: title })}>
                   <SelectValue>
-                    {unsupported ? "Not supported" : resolveOptionLabel(routeOptions, value)}
+                    {unsupported ? gt("Not supported") : resolveOptionLabel(routeOptions, value)}
                   </SelectValue>
                 </SelectTrigger>
                 {!unsupported && (

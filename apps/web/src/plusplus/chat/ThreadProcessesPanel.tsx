@@ -18,6 +18,7 @@ import {
   SquareIcon,
   TerminalIcon,
 } from "lucide-react";
+import { T, useGT, useMessages } from "gt-react";
 import { useState, type ReactNode } from "react";
 
 import { revealThreadTerminalInRightPanel } from "../lib/revealThreadTerminal";
@@ -104,6 +105,7 @@ function ProcessRowList(props: {
   readonly rows: number;
   readonly children: (visibleCount: number) => ReactNode;
 }) {
+  const gt = useGT();
   const [visibleCount, setVisibleCount] = useState(THREAD_PROCESSES_INITIAL_COUNT);
   const hiddenCount = Math.max(0, props.rows - visibleCount);
   return (
@@ -125,7 +127,9 @@ function ProcessRowList(props: {
           className={`flex h-8 w-full cursor-pointer items-center rounded-lg ${THREAD_DETAILS_PANEL_ROW_CONTENT_CLASS} text-sm font-medium text-muted-foreground/70 hover:bg-black/[0.055] hover:text-foreground/80 dark:hover:bg-white/[0.075]`}
         >
           <PlusIcon aria-hidden className="size-4 shrink-0" />
-          Show {Math.min(hiddenCount, THREAD_PROCESSES_PAGE_COUNT)} more
+          {gt("Show {count} more", {
+            count: Math.min(hiddenCount, THREAD_PROCESSES_PAGE_COUNT),
+          })}
         </button>
       ) : null}
     </>
@@ -146,11 +150,12 @@ function ProcessGroupLabel(props: { readonly children: ReactNode }) {
  * a proxy like updatedAt.
  */
 function ProcessRowElapsed(props: { readonly startedAt: string | null }) {
+  const gt = useGT();
   if (props.startedAt === null) {
     return (
       <span
         className="shrink-0 text-2xs text-muted-foreground"
-        aria-label="Elapsed time unavailable"
+        aria-label={gt("Elapsed time unavailable")}
       >
         –
       </span>
@@ -172,6 +177,8 @@ export function ThreadProcessesPanel(props: {
   readonly isStoppingBackgroundWork?: boolean | undefined;
   readonly onStopBackgroundWork?: (() => void) | undefined;
 }) {
+  const gt = useGT();
+  const m = useMessages();
   const ref = scopeThreadRef(props.environmentId, props.threadId);
   const threadKey = scopedThreadKey(ref);
   const projection = useThreadProjection(ref)?.projection ?? null;
@@ -204,13 +211,16 @@ export function ThreadProcessesPanel(props: {
     pullRequests: projection?.thread.pullRequests,
     runlessOwnerActive,
   });
-  const taskRows = deriveThreadProcessTaskRows({
-    threadId: props.threadId,
-    tasks: backgroundTasks,
-    turnItems: projection?.turnItems ?? [],
-    runs,
-    visibleTurnItems,
-  });
+  const taskRows = deriveThreadProcessTaskRows(
+    {
+      threadId: props.threadId,
+      tasks: backgroundTasks,
+      turnItems: projection?.turnItems ?? [],
+      runs,
+      visibleTurnItems,
+    },
+    m,
+  );
 
   if (terminalRows.length === 0 && taskRows.length === 0) {
     return null;
@@ -231,10 +241,10 @@ export function ThreadProcessesPanel(props: {
   // Stop is thread-level interruption: while a foreground run is active it stops the current
   // turn too, so the label must say so instead of implying background-only scope.
   const foregroundActive = hasActiveForegroundRun(runs);
-  const stopAriaLabel = foregroundActive ? "Stop thread" : "Stop background work";
+  const stopAriaLabel = foregroundActive ? gt("Stop thread") : gt("Stop background work");
   const stopTooltip = foregroundActive
-    ? "Stop the current turn and all background work"
-    : "Stop all background work";
+    ? gt("Stop the current turn and all background work")
+    : gt("Stop all background work");
   const showStop =
     props.onStopBackgroundWork !== undefined &&
     taskRows.length > 0 &&
@@ -261,7 +271,11 @@ export function ThreadProcessesPanel(props: {
   return (
     <ThreadDetailsSection
       headingId="thread-details-processes-heading"
-      title={totalCount > 0 ? `Processes · ${totalCount} running` : "Processes"}
+      title={
+        totalCount > 0
+          ? gt("Processes · {count} running", { count: totalCount })
+          : gt("Processes", { $context: "thread details section heading" })
+      }
       data-thread-processes-panel
       actions={
         showStop ? (
@@ -292,8 +306,12 @@ export function ThreadProcessesPanel(props: {
     >
       {terminalRows.length > 0 ? (
         <div>
-          {showGroupLabels ? <ProcessGroupLabel>Terminals</ProcessGroupLabel> : null}
-          <ProcessRowList label="Active terminals" rows={terminalRows.length}>
+          {showGroupLabels ? (
+            <ProcessGroupLabel>
+              <T>Terminals</T>
+            </ProcessGroupLabel>
+          ) : null}
+          <ProcessRowList label={gt("Active terminals")} rows={terminalRows.length}>
             {(visibleCount) =>
               terminalRows.slice(0, visibleCount).map((row) => (
                 <li
@@ -323,10 +341,14 @@ export function ThreadProcessesPanel(props: {
                     <ThreadHoverCardPopup side="left">
                       <ProcessTooltipContent
                         title={row.label}
-                        kind="Terminal"
-                        status={row.starting ? "Starting" : "Running"}
+                        kind={gt("Terminal", { $context: "background process kind" })}
+                        status={
+                          row.starting
+                            ? gt("Starting", { $context: "background process status" })
+                            : gt("Running", { $context: "background process status" })
+                        }
                         startedAt={row.startedAt}
-                        elapsedLabel="Session uptime"
+                        elapsedLabel={gt("Session uptime")}
                         cwd={row.cwd}
                         worktreePath={row.worktreePath}
                         pid={row.pid}
@@ -341,8 +363,12 @@ export function ThreadProcessesPanel(props: {
       ) : null}
       {taskRows.length > 0 ? (
         <div>
-          {showGroupLabels ? <ProcessGroupLabel>Background work</ProcessGroupLabel> : null}
-          <ProcessRowList label="Background work" rows={taskRows.length}>
+          {showGroupLabels ? (
+            <ProcessGroupLabel>
+              <T>Background work</T>
+            </ProcessGroupLabel>
+          ) : null}
+          <ProcessRowList label={gt("Background work")} rows={taskRows.length}>
             {(visibleCount) =>
               taskRows.slice(0, visibleCount).map((row) => {
                 const item = row.item;
@@ -365,11 +391,15 @@ export function ThreadProcessesPanel(props: {
                         <ThreadHoverCardPopup side="left">
                           <ProcessTooltipContent
                             title={row.label}
-                            kind={threadProcessTaskKindLabel(row.task.kind)}
-                            status={isWatch ? "Watching" : "Provider-reported"}
+                            kind={threadProcessTaskKindLabel(row.task.kind, m)}
+                            status={
+                              isWatch
+                                ? gt("Watching", { $context: "background process status" })
+                                : gt("Provider-reported")
+                            }
                             startedAt={row.startedAt}
                             identity={isWatch ? null : row.task.taskId}
-                            note={isWatch ? null : "Details unavailable"}
+                            note={isWatch ? null : gt("Details unavailable")}
                           />
                         </ThreadHoverCardPopup>
                       </Tooltip>
@@ -403,8 +433,8 @@ export function ThreadProcessesPanel(props: {
                       <ThreadHoverCardPopup side="left">
                         <ProcessTooltipContent
                           title={row.label}
-                          kind={threadProcessTaskKindLabel(row.task.kind)}
-                          status={threadProcessTaskStatusLabel(row)}
+                          kind={threadProcessTaskKindLabel(row.task.kind, m)}
+                          status={threadProcessTaskStatusLabel(row, m)}
                           startedAt={row.startedAt}
                           identity={threadProcessTaskIdentity(row)}
                           preview={threadProcessTaskPreview(row)}

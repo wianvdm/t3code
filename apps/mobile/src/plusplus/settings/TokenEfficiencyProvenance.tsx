@@ -17,6 +17,7 @@ import {
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import { AsyncResult } from "effect/reactivity";
+import { msg, T, useGT, useMessages, Var } from "gt-react-native";
 import { useState } from "react";
 import { Linking, View } from "react-native";
 
@@ -29,10 +30,10 @@ import { useAtomCommand } from "../../state/use-atom-command";
 import { refreshTokenEfficiency, tokenEfficiencyView } from "../state/tokenEfficiency";
 
 const ATTRIBUTION_LINKS = [
-  { label: "Upstream CORE", url: TOKEN_EFFICIENCY_LINKS.core },
-  { label: "Repository", url: TOKEN_EFFICIENCY_LINKS.repository },
-  { label: "Full playbook", url: TOKEN_EFFICIENCY_LINKS.fullPlaybook },
-  { label: "MIT license", url: TOKEN_EFFICIENCY_LINKS.license },
+  { label: msg("Upstream CORE"), url: TOKEN_EFFICIENCY_LINKS.core },
+  { label: msg("Repository"), url: TOKEN_EFFICIENCY_LINKS.repository },
+  { label: msg("Full playbook"), url: TOKEN_EFFICIENCY_LINKS.fullPlaybook },
+  { label: msg("MIT license"), url: TOKEN_EFFICIENCY_LINKS.license },
 ] as const;
 
 function isTokenEfficiencyUnsupportedError(error: unknown): boolean {
@@ -47,11 +48,15 @@ function withTerminalPunctuation(message: string): string {
 function LastSuccessfulCheck(props: {
   readonly value: TokenEfficiencyStatus["lastSuccessfulCheckAt"];
 }) {
-  if (props.value === null) return "Never";
+  const gt = useGT();
+  if (props.value === null) return gt("Never", { $context: "last successful check time" });
   return (
-    <>
-      <RelativeTime timestamp={DateTime.formatIso(props.value)} /> ago
-    </>
+    <T>
+      <Var>
+        <RelativeTime timestamp={DateTime.formatIso(props.value)} />
+      </Var>{" "}
+      ago
+    </T>
   );
 }
 
@@ -63,6 +68,7 @@ function EnvironmentProvenance(props: {
   readonly environment: SettingsTarget;
   readonly showEnvironmentLabel: boolean;
 }) {
+  const gt = useGT();
   const { environmentId, label } = props.environment;
   const result = useAtomValue(tokenEfficiencyView({ environmentId, input: {} }));
   const canRefresh = useAtomValue(refreshTokenEfficiency.permissionAtom(environmentId));
@@ -84,20 +90,30 @@ function EnvironmentProvenance(props: {
       setOutcome(next.value);
     } else if (!isAtomCommandInterrupted(next)) {
       const error = squashAtomCommandFailure(next);
-      const detail = error instanceof Error ? ` ${withTerminalPunctuation(error.message)}` : "";
+      const active = {
+        source: sourceLabel(view.status.active.source),
+        revision: shortRevision(view.status.active.blobSha),
+      };
       setRequestFailure(
-        `Refresh failed.${detail} ${sourceLabel(view.status.active.source)} revision ${shortRevision(view.status.active.blobSha)} stays active.`,
+        error instanceof Error
+          ? gt("Refresh failed. {detail} {source} revision {revision} stays active.", {
+              ...active,
+              detail: withTerminalPunctuation(error.message),
+            })
+          : gt("Refresh failed. {source} revision {revision} stays active.", active),
       );
     }
     setRefreshing(false);
   };
 
   if (view === null) {
-    let message = `Loading token-efficiency provenance on ${label}…`;
+    let message = gt("Loading token-efficiency provenance on {environment}…", {
+      environment: label,
+    });
     if (result._tag === "Failure") {
       message = isTokenEfficiencyUnsupportedError(Cause.squash(result.cause))
-        ? `Not supported on ${label}`
-        : `Unavailable on ${label}`;
+        ? gt("Not supported on {environment}", { environment: label })
+        : gt("Unavailable on {environment}", { environment: label });
     }
     return (
       <Text textRole="footnote" className="px-2 text-foreground-muted">
@@ -118,13 +134,24 @@ function EnvironmentProvenance(props: {
     <View className="gap-3 px-2 py-3">
       {props.showEnvironmentLabel ? <Text className="font-t3-medium">{label}</Text> : null}
       <Text textRole="footnote">
-        {sourceLabel(active.source)} · Revision {shortRevision(active.blobSha)}
         {active.source === "bundled" && active.upstreamCommit !== undefined
-          ? ` · Pinned ${shortRevision(active.upstreamCommit)}`
-          : ""}
+          ? gt("{source} · Revision {revision} · Pinned {pinned}", {
+              source: sourceLabel(active.source),
+              revision: shortRevision(active.blobSha),
+              pinned: shortRevision(active.upstreamCommit),
+            })
+          : gt("{source} · Revision {revision}", {
+              source: sourceLabel(active.source),
+              revision: shortRevision(active.blobSha),
+            })}
       </Text>
       <Text textRole="footnote" className="text-foreground-muted">
-        Last successful check: <LastSuccessfulCheck value={view.status.lastSuccessfulCheckAt} />
+        <T>
+          Last successful check:{" "}
+          <Var>
+            <LastSuccessfulCheck value={view.status.lastSuccessfulCheckAt} />
+          </Var>
+        </T>
       </Text>
       {(failedOutcomeMessage ?? failureMessage) ? (
         <Text textRole="footnote" className="text-danger">
@@ -139,18 +166,18 @@ function EnvironmentProvenance(props: {
       ) : null}
       <View className="flex-row flex-wrap gap-2">
         <Button
-          label={refreshing ? "Refreshing…" : "Refresh now"}
+          label={refreshing ? gt("Refreshing…") : gt("Refresh now")}
           size="compact"
           disabled={!canRefresh || refreshing}
           loading={refreshing}
           onPress={() => void refreshNow()}
         />
         <Button
-          label="View instructions"
+          label={gt("View instructions")}
           size="compact"
           onPress={() =>
             Dialog.alert(
-              "Token-efficiency instructions",
+              gt("Token-efficiency instructions"),
               `${view.instructions}\n\n${ATTRIBUTION_TEXT}`,
             )
           }
@@ -163,6 +190,7 @@ function EnvironmentProvenance(props: {
 export function TokenEfficiencyProvenance(props: {
   readonly environments: readonly SettingsTarget[];
 }) {
+  const m = useMessages();
   const environments = [
     ...new Map(
       props.environments.map((environment) => [environment.environmentId, environment]),
@@ -184,12 +212,12 @@ export function TokenEfficiencyProvenance(props: {
         <View className="flex-row flex-wrap gap-x-4 gap-y-2">
           {ATTRIBUTION_LINKS.map((link) => (
             <Text
-              key={link.label}
+              key={link.url}
               accessibilityRole="link"
               className="text-foreground underline"
               onPress={() => openUrl(link.url)}
             >
-              {link.label}
+              {m(link.label)}
             </Text>
           ))}
         </View>

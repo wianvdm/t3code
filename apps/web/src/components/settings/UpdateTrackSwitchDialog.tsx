@@ -74,8 +74,12 @@ export function UpdateTrackSwitchDialog({
           </AlertDialogTitle>
           <AlertDialogDescription>
             {AsyncResult.isFailure(release) || AsyncResult.isSuccess(release)
-              ? // oxlint-disable-next-line t3code/no-untranslated-copy -- ++ copy predates i18n; wrapped in the ++ i18n follow-up
-                `Could not find the latest ${label} release on GitHub Releases. Try again later.`
+              ? gt(
+                  "Could not find the latest {label} release on GitHub Releases. Try again later.",
+                  {
+                    label,
+                  },
+                )
               : gt("Checking releases…")}
           </AlertDialogDescription>
         </AlertDialogHeader>

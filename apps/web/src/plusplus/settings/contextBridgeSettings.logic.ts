@@ -3,6 +3,9 @@ import {
   type ProviderDriverKind,
   PROVIDER_DISPLAY_NAMES,
 } from "@t3tools/contracts";
+import { msg } from "gt-react";
+
+import { m, type MessageResolver } from "~/i18n/messages";
 import type { ProviderInstanceEntry } from "~/providerInstances";
 
 export type ContextBridgeFeature = "instructions" | "skills" | "hooks";
@@ -85,11 +88,15 @@ export function buildRouteOptions(
   rowDriver: string,
   defaultSource: string,
   availableDrivers: ReadonlyArray<DriverOption>,
+  resolve: MessageResolver = m,
 ): ReadonlyArray<RouteOption> {
   const defaultSourceLabel = resolveDriverLabel(defaultSource, availableDrivers);
   const options: RouteOption[] = [
-    { value: "native", label: "Native" },
-    { value: "default", label: "Default (" + defaultSourceLabel + ")" },
+    { value: "native", label: resolve(msg("Native", { $context: "context bridge source" })) },
+    {
+      value: "default",
+      label: resolve(msg("Default ({source})", { source: defaultSourceLabel })),
+    },
   ];
 
   for (const { driver, label } of availableDrivers) {

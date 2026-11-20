@@ -592,8 +592,6 @@ export default defineConfig({
           "**/*.test-fixtures.ts",
           "**/{test-fixtures,*TestFixtures}.ts",
           "apps/mobile/src/features/development/**",
-          // ++ copy predates i18n; drop this once the ++ strings are wrapped.
-          "apps/*/src/plusplus/**",
           "packages/client-runtime/src/rpc/**",
         ],
         rules: { "t3code/no-untranslated-copy": "error" },

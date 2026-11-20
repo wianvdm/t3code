@@ -1,6 +1,7 @@
 import { AuthSettingsWriteScope } from "@t3tools/contracts";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import { TOKEN_EFFICIENCY_LINKS } from "@t3tools/plusplus-extensions/tokenEfficiency";
+import { T, useGT, Var } from "gt-react-native";
 import { Linking, View } from "react-native";
 
 import { AppText as Text } from "../../components/ui/AppText";
@@ -16,10 +17,13 @@ import {
   readMobileTokenEfficiencyState,
 } from "./tokenEfficiencyWrites";
 
+const TOKEN_EFFICIENCY_REPOSITORY_NAME = "undefdev/token-efficiency";
+
 export function TokenEfficiencySection(props: {
   readonly members: readonly EnvironmentProject[];
   readonly environments: readonly SettingsTarget[];
 }) {
+  const gt = useGT();
   const targets = resolveMobileSettingsTargets(props.environments, props.members);
   const writableEnvironments = useEnvironmentsWithScope(props.environments, AuthSettingsWriteScope);
   const canWrite =
@@ -29,9 +33,9 @@ export function TokenEfficiencySection(props: {
   const writeSettings = useSettingsWriter();
 
   return (
-    <SettingsSection title="Agent instructions">
+    <SettingsSection title={gt("Agent instructions")}>
       <SettingsSwitchRow
-        label="Token efficiency"
+        label={gt("Token efficiency")}
         value={enabled}
         disabled={!canWrite}
         onValueChange={(enabled) => {
@@ -40,18 +44,20 @@ export function TokenEfficiencySection(props: {
         meta={
           <View className="pt-1">
             <Text textRole="footnote" className="text-foreground-muted">
-              Give agents a short checklist for reducing unnecessary context and tool output.{" "}
-              Adapted from{" "}
-              <Text
-                accessibilityRole="link"
-                className="text-foreground underline"
-                onPress={() =>
-                  void Linking.openURL(TOKEN_EFFICIENCY_LINKS.repository).catch(() => undefined)
-                }
-              >
-                undefdev/token-efficiency
-              </Text>
-              . Disabled by default.
+              <T>
+                Give agents a short checklist for reducing unnecessary context and tool output.
+                Adapted from{" "}
+                <Text
+                  accessibilityRole="link"
+                  className="text-foreground underline"
+                  onPress={() =>
+                    void Linking.openURL(TOKEN_EFFICIENCY_LINKS.repository).catch(() => undefined)
+                  }
+                >
+                  <Var>{TOKEN_EFFICIENCY_REPOSITORY_NAME}</Var>
+                </Text>
+                . Disabled by default.
+              </T>
             </Text>
           </View>
         }
