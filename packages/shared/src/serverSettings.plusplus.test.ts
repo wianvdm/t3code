@@ -5,7 +5,10 @@ import {
   type ServerSettings,
   type T3ProjectFile,
 } from "@t3tools/contracts";
-import { readProjectTokenEfficiency } from "@t3tools/plusplus/contracts";
+import {
+  readProjectTokenEfficiency,
+  withProjectTokenEfficiency,
+} from "@t3tools/plusplus/contracts";
 import { describe, expect, it } from "vite-plus/test";
 import { resolveProjectSettings } from "./projectSettings.ts";
 import { applyServerSettingsPatch } from "./serverSettings.ts";
@@ -115,6 +118,35 @@ describe("token-efficiency project override entry", () => {
     });
     expect(patched.projectSettingsOverrides[projectId]).toEqual(replacement);
     expect(readProjectTokenEfficiency(patched, projectId)).toBe(true);
+  });
+
+  it("persists toggle writes through the project override merge", () => {
+    const stored = { defaultAutoPull: true } as ProjectSettingsOverrides;
+    const enabled = applyServerSettingsPatch(
+      { ...DEFAULT_SERVER_SETTINGS, projectSettingsOverrides: { [projectId]: stored } },
+      {
+        projectSettingsOverrides: {
+          [projectId]: withProjectTokenEfficiency(stored, true),
+        },
+      },
+    );
+    expect(readProjectTokenEfficiency(enabled, projectId)).toBe(true);
+
+    const disabled = applyServerSettingsPatch(enabled, {
+      projectSettingsOverrides: {
+        [projectId]: withProjectTokenEfficiency(
+          enabled.projectSettingsOverrides[projectId]!,
+          false,
+        ),
+      },
+    });
+    expect(readProjectTokenEfficiency(disabled, projectId)).toBe(false);
+    expect(disabled.projectSettingsOverrides[projectId]?.defaultAutoPull).toBe(true);
+
+    const enabledFromEmpty = applyServerSettingsPatch(DEFAULT_SERVER_SETTINGS, {
+      projectSettingsOverrides: { [projectId]: withProjectTokenEfficiency({}, true) },
+    });
+    expect(readProjectTokenEfficiency(enabledFromEmpty, projectId)).toBe(true);
   });
 
   it("drops the entry together with the area when the patch writes null", () => {

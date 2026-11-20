@@ -601,7 +601,7 @@
       "legacy": true
     },
     "apps/server/src/auth/RpcAuthorization.ts": {
-      "delta": [1, 0],
+      "delta": [3, 0],
       "legacy": true
     },
     "apps/server/src/binCli.ts": {
@@ -2161,7 +2161,7 @@
       "legacy": true
     },
     "packages/shared/src/serverSettings.ts": {
-      "delta": [23, 0],
+      "delta": [24, 0],
       "legacy": true
     },
     "packages/source-control-core/src/server/driver.ts": {
