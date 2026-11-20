@@ -1,3 +1,5 @@
+> Using the T3 Code ++ fork? The [++ token efficiency guide](../../plusplus/docs/token-efficiency.md) documents the per-project Token efficiency switch under Agent instructions.
+
 # Settings and project overrides
 
 On web and desktop, the "Applying settings for …" sentence at the top of Settings pages picks

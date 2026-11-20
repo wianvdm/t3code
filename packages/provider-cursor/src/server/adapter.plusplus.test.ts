@@ -16,6 +16,7 @@ import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
 
@@ -395,6 +396,88 @@ describe("CursorAdapterV2 project instructions ++", () => {
       assert.include(sent[0], FIRST.text);
       assert.strictEqual(sent[1]!.split(FIRST.text).length - 1, 1);
       assert.include(sent[1], "Accepted request");
+    }).pipe(Effect.scoped, Effect.provide(testLayer)),
+  );
+
+  it.effect("keeps accepted delivery committed when the Cursor run fails", () =>
+    Effect.gen(function* () {
+      const sent: string[] = [];
+      const adapter = yield* makeCursorAdapterV2({ instanceId, environment: {} }).pipe(
+        Effect.provideService(CursorAgentSdk.CursorAgentSdkRunner, {
+          assertComplete: Effect.void,
+          open: () =>
+            Effect.succeed({
+              agentId: "native-cursor-project-instructions",
+              listMessages: Effect.succeed([]),
+              close: Effect.void,
+              send: (input) =>
+                Effect.sync(() => {
+                  sent.push(typeof input.message === "string" ? input.message : input.message.text);
+                  const failed = sent.length === 1;
+                  const runId = `native-cursor-project-run-${sent.length}`;
+                  return {
+                    agentId: "native-cursor-project-instructions",
+                    runId,
+                    wait: Effect.succeed({
+                      id: runId,
+                      requestId: `native-cursor-project-request-${sent.length}`,
+                      status: failed ? ("error" as const) : ("finished" as const),
+                      ...(failed ? { error: { message: "Cursor run failed" } } : {}),
+                      model: { id: "composer-2.5" },
+                      durationMs: 1,
+                    }),
+                    cancel: Effect.void,
+                  };
+                }),
+            }),
+        }),
+      );
+      const runtime = yield* adapter.openSession({
+        threadId,
+        providerSessionId: ProviderSessionId.make("cursor-project-instructions-failed"),
+        modelSelection,
+        runtimePolicy,
+      });
+      const providerThread = yield* runtime.ensureThread({
+        threadId,
+        modelSelection,
+        runtimePolicy,
+      });
+
+      yield* runtime.startTurn(
+        yield* makeTurnInput({
+          providerThread,
+          runOrdinal: 1,
+          text: "Accepted then failed",
+          projectInstructions: FIRST,
+        }),
+      );
+      const failed = Option.getOrThrow(
+        yield* runtime.events.pipe(
+          Stream.filter((event) => event.type === "turn.terminal"),
+          Stream.runHead,
+        ),
+      );
+      assert.strictEqual(failed.status, "failed");
+      assert.isTrue(sent[0]?.endsWith(FIRST.text));
+
+      yield* runtime.startTurn(
+        yield* makeTurnInput({
+          providerThread,
+          runOrdinal: 2,
+          text: "After accepted failure",
+          projectInstructions: FIRST,
+        }),
+      );
+      const completed = Option.getOrThrow(
+        yield* runtime.events.pipe(
+          Stream.filter((event) => event.type === "turn.terminal"),
+          Stream.runHead,
+        ),
+      );
+      assert.strictEqual(completed.status, "completed");
+      assert.lengthOf(sent, 2);
+      assert.notInclude(sent[1], FIRST.text);
     }).pipe(Effect.scoped, Effect.provide(testLayer)),
   );
 });
