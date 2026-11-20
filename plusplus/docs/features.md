@@ -10,4 +10,4 @@ T3 Code ++ follows upstream T3 Code and adds these features:
 
 ## Maintainer tools
 
-- **Upstream merge drafts** let a maintainer check for an unmerged upstream release and create a local merge-draft thread from a fork checkout. Nothing is pushed. The [release runbook](./release.md#updating-from-upstream) covers the maintainer workflow.
+- **Upstream merge drafts** are a maintainer-only tool that appears only with push access to the fork; nothing is pushed.

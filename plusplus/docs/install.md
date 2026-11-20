@@ -16,13 +16,16 @@ launch T3 Code and configure providers afterwards. See
 
 ## Reuse an upstream installation
 
-T3 Code ++ can reuse an existing upstream T3 Code home. Your projects, sessions,
-and settings remain available without an export or manual migration. Stop the
-stock server before starting T3 Code ++ against the same data directory.
+T3 Code ++ can reuse an existing upstream T3 Code home when that home was last
+run by a stock T3 Code release no newer than your ++ build's upstream base. Your
+projects, sessions, and settings remain available without an export or manual
+migration. Stop the stock server before starting T3 Code ++ against the same
+data directory.
 
-Do not run stock T3 Code v0.1.10 and T3 Code ++ v0.1.9 on the same data
-directory. Stock v0.1.10 records newer database migrations that ++ v0.1.9 does
-not support. Use separate `--base-dir` directories to try both versions.
+A data directory last used by a newer stock release is not supported: T3 Code
+++ still starts, but it may not understand data the newer release recorded, and
+`t3 service install` refuses such a directory. Use separate `--base-dir`
+directories to try both versions.
 
 ## Command line
 
@@ -40,7 +43,8 @@ The installer downloads the release archive for your platform and links `t3`
 into `~/.local/bin` (`%USERPROFILE%\.local\bin` on Windows). If your shell
 reports `command not found` afterwards, that directory is not on your `PATH`
 yet; the installer prints the line to add. Stable is the only public release
-channel. Set `T3CODE_VERSION` to pin an exact stable version.
+channel with published builds; the Nightly track has nothing to install. Set
+`T3CODE_VERSION` to pin an exact stable version.
 
 | Task                                             | Command                                                                               |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------- |

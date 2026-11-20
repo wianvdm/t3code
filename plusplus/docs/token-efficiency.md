@@ -63,7 +63,7 @@ is not observable, so a long Cursor session can lose the checklist too. On fx
 and Antigravity reinjection is not supported, so a long session there can lose
 the checklist as well. OpenCode 1.x command turns run without the checklist;
 OpenCode 2.x command turns keep it. An ACP slash command skips delivery only
-for that turn; the next ordinary turn delivers the checklist.
+for that turn; later turns are unaffected.
 
 ## Limits
 

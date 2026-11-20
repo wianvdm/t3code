@@ -1,6 +1,6 @@
 # T3 Code ++
 
-T3 Code ++ is a drop-in fork of [T3 Code](https://github.com/pingdotgg/t3code), the "agent harness control surface" that lets you control the agents on your machine. It ships the Electron-based desktop app for Windows and Linux x64, plus an unsigned macOS arm64 build, along with the web client started by the `t3` CLI. A local install of upstream T3 Code can be reused as-is: T3 Code ++ reads the existing projects, sessions, and data, so nothing has to be migrated.
+T3 Code ++ is a drop-in fork of [T3 Code](https://github.com/pingdotgg/t3code), the "agent harness control surface" that lets you control the agents on your machine. It ships the Electron-based desktop app for Windows and Linux x64, plus an unsigned macOS arm64 build, along with the web client started by the `t3` CLI. A local install of upstream T3 Code can be reused when it was last run by a stock release no newer than your ++ build's upstream base: T3 Code ++ reads the existing projects, sessions, and data, so nothing has to be migrated. Newer stock homes are not supported; see [Install T3 Code ++](./plusplus/docs/install.md#reuse-an-upstream-installation).
 
 Releases are published on [GitHub Releases](https://github.com/WianVDM/t3code/releases).
 
@@ -98,7 +98,4 @@ vp i
 
 Read [CONTRIBUTING.md](./CONTRIBUTING.md) before reporting a bug or opening a PR.
 
-Upstream links, kept for attribution and reference:
-
-- Have a feature request? Start an [Ideas discussion](https://github.com/pingdotgg/t3code/discussions/categories/ideas) (upstream).
-- Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv) (upstream).
+Support and feature requests go through the fork, never upstream: see [Releases, support, and reporting](./plusplus/docs/support.md) and the [fork's issue forms](https://github.com/WianVDM/t3code/issues/new/choose).
