@@ -88,7 +88,10 @@ const TokenEfficiencyRefreshRpc = Rpc.make(TOKEN_EFFICIENCY_WS_METHODS.refresh, 
 });
 export const TokenEfficiencyRpcs = [TokenEfficiencyViewRpc, TokenEfficiencyRefreshRpc] as const;
 
-export const TOKEN_EFFICIENCY_GUARDED_RPC_SCOPES = {
+export const TOKEN_EFFICIENCY_SERVER_RPC_SCOPES = {
   [TOKEN_EFFICIENCY_WS_METHODS.view]: AuthOrchestrationReadScope,
+} as const;
+
+export const TOKEN_EFFICIENCY_GUARDED_RPC_SCOPES = {
   [TOKEN_EFFICIENCY_WS_METHODS.refresh]: AuthSettingsWriteScope,
 } as const;

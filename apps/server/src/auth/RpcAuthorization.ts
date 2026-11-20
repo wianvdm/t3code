@@ -30,6 +30,7 @@ import {
   WS_METHODS,
   WsRpcGroup,
 } from "@t3tools/contracts";
+import { TOKEN_EFFICIENCY_SERVER_RPC_SCOPES } from "@t3tools/contracts/plusplus/tokenEfficiency";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Layer from "effect/Layer";
@@ -147,6 +148,7 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.sourceControlLookupRepository]: AuthOrchestrationReadScope,
   [WS_METHODS.sourceControlAppAccess]: AuthOrchestrationReadScope,
   [WS_METHODS.sourceControlStarred]: AuthOrchestrationReadScope,
+  ...TOKEN_EFFICIENCY_SERVER_RPC_SCOPES,
   [WS_METHODS.plusplusUpstreamMergeAccess]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeProjectClones]: AuthOrchestrationReadScope,
   [WS_METHODS.projectsListEntries]: AuthFilesystemReadScope,

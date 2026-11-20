@@ -601,7 +601,7 @@
       "legacy": true
     },
     "apps/server/src/auth/RpcAuthorization.ts": {
-      "delta": [1, 0],
+      "delta": [3, 0],
       "legacy": true
     },
     "apps/server/src/binCli.ts": {

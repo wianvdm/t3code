@@ -1,18 +1,16 @@
 import { TOKEN_EFFICIENCY_WS_METHODS } from "@t3tools/contracts/plusplus/tokenEfficiency";
-import { requestGuarded, type EnvironmentRpcInput } from "@t3tools/client-runtime/rpc";
 import {
-  createEnvironmentQueryAtomFamily,
   createEnvironmentRpcCommand,
+  createEnvironmentRpcQueryAtomFamily,
 } from "@t3tools/client-runtime/state/runtime";
 import * as Effect from "effect/Effect";
 
 import { connectionAtomRuntime } from "../../connection/runtime";
 
-export const tokenEfficiencyView = createEnvironmentQueryAtomFamily(connectionAtomRuntime, {
+export const tokenEfficiencyView = createEnvironmentRpcQueryAtomFamily(connectionAtomRuntime, {
   label: "environment-data:plusplus:token-efficiency-view",
+  tag: TOKEN_EFFICIENCY_WS_METHODS.view,
   staleTimeMs: 0,
-  execute: (input: EnvironmentRpcInput<typeof TOKEN_EFFICIENCY_WS_METHODS.view>) =>
-    requestGuarded(TOKEN_EFFICIENCY_WS_METHODS.view, input),
 });
 
 export const refreshTokenEfficiency = createEnvironmentRpcCommand(connectionAtomRuntime, {
