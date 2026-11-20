@@ -459,12 +459,17 @@ const make = Effect.gen(function* () {
             SynchronizedRef.set(inFlight, Option.none()).pipe(
               Effect.andThen(
                 Exit.isSuccess(exit)
-                  ? Effect.gen(function* () {
-                      yield* Deferred.succeed(deferred, {
-                        outcome: exit.value,
-                        view: yield* view,
-                      });
-                    })
+                  ? Effect.exit(view).pipe(
+                      Effect.flatMap((viewExit) =>
+                        Deferred.done(
+                          deferred,
+                          Exit.map(viewExit, (currentView) => ({
+                            outcome: exit.value,
+                            view: currentView,
+                          })),
+                        ),
+                      ),
+                    )
                   : Deferred.failCause(deferred, exit.cause),
               ),
             ),
