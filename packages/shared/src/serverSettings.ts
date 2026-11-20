@@ -261,6 +261,7 @@ const byHost = (tokens: unknown) =>
   );
 
 const knownProjectOverrideKeys = new Set(Object.keys(ProjectSettingsOverrides.fields));
+knownProjectOverrideKeys.add("plusplus");
 
 function pickOverrideKeys(entry: ProjectSettingsOverrides | undefined, known: boolean) {
   return Object.fromEntries(

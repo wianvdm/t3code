@@ -2146,7 +2146,7 @@
       "legacy": true
     },
     "packages/shared/src/serverSettings.ts": {
-      "delta": [23, 0],
+      "delta": [24, 0],
       "legacy": true
     },
     "packages/source-control-core/src/server/driver.ts": {
