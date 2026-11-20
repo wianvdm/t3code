@@ -14,6 +14,16 @@ You need an installed, authenticated provider before starting a thread. You can
 launch T3 Code and configure providers afterwards. See
 [provider setup](../../docs/user/install.md#providers).
 
+## Reuse an upstream installation
+
+T3 Code ++ can reuse an existing upstream T3 Code home. Your projects, sessions,
+and settings remain available without an export or manual migration. Stop the
+stock server before starting T3 Code ++ against the same data directory.
+
+Do not run stock T3 Code v0.1.10 and T3 Code ++ v0.1.9 on the same data
+directory. Stock v0.1.10 records newer database migrations that ++ v0.1.9 does
+not support. Use separate `--base-dir` directories to try both versions.
+
 ## Command line
 
 ```bash
@@ -29,8 +39,8 @@ irm https://raw.githubusercontent.com/WianVDM/t3code/main/scripts/install.ps1 | 
 The installer downloads the release archive for your platform and links `t3`
 into `~/.local/bin` (`%USERPROFILE%\.local\bin` on Windows). If your shell
 reports `command not found` afterwards, that directory is not on your `PATH`
-yet; the installer prints the line to add. Set `T3CODE_CHANNEL=nightly` to
-install the nightly train, or `T3CODE_VERSION` to pin an exact version.
+yet; the installer prints the line to add. Stable is the only public release
+channel. Set `T3CODE_VERSION` to pin an exact stable version.
 
 | Task                                             | Command                                                                               |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------- |

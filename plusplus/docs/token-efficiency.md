@@ -19,13 +19,14 @@ applies to turns that start after you toggle it, on the selected environments.
 
 ## Automatic updates
 
-Each server installs its own copy of the upstream **CORE** checklist. While
-at least one project has the feature enabled, each server fetches the CORE
-file from the upstream repository's `main` branch about every six hours and
-picks up changes on its own. That means the instructions can change agent
-behaviour without a T3 Code ++ release; enabling the feature is a decision to
-trust those updates. While every project has it off, nothing is fetched
-automatically.
+Each server installs its own copy of the upstream **CORE** checklist and
+controls automatic fetching separately. A server fetches the CORE file from
+the upstream repository's `main` branch about every six hours only when at
+least one of its own projects has the feature enabled. When all of its
+projects have it off, that server does not fetch automatically.
+
+Fetched changes can alter agent behaviour without a T3 Code ++ release;
+enabling the feature is a decision to trust those updates.
 
 ## Offline fallback and refresh
 
@@ -60,8 +61,9 @@ Most providers re-add the checklist after compacting a session's context.
 Cursor reinjects it after T3's own /compress, but its native auto-compaction
 is not observable, so a long Cursor session can lose the checklist too. On fx
 and Antigravity reinjection is not supported, so a long session there can lose
-the checklist as well. Native slash or command turns (OpenCode commands, ACP
-slash commands) run without the checklist.
+the checklist as well. OpenCode 1.x command turns run without the checklist;
+OpenCode 2.x command turns keep it. An ACP slash command skips delivery only
+for that turn; the next ordinary turn delivers the checklist.
 
 ## Limits
 

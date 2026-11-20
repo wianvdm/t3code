@@ -55,6 +55,8 @@ Full docs live in [docs/](./docs). There's no docs site yet.
 
 - [FAQ](./plusplus/docs/faq.md)
 - [Install and first run](./plusplus/docs/install.md)
+- [What ++ adds](./plusplus/docs/features.md)
+- [Releases, support, and reporting](./plusplus/docs/support.md)
 - [Permission modes](./docs/user/permission-modes.md)
 - [Keyboard shortcuts](./docs/user/keybindings.md)
 - [Project settings](./docs/user/project-settings.md)
