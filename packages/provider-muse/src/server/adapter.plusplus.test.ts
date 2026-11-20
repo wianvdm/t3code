@@ -70,6 +70,7 @@ function makeFakeMuse() {
   let sequence = 0;
   let sessionId = "";
   let shouldRejectTurnStart = false;
+  let compactStatus = "accepted";
   const respond = async (call: NativeCall): Promise<Record<string, unknown>> => {
     calls.push(call);
     switch (call.method) {
@@ -88,7 +89,7 @@ function makeFakeMuse() {
         }
         return { turnId: call.commandId };
       case "session/compact":
-        return { status: "accepted" };
+        return { status: compactStatus };
       default:
         return {};
     }
@@ -122,6 +123,9 @@ function makeFakeMuse() {
     calls,
     rejectTurnStart: () => {
       shouldRejectTurnStart = true;
+    },
+    declineCompaction: () => {
+      compactStatus = "noop";
     },
     emit: (method: string, params: Record<string, unknown>) =>
       Effect.sync(() => {
@@ -499,6 +503,58 @@ describe("MuseAdapterV2 project instructions ++", () => {
           yield* completeMuseTurn({ runtime, fake: resumedFake, call });
         }),
       );
+    }).pipe(Effect.scoped, Effect.provide(testLayer)),
+  );
+
+  it.effect("does not resend after a declined session compaction", () =>
+    Effect.gen(function* () {
+      const fake = makeFakeMuse();
+      const adapter = yield* makeAdapterWithHosts([fake]);
+      const { runtime, providerThread } = yield* openRuntime({
+        adapter,
+        providerSessionId: "muse-project-instructions-declined-compact",
+      });
+      const first = yield* startMuseTurn({
+        runtime,
+        fake,
+        turn: yield* makeTurnInput({
+          providerThread,
+          runOrdinal: 1,
+          text: "Before declined compact",
+          projectInstructions: FIRST,
+        }),
+      });
+      yield* completeMuseTurn({ runtime, fake, call: first });
+
+      fake.declineCompaction();
+      yield* runtime.compactThread!(
+        yield* makeTurnInput({
+          providerThread,
+          runOrdinal: 2,
+          text: "Declined compact",
+          projectInstructions: FIRST,
+        }),
+      );
+      const declined = Option.getOrThrow(
+        yield* runtime.events.pipe(
+          Stream.filter((event) => event.type === "turn.terminal"),
+          Stream.runHead,
+        ),
+      );
+      assert.strictEqual(declined.status, "failed");
+
+      const after = yield* startMuseTurn({
+        runtime,
+        fake,
+        turn: yield* makeTurnInput({
+          providerThread,
+          runOrdinal: 3,
+          text: "After declined compact",
+          projectInstructions: FIRST,
+        }),
+      });
+      assert.notInclude(runtimeText(after), FIRST.text);
+      yield* completeMuseTurn({ runtime, fake, call: after });
     }).pipe(Effect.scoped, Effect.provide(testLayer)),
   );
 

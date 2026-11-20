@@ -2136,6 +2136,7 @@ export const makeCursorAdapterV2 = Effect.fn("makeCursorAdapterV2")(function* (
             return;
           }
           input.context.finalized = true;
+          // Cursor replays interrupted runs only, so failure after prompt acceptance still counts as delivered.
           if (input.status !== "interrupted" && input.status !== "cancelled") {
             yield* input.context.projectDelivery?.commit ?? Effect.void;
           }

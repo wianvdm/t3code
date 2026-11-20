@@ -51,7 +51,7 @@ export const PROJECT_INSTRUCTIONS_DELIVERY: Partial<
       "1.x": {
         mechanism: "system-prompt",
         cadence:
-          "OpenCode's per-prompt `system` field; every prompt in a turn, steers included, repeats it",
+          "OpenCode's per-prompt `system` field; every prompt in a turn, steers included, repeats it; native `session.command` turns carry no system prompt",
         compaction: "not-needed",
       },
       "2.x": {

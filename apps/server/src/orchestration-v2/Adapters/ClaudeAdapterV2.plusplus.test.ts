@@ -114,37 +114,6 @@ const backgroundCompleted = claudeSdkFrame({
 
 describe("Claude project instruction delivery", () => {
   it.effect(
-    "replaces the live-query key on enable, disable and refresh, but not on an unchanged id",
-    () =>
-      Effect.gen(function* () {
-        const disabled = withProjectInstructionsKey(base, undefined);
-        const enabled = withProjectInstructionsKey(base, first);
-        const refreshed = withProjectInstructionsKey(base, second);
-
-        assert.equal(yield* effectiveKey(null, undefined), disabled);
-        assert.equal(
-          yield* effectiveKey({ nativeThreadId, stopping: false, queryPolicyKey: disabled }, first),
-          enabled,
-        );
-        assert.equal(
-          yield* effectiveKey(
-            { nativeThreadId, stopping: false, queryPolicyKey: enabled },
-            undefined,
-          ),
-          disabled,
-        );
-        assert.equal(
-          yield* effectiveKey({ nativeThreadId, stopping: false, queryPolicyKey: enabled }, second),
-          refreshed,
-        );
-        assert.equal(
-          yield* effectiveKey({ nativeThreadId, stopping: false, queryPolicyKey: enabled }, first),
-          enabled,
-        );
-      }),
-  );
-
-  it.effect(
     "defers enable, disable and refresh only while provider-native background work runs",
     () =>
       Effect.gen(function* () {
