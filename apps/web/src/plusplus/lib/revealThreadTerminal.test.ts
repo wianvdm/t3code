@@ -13,6 +13,7 @@ beforeEach(() => {
   useTerminalUiStateStore.setState({
     terminalUiStateByThreadKey: {},
     suppressedTerminalIdsByThreadKey: {},
+    serverObservationsByThreadKey: {},
   });
   useRightPanelStore.setState({ byThreadKey: {} });
 });
@@ -61,6 +62,7 @@ it("moves a drawer terminal into the right panel without suppressing or closing 
   const drawer = useTerminalUiStateStore.getState();
   drawer.ensureTerminal(threadRef, "term-1", { open: true, active: true });
   drawer.ensureTerminal(threadRef, "term-2", { open: true, active: true });
+  drawer.reconcileTerminalIds(threadRef, ["term-1", "term-2"], "snapshot");
 
   revealThreadTerminalInRightPanel(threadRef, "term-1");
 
@@ -155,6 +157,7 @@ it("adds a reused terminal id to its stale same-key surface before releasing the
     open: true,
     active: true,
   });
+  useTerminalUiStateStore.getState().reconcileTerminalIds(threadRef, ["term-1"], "snapshot");
 
   revealThreadTerminalInRightPanel(threadRef, "term-1");
 

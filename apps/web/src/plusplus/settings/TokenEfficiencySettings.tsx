@@ -59,8 +59,7 @@ function TokenEfficiencySettingsContent() {
             disabled={!writeAllowed || !scopeSupportsToggle}
             onCheckedChange={(enabled) => {
               if (!scopeSupportsToggle) return;
-              const plan = planTokenEfficiencyPatch(scope, environments, enabled);
-              run(plan);
+              run(environments, (current) => planTokenEfficiencyPatch(scope, current, enabled));
             }}
           />
         }

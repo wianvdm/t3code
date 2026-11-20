@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "upstreamRef": "24e77473ecf41bc1f7142529c7911c1c1aae1d76",
+  "upstreamRef": "59651c1761f6c63e9b6056839067066968e6a406",
   "features": {
     "context-bridge": {
       "title": "Context bridge",
@@ -60,7 +60,7 @@
   },
   "files": {
     ".agents/skills/contribution-triage/SKILL.md": {
-      "delta": [0, 196],
+      "delta": [0, 205],
       "legacy": true,
       "reason": "Upstream maintainer vouch and triage infrastructure (VOUCHED.td, TRIAGE_EXEMPTIONS.td, pr-vouch workflow, contribution-triage skill) is out of scope for a solo-maintained fork per AGENTS.md. Deletions are intentional."
     },
@@ -86,7 +86,7 @@
       "reason": "Upstream maintainer vouch and triage infrastructure (VOUCHED.td, TRIAGE_EXEMPTIONS.td, pr-vouch workflow, contribution-triage skill) is out of scope for a solo-maintained fork per AGENTS.md. Deletions are intentional."
     },
     ".github/VOUCHED.td": {
-      "delta": [0, 89],
+      "delta": [0, 94],
       "legacy": true,
       "reason": "Upstream maintainer vouch and triage infrastructure (VOUCHED.td, TRIAGE_EXEMPTIONS.td, pr-vouch workflow, contribution-triage skill) is out of scope for a solo-maintained fork per AGENTS.md. Deletions are intentional."
     },
@@ -99,7 +99,7 @@
       "legacy": true
     },
     ".github/pull_request_template.md": {
-      "delta": [40, 24],
+      "delta": [40, 19],
       "legacy": true
     },
     ".github/scripts/check-nightly-release.cjs": {
@@ -107,7 +107,7 @@
       "legacy": true
     },
     ".github/scripts/check-nightly-release.test.cjs": {
-      "delta": [849, 1],
+      "delta": [848, 1],
       "legacy": true
     },
     ".github/scripts/ci-changes.cjs": {
@@ -119,7 +119,7 @@
       "legacy": true
     },
     ".github/workflows/agent-context-budget.yml": {
-      "delta": [8, 2],
+      "delta": [6, 0],
       "legacy": true
     },
     ".github/workflows/ci.yml": {
@@ -151,7 +151,7 @@
       "legacy": true
     },
     ".github/workflows/mobile-eas-preview.yml": {
-      "delta": [1, 4],
+      "delta": [2, 4],
       "legacy": true
     },
     ".github/workflows/mobile-eas-production.yml": {
@@ -159,7 +159,7 @@
       "legacy": true
     },
     ".github/workflows/mobile-fingerprint-check.yml": {
-      "delta": [1, 0],
+      "delta": [1, 1],
       "legacy": true
     },
     ".github/workflows/mobile-fingerprint-label.yml": {
@@ -193,7 +193,7 @@
       "legacy": true
     },
     ".github/workflows/windows-tests.yml": {
-      "delta": [213, 14],
+      "delta": [224, 13],
       "legacy": true
     },
     ".macroscope/approvability.md": {
@@ -226,11 +226,11 @@
       "legacy": true
     },
     "CONTRIBUTING.md": {
-      "delta": [57, 143],
+      "delta": [57, 118],
       "legacy": true
     },
     "README.md": {
-      "delta": [13, 65],
+      "delta": [67, 73],
       "legacy": true
     },
     "apps/desktop/package.json": {
@@ -250,6 +250,30 @@
       "delta": [17, 12],
       "legacy": true
     },
+    "apps/desktop/src/app/DesktopApp.ts": {
+      "delta": [2, 1],
+      "seams": [
+        {
+          "id": "fork-installer.desktop-bootstrap-home-owned-import",
+          "feature": "fork-installer",
+          "mechanism": "hook",
+          "anchor": {
+            "text": "import * as DesktopHomeOwner from \"../backend/DesktopHomeOwner.ts\";"
+          },
+          "fingerprint": "sha256:5e7804e5d11515b5"
+        },
+        {
+          "id": "fork-installer.desktop-bootstrap-home-owned-message",
+          "feature": "fork-installer",
+          "mechanism": "override",
+          "anchor": {
+            "text": "DesktopHomeOwner.homeOwnedMessage(owner)"
+          },
+          "reason": "Upstream's ownerless hint says `npx t3@latest`, which installs upstream's CLI; the ++ wrapper points at the fork's CLI releases.",
+          "fingerprint": "sha256:bc5f1db309d9dde2"
+        }
+      ]
+    },
     "apps/desktop/src/app/DesktopAppIdentity.test.ts": {
       "delta": [2, 2],
       "legacy": true
@@ -267,11 +291,11 @@
       "legacy": true
     },
     "apps/desktop/src/app/DesktopCliShim.test.ts": {
-      "delta": [8, 3],
+      "delta": [9, 4],
       "legacy": true
     },
     "apps/desktop/src/app/DesktopEarlyElectronStartup.ts": {
-      "delta": [3, 1],
+      "delta": [1, 1],
       "legacy": true
     },
     "apps/desktop/src/app/DesktopEnvironment.test.ts": {
@@ -279,7 +303,7 @@
       "legacy": true
     },
     "apps/desktop/src/app/DesktopEnvironment.ts": {
-      "delta": [24, 2],
+      "delta": [22, 2],
       "legacy": true
     },
     "apps/desktop/src/app/DesktopLegacyLocalStorage.ts": {
@@ -299,11 +323,7 @@
       "legacy": true
     },
     "apps/desktop/src/app/DesktopPreReadyPlatform.test.ts": {
-      "delta": [14, 8],
-      "legacy": true
-    },
-    "apps/desktop/src/app/DesktopPreReadyPlatform.ts": {
-      "delta": [1, 0],
+      "delta": [16, 9],
       "legacy": true
     },
     "apps/desktop/src/app/DesktopStartupRecovery.ts": {
@@ -323,7 +343,7 @@
       "legacy": true
     },
     "apps/desktop/src/backend/DesktopBackendPool.ts": {
-      "delta": [3, 1],
+      "delta": [2, 1],
       "legacy": true
     },
     "apps/desktop/src/electron/ElectronProtocol.ts": {
@@ -331,7 +351,7 @@
       "legacy": true
     },
     "apps/desktop/src/main.ts": {
-      "delta": [10, 0],
+      "delta": [11, 0],
       "legacy": true
     },
     "apps/desktop/src/preview/DesktopBrowserHost.test.ts": {
@@ -416,17 +436,17 @@
             "text": "import { readUnloadedThreadCount }"
           },
           "reason": "The project settings mount needs its ++ component import.",
-          "fingerprint": "sha256:cf46b00cd039900d"
+          "fingerprint": "sha256:8b2a023a408bc55e"
         },
         {
           "id": "token-efficiency.mobile-projects-mount",
           "feature": "token-efficiency",
           "mechanism": "mount",
           "anchor": {
-            "text": "<SettingsSection title=\"Checkouts\">"
+            "text": "<SettingsSection title={gt(\"Checkouts\")}>"
           },
           "reason": "The project overview is the one place mobile project rows render.",
-          "fingerprint": "sha256:05db61b3c35edf55"
+          "fingerprint": "sha256:5046b7a1386910fd"
         }
       ]
     },
@@ -445,7 +465,7 @@
             "text": "from \"@t3tools/shared/usageLimits\""
           },
           "reason": "Call sites need the ++ variants that count usage accounts and monetary usage; only the module specifier changes.",
-          "fingerprint": "sha256:928d30a520193800"
+          "fingerprint": "sha256:4c28ec1cd3edddbd"
         }
       ]
     },
@@ -460,12 +480,12 @@
             "text": "from \"@t3tools/shared/usageLimits\""
           },
           "reason": "Call sites need the ++ variants that count usage accounts and monetary usage; only the module specifier changes.",
-          "fingerprint": "sha256:b0bc51454f5ebda0"
+          "fingerprint": "sha256:3fbed4b3424da07d"
         }
       ]
     },
     "apps/mobile/src/features/usage/ChatGptUsageSummary.tsx": {
-      "delta": [4, 1],
+      "delta": [2, 2],
       "seams": [
         {
           "id": "usage-limits.chat-gpt-usage-summary-import",
@@ -475,12 +495,12 @@
             "text": "from \"@t3tools/shared/usageLimits\""
           },
           "reason": "Call sites need the ++ variants that count usage accounts and monetary usage; only the module specifier changes.",
-          "fingerprint": "sha256:50d8c0b0da8a5990"
+          "fingerprint": "sha256:cd9e7830607852b6"
         }
       ]
     },
     "apps/mobile/src/features/usage/UsageLimitsPooled.tsx": {
-      "delta": [7, 2],
+      "delta": [11, 3],
       "seams": [
         {
           "id": "usage-limits.mobile-pooled-import",
@@ -490,17 +510,17 @@
             "text": "from \"@t3tools/shared/usageLimits\""
           },
           "reason": "Pooled usage needs the ++ aggregation that retains usage accounts and monetary-only rows.",
-          "fingerprint": "sha256:5437402de21de5de"
+          "fingerprint": "sha256:a641f92bbbf74990"
         },
         {
           "id": "usage-limits.mobile-pooled-components-import",
           "feature": "usage-limits",
           "mechanism": "hook",
           "anchor": {
-            "text": "import { ResetCredits } from \"./UsageLimitsSection\";"
+            "text": "import { refillLabel, ResetCredits, resetLabels } from \"./UsageLimitsSection\";"
           },
           "reason": "Monetary-only pooling and account rows live in the ++ mobile usage module.",
-          "fingerprint": "sha256:99299f1e16faccfb"
+          "fingerprint": "sha256:d250694802029dc7"
         },
         {
           "id": "usage-limits.mobile-pooled-filter",
@@ -511,7 +531,7 @@
             "text": "const pools = collectLimitPools(collectLimitAccounts(selected), now);"
           },
           "reason": "Pools with monetary usage but no rate-limit windows must remain visible.",
-          "fingerprint": "sha256:2f01a3967bfa1ab6"
+          "fingerprint": "sha256:f3f2574fcd80fc10"
         },
         {
           "id": "usage-limits.mobile-pooled-accounts",
@@ -522,12 +542,12 @@
             "text": "{windows.map((window) => {"
           },
           "reason": "Each pool renders its per-account monetary usage below the upstream window cards.",
-          "fingerprint": "sha256:1de7344eec4947bd"
+          "fingerprint": "sha256:f6aad8aa76307223"
         }
       ]
     },
     "apps/mobile/src/features/usage/UsageLimitsSection.tsx": {
-      "delta": [3, 1],
+      "delta": [8, 2],
       "seams": [
         {
           "id": "usage-limits.mobile-account-import",
@@ -537,7 +557,7 @@
             "text": "from \"@t3tools/shared/usageLimits\""
           },
           "reason": "Account limits need the ++ wrappers that understand usage accounts and monetary usage.",
-          "fingerprint": "sha256:6947bc41223a96e9"
+          "fingerprint": "sha256:165ac882211e5fc5"
         },
         {
           "id": "usage-limits.mobile-account-monetary-import",
@@ -547,7 +567,7 @@
             "text": "from \"./usageProviders\";"
           },
           "reason": "The monetary line is owned by the ++ mobile usage module.",
-          "fingerprint": "sha256:9b2271c17bafba15"
+          "fingerprint": "sha256:194be378bec5c7be"
         },
         {
           "id": "usage-limits.mobile-account-monetary",
@@ -573,7 +593,7 @@
             "text": "from \"@t3tools/shared/usageLimits\""
           },
           "reason": "Call sites need the ++ variants that count usage accounts and monetary usage; only the module specifier changes.",
-          "fingerprint": "sha256:6e1cdebe0be4153a"
+          "fingerprint": "sha256:e2718b46377bf4ab"
         }
       ]
     },
@@ -588,7 +608,7 @@
             "text": "const reactTests = ["
           },
           "reason": "The ++ mobile provenance test needs the jsdom-backed React test project.",
-          "fingerprint": "sha256:de0042b2804032bc"
+          "fingerprint": "sha256:a61e90ed6de47f2e"
         }
       ]
     },
@@ -640,10 +660,10 @@
           "feature": "fork-cli",
           "mechanism": "override",
           "anchor": {
-            "text": "\"t3@0.0.45 pair\""
+            "text": "t3@0.0.45 pair --base-dir"
           },
           "reason": "The assertion follows the overridden hint text and guards it against an upstream restore.",
-          "fingerprint": "sha256:74781e6d1234d2e6"
+          "fingerprint": "sha256:ef8a3196c787efab"
         }
       ]
     },
@@ -655,11 +675,11 @@
           "feature": "fork-cli",
           "mechanism": "override",
           "anchor": {
-            "symbol": "IncompatibleServerProtocolError",
-            "text": "Pair with the matching CLI instead:"
+            "symbol": "pairCommand",
+            "text": "pairCommand: `npx t3@"
           },
-          "reason": "The hint names the fork's plain command, and an added line cannot replace the upstream hint text.",
-          "fingerprint": "sha256:b83aa9705522cb87"
+          "reason": "The hint names the fork's plain command (keeping upstream's --base-dir), and an added line cannot replace the upstream command text.",
+          "fingerprint": "sha256:cb9a72c6bfcb3816"
         }
       ]
     },
@@ -683,7 +703,7 @@
       ]
     },
     "apps/server/src/cloud/servicePreflight.ts": {
-      "delta": [3, 1],
+      "delta": [2, 1],
       "seams": [
         {
           "id": "fork-installer.service-preflight-command",
@@ -694,7 +714,7 @@
             "text": "On the server machine, install this exact CLI:"
           },
           "reason": "Issues #108 and #113: launcher recovery must install the matching fork release, not an upstream version that does not exist.",
-          "fingerprint": "sha256:4ff475830ded19ef"
+          "fingerprint": "sha256:e8b0768763f63e25"
         }
       ]
     },
@@ -711,7 +731,7 @@
       "legacy": true
     },
     "apps/server/src/mcp/toolkits/core.test.ts": {
-      "delta": [70, 0],
+      "delta": [72, 0],
       "legacy": true
     },
     "apps/server/src/mcp/toolkits/thread/handlers.ts": {
@@ -731,7 +751,7 @@
       "legacy": true
     },
     "apps/server/src/orchestration-v2/Adapters/ClaudeAdapterV2.test.ts": {
-      "delta": [908, 2],
+      "delta": [961, 0],
       "legacy": true
     },
     "apps/server/src/orchestration-v2/Adapters/ClaudeAdapterV2.testkit.ts": {
@@ -739,11 +759,11 @@
       "legacy": true
     },
     "apps/server/src/orchestration-v2/Adapters/ClaudeAdapterV2.ts": {
-      "delta": [173, 14],
+      "delta": [169, 13],
       "legacy": true
     },
     "apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.test.ts": {
-      "delta": [647, 2],
+      "delta": [670, 2],
       "legacy": true
     },
     "apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.testkit.ts": {
@@ -755,7 +775,7 @@
       "legacy": true
     },
     "apps/server/src/orchestration-v2/ClaudeAutomaticDelivery.integration.test.ts": {
-      "delta": [2, 0],
+      "delta": [6, 0],
       "legacy": true
     },
     "apps/server/src/orchestration-v2/FoundationPersistence.test.ts": {
@@ -823,77 +843,12 @@
       "delta": [6, 0],
       "legacy": true
     },
-    "apps/server/src/persistence/Migrations.test.ts": {
-      "delta": [14, 0],
-      "legacy": true
-    },
-    "apps/server/src/persistence/Migrations/026_CanonicalizeModelSelectionOptions.ts": {
-      "delta": [8, 8],
-      "seams": [
-        {
-          "id": "shared-persistence.026-model-selection-options",
-          "feature": "shared-persistence",
-          "mechanism": "override",
-          "anchor": {
-            "text": "SET model_selection_json = json_set("
-          },
-          "reason": "Verbatim port of upstream fc480ea66a wrapping the options subquery in json() so json_set stores an array, not a string; keeps the shared-persistence gate passing. Drop at the v0.1.10 sync.",
-          "fingerprint": "sha256:a2e78ffca3fd9e72"
-        },
-        {
-          "id": "shared-persistence.026-default-model-selection-options",
-          "feature": "shared-persistence",
-          "mechanism": "override",
-          "anchor": {
-            "text": "SET default_model_selection_json = json_set("
-          },
-          "reason": "Verbatim port of upstream fc480ea66a wrapping the options subquery in json() so json_set stores an array, not a string; keeps the shared-persistence gate passing. Drop at the v0.1.10 sync.",
-          "fingerprint": "sha256:58be612431579480"
-        },
-        {
-          "id": "shared-persistence.026-model-selection-events",
-          "feature": "shared-persistence",
-          "mechanism": "override",
-          "anchor": {
-            "text": "'$.modelSelection.options',"
-          },
-          "reason": "Verbatim port of upstream fc480ea66a wrapping the options subquery in json() so json_set stores an array, not a string; keeps the shared-persistence gate passing. Drop at the v0.1.10 sync.",
-          "fingerprint": "sha256:b9ca82d63f8ada95"
-        },
-        {
-          "id": "shared-persistence.026-default-model-selection-events",
-          "feature": "shared-persistence",
-          "mechanism": "override",
-          "anchor": {
-            "text": "'$.defaultModelSelection.options',"
-          },
-          "reason": "Verbatim port of upstream fc480ea66a wrapping the options subquery in json() so json_set stores an array, not a string; keeps the shared-persistence gate passing. Drop at the v0.1.10 sync.",
-          "fingerprint": "sha256:39b4e5053dd81eaf"
-        }
-      ]
-    },
-    "apps/server/src/persistence/Migrations/064_CanonicalizeThreadPullRequestLinks.test.ts": {
-      "delta": [27, 0],
-      "legacy": true
-    },
-    "apps/server/src/persistence/Migrations/064_CanonicalizeThreadPullRequestLinks.ts": {
-      "delta": [2, 0],
-      "legacy": true
-    },
-    "apps/server/src/persistence/Migrations/071_PeerLinkFence.ts": {
-      "delta": [8, 3],
-      "legacy": true
-    },
-    "apps/server/src/persistence/Migrations/072_WaitingLinkRequestIndex.ts": {
-      "delta": [1, 1],
-      "legacy": true
-    },
     "apps/server/src/persistence/initializeV2Database.test.ts": {
       "delta": [2329, 0],
       "legacy": true
     },
     "apps/server/src/project/ProjectService.test.ts": {
-      "delta": [92, 2],
+      "delta": [91, 2],
       "legacy": true
     },
     "apps/server/src/project/ProjectService.ts": {
@@ -914,7 +869,7 @@
           "anchor": {
             "text": "type ClaudeSettings,"
           },
-          "fingerprint": "sha256:a1b6a9f043d529db"
+          "fingerprint": "sha256:03bc3c09ca734ec6"
         },
         {
           "id": "context-bridge.claude-probe-skills",
@@ -946,7 +901,7 @@
             "text": "discoverClaudeSkills("
           },
           "reason": "discoverClaudeSkills needs the context bridge settings, so the call itself changes; an added call cannot supply them.",
-          "fingerprint": "sha256:54d81c30d10206ec"
+          "fingerprint": "sha256:99e2f3fef1af164d"
         }
       ]
     },
@@ -955,7 +910,7 @@
       "legacy": true
     },
     "apps/server/src/provider/CodexProvider.test.ts": {
-      "delta": [175, 2],
+      "delta": [165, 1],
       "legacy": true
     },
     "apps/server/src/provider/CodexProvider.ts": {
@@ -963,7 +918,7 @@
       "legacy": true
     },
     "apps/server/src/provider/Drivers/AntigravityDriver.test.ts": {
-      "delta": [77, 26],
+      "delta": [76, 26],
       "legacy": true
     },
     "apps/server/src/provider/Drivers/AntigravityDriver.ts": {
@@ -1003,7 +958,7 @@
       "legacy": true
     },
     "apps/server/src/provider/Drivers/CodexDriver.ts": {
-      "delta": [2, 0],
+      "delta": [15, 1],
       "legacy": true
     },
     "apps/server/src/provider/Drivers/CodexManagedProvider.ts": {
@@ -1018,10 +973,6 @@
       "delta": [22, 0],
       "legacy": true
     },
-    "apps/server/src/provider/GrokProvider.test.ts": {
-      "delta": [20, 80],
-      "legacy": true
-    },
     "apps/server/src/provider/agentContextBudget.json": {
       "delta": [1, 1],
       "seams": [
@@ -1032,12 +983,12 @@
           "anchor": {
             "file": true
           },
-          "fingerprint": "sha256:25a51b97b1a6e73d"
+          "fingerprint": "sha256:5833ddd761d16c8c"
         }
       ]
     },
     "apps/server/src/provider/antigravityAuthSupport.ts": {
-      "delta": [9, 1],
+      "delta": [20, 3],
       "legacy": true
     },
     "apps/server/src/provider/antigravityUsageLimits.test.ts": {
@@ -1049,19 +1000,15 @@
       "legacy": true
     },
     "apps/server/src/provider/claudeUsageLimits.test.ts": {
-      "delta": [0, 271],
+      "delta": [0, 287],
       "legacy": true
     },
     "apps/server/src/provider/claudeUsageLimits.ts": {
-      "delta": [10, 222],
-      "legacy": true
-    },
-    "apps/server/src/provider/codexUsageLimits.test.ts": {
-      "delta": [2, 262],
+      "delta": [11, 238],
       "legacy": true
     },
     "apps/server/src/provider/codexUsageLimits.ts": {
-      "delta": [15, 203],
+      "delta": [15, 249],
       "legacy": true
     },
     "apps/server/src/server.ts": {
@@ -1074,10 +1021,6 @@
     },
     "apps/server/src/serverSettings.test.ts": {
       "delta": [39, 0],
-      "legacy": true
-    },
-    "apps/server/src/storageCleanup.ts": {
-      "delta": [6, 1],
       "legacy": true
     },
     "apps/server/src/terminal/Manager.ts": {
@@ -1103,12 +1046,8 @@
         }
       ]
     },
-    "apps/server/src/usage/usagePricing.test.ts": {
-      "delta": [3, 271],
-      "legacy": true
-    },
     "apps/server/src/usage/usagePricing.ts": {
-      "delta": [18, 306],
+      "delta": [19, 415],
       "legacy": true
     },
     "apps/server/src/ws.test.ts": {
@@ -1147,7 +1086,7 @@
             "text": "const sourceControlSignIn = yield* SourceControlSignIn.SourceControlSignIn;"
           },
           "reason": "Issue #64 resolves the ++ access service beside the other source-control services.",
-          "fingerprint": "sha256:30ac8b53d4d42b8f"
+          "fingerprint": "sha256:34aaccd530c84318"
         },
         {
           "id": "upstream-merge-access.ws-rpc",
@@ -1179,7 +1118,7 @@
             "text": "const handlers = ServerWsRpcGroup.of({"
           },
           "reason": "Issue #76 composes the thin token-efficiency handlers into the server RPC group.",
-          "fingerprint": "sha256:b708a0953c1c3a90"
+          "fingerprint": "sha256:9918677a4ed36546"
         }
       ]
     },
@@ -1217,7 +1156,7 @@
             "symbol": "InstallT3Commands"
           },
           "reason": "Issues #108 and #113: both remote-machine setup commands must use the shared fork installer helper.",
-          "fingerprint": "sha256:568a073989b85378"
+          "fingerprint": "sha256:9d992ef83972bc83"
         }
       ]
     },
@@ -1226,7 +1165,7 @@
       "legacy": true
     },
     "apps/web/src/components/ServerUpdateAction.tsx": {
-      "delta": [11, 13],
+      "delta": [18, 26],
       "legacy": true
     },
     "apps/web/src/components/ThreadStatusIndicators.tsx": {
@@ -1245,16 +1184,12 @@
           "feature": "usage-limits",
           "mechanism": "override",
           "anchor": {
-            "text": "from \"@t3tools/shared/usageLimits\""
+            "text": "from \"@t3tools/shared/usageLimitsCopy\""
           },
           "reason": "Call sites need the ++ variants that count usage accounts and monetary usage; only the module specifier changes.",
-          "fingerprint": "sha256:e36ef55b401418a8"
+          "fingerprint": "sha256:b894d8563305ebf2"
         }
       ]
-    },
-    "apps/web/src/components/chat/OpenInPicker.browser.test.tsx": {
-      "delta": [32, 17],
-      "legacy": true
     },
     "apps/web/src/components/chat/ThreadDetailsCard.browser.test.tsx": {
       "delta": [18, 0],
@@ -1269,7 +1204,7 @@
       "legacy": true
     },
     "apps/web/src/components/chat/ThreadDetailsUsage.tsx": {
-      "delta": [1, 1],
+      "delta": [2, 2],
       "seams": [
         {
           "id": "usage-limits.thread-details-usage-import",
@@ -1279,12 +1214,12 @@
             "text": "from \"@t3tools/shared/usageLimits\""
           },
           "reason": "Call sites need the ++ variants that count usage accounts and monetary usage; only the module specifier changes.",
-          "fingerprint": "sha256:4ed1ddd93c421888"
+          "fingerprint": "sha256:c97223d00ce31e4f"
         }
       ]
     },
     "apps/web/src/components/chat/useComposerProviderModel.ts": {
-      "delta": [12, 86],
+      "delta": [12, 95],
       "legacy": true
     },
     "apps/web/src/components/chat/useThreadLifecycle.tsx": {
@@ -1319,7 +1254,7 @@
       "legacy": true
     },
     "apps/web/src/components/settings/AboutVersionTitle.tsx": {
-      "delta": [2, 1],
+      "delta": [3, 1],
       "legacy": true
     },
     "apps/web/src/components/settings/MultipleAccountsNote.tsx": {
@@ -1365,7 +1300,7 @@
       "legacy": true
     },
     "apps/web/src/components/settings/UpdateTrackSwitchDialog.tsx": {
-      "delta": [15, 9],
+      "delta": [16, 14],
       "legacy": true
     },
     "apps/web/src/components/settings/scopedSettings.ts": {
@@ -1384,7 +1319,7 @@
       ]
     },
     "apps/web/src/components/settings/settingsSearch.ts": {
-      "delta": [23, 0],
+      "delta": [26, 0],
       "legacy": true
     },
     "apps/web/src/components/settings/useScopedSettings.ts": {
@@ -1398,7 +1333,7 @@
             "symbol": "useRunScopedPlan"
           },
           "reason": "++ needs upstream's scope checks, failure toasts and dropped-key detection; copying the hook is forbidden.",
-          "fingerprint": "sha256:7d0766091cb30e7e"
+          "fingerprint": "sha256:338e0ef2b23df80d"
         }
       ]
     },
@@ -1411,11 +1346,11 @@
       "legacy": true
     },
     "apps/web/src/components/sidebar/updateEverything.logic.test.ts": {
-      "delta": [50, 1],
+      "delta": [52, 1],
       "legacy": true
     },
     "apps/web/src/components/sidebar/updateEverything.logic.ts": {
-      "delta": [13, 6],
+      "delta": [14, 6],
       "legacy": true
     },
     "apps/web/src/components/usage/UsageLimits.tsx": {
@@ -1427,7 +1362,7 @@
       "legacy": true
     },
     "apps/web/src/components/usage/UsageLimitsPooled.tsx": {
-      "delta": [18, 2],
+      "delta": [19, 3],
       "seams": [
         {
           "id": "usage-limits.web-pooled-import",
@@ -1437,7 +1372,7 @@
             "text": "from \"@t3tools/shared/usageLimits\""
           },
           "reason": "Pooled usage needs the ++ aggregation that retains usage accounts and monetary-only rows.",
-          "fingerprint": "sha256:7a81efe30cbcb8ff"
+          "fingerprint": "sha256:d9768dbcc927b63a"
         },
         {
           "id": "usage-limits.web-pooled-components-import",
@@ -1447,7 +1382,7 @@
             "text": "from \"./UsageLimits\";"
           },
           "reason": "Monetary usage and model-aware pool labels are mounted from one ++ web usage module.",
-          "fingerprint": "sha256:ea1976823583bac9"
+          "fingerprint": "sha256:2812665db84cf1ea"
         },
         {
           "id": "usage-limits.web-pooled-popover",
@@ -1455,10 +1390,10 @@
           "mechanism": "mount",
           "anchor": {
             "symbol": "SegmentPopover",
-            "text": "{account.plan ? <Row label=\"Plan\">"
+            "text": "{account.plan ? ("
           },
           "reason": "The account popover includes monetary usage between identity and rate-limit details.",
-          "fingerprint": "sha256:74577bab05d0e99f"
+          "fingerprint": "sha256:b87d72750ff151dc"
         },
         {
           "id": "usage-vendor-icons.pooled-window-card",
@@ -1469,7 +1404,7 @@
             "text": "<span className=\"text-sm font-medium text-foreground\">{label ?? pool.label}</span>"
           },
           "reason": "The pool window label uses the ++ model vendor icon when its driver supports one.",
-          "fingerprint": "sha256:be027d9c09618c8e"
+          "fingerprint": "sha256:eba77b45560da56a"
         },
         {
           "id": "usage-vendor-icons.pooled-window-driver",
@@ -1480,7 +1415,7 @@
             "text": "<PoolWindowCard"
           },
           "reason": "Passes the pool driver into PoolWindowCard (including its prop declaration and destructure) so PoolWindowLabel can select the ++ model vendor icon.",
-          "fingerprint": "sha256:134c48c807282b0e"
+          "fingerprint": "sha256:dc5d5966a9a27764"
         },
         {
           "id": "usage-limits.web-pooled-accounts",
@@ -1491,7 +1426,7 @@
             "text": "const windows = displayLimitWindows(pool);"
           },
           "reason": "Each pool renders its ++ monetary account rows below the upstream window cards.",
-          "fingerprint": "sha256:32dfddde6742d683"
+          "fingerprint": "sha256:44a55769ab7c45ec"
         }
       ]
     },
@@ -1528,6 +1463,156 @@
       "delta": [1, 1],
       "legacy": true
     },
+    "apps/web/src/i18n/translations/de.json": {
+      "delta": [0, 6],
+      "seams": [
+        {
+          "id": "generated.web-i18n-catalog-de",
+          "feature": "generated",
+          "mechanism": "generated",
+          "anchor": {
+            "file": true
+          },
+          "reason": "Regenerated by `vp run i18n:generate`: the fork drops upstream strings whose calls it removed (relaunch-command copy, npm registry lookup). Take upstream, then regenerate.",
+          "fingerprint": "sha256:3bc8c7e1e99b8d1d"
+        }
+      ]
+    },
+    "apps/web/src/i18n/translations/en.json": {
+      "delta": [0, 6],
+      "seams": [
+        {
+          "id": "generated.web-i18n-catalog-en",
+          "feature": "generated",
+          "mechanism": "generated",
+          "anchor": {
+            "file": true
+          },
+          "reason": "Regenerated by `vp run i18n:generate`: the fork drops upstream strings whose calls it removed (relaunch-command copy, npm registry lookup). Take upstream, then regenerate.",
+          "fingerprint": "sha256:46254bfe9f5361fe"
+        }
+      ]
+    },
+    "apps/web/src/i18n/translations/es.json": {
+      "delta": [0, 6],
+      "seams": [
+        {
+          "id": "generated.web-i18n-catalog-es",
+          "feature": "generated",
+          "mechanism": "generated",
+          "anchor": {
+            "file": true
+          },
+          "reason": "Regenerated by `vp run i18n:generate`: the fork drops upstream strings whose calls it removed (relaunch-command copy, npm registry lookup). Take upstream, then regenerate.",
+          "fingerprint": "sha256:2cc6b3f84e12e42b"
+        }
+      ]
+    },
+    "apps/web/src/i18n/translations/fr.json": {
+      "delta": [0, 6],
+      "seams": [
+        {
+          "id": "generated.web-i18n-catalog-fr",
+          "feature": "generated",
+          "mechanism": "generated",
+          "anchor": {
+            "file": true
+          },
+          "reason": "Regenerated by `vp run i18n:generate`: the fork drops upstream strings whose calls it removed (relaunch-command copy, npm registry lookup). Take upstream, then regenerate.",
+          "fingerprint": "sha256:5387ec712dc6237b"
+        }
+      ]
+    },
+    "apps/web/src/i18n/translations/ja.json": {
+      "delta": [0, 6],
+      "seams": [
+        {
+          "id": "generated.web-i18n-catalog-ja",
+          "feature": "generated",
+          "mechanism": "generated",
+          "anchor": {
+            "file": true
+          },
+          "reason": "Regenerated by `vp run i18n:generate`: the fork drops upstream strings whose calls it removed (relaunch-command copy, npm registry lookup). Take upstream, then regenerate.",
+          "fingerprint": "sha256:7a20e1b5f58d89cc"
+        }
+      ]
+    },
+    "apps/web/src/i18n/translations/ko.json": {
+      "delta": [0, 6],
+      "seams": [
+        {
+          "id": "generated.web-i18n-catalog-ko",
+          "feature": "generated",
+          "mechanism": "generated",
+          "anchor": {
+            "file": true
+          },
+          "reason": "Regenerated by `vp run i18n:generate`: the fork drops upstream strings whose calls it removed (relaunch-command copy, npm registry lookup). Take upstream, then regenerate.",
+          "fingerprint": "sha256:6f68eca34afb0215"
+        }
+      ]
+    },
+    "apps/web/src/i18n/translations/pt-BR.json": {
+      "delta": [0, 6],
+      "seams": [
+        {
+          "id": "generated.web-i18n-catalog-pt-br",
+          "feature": "generated",
+          "mechanism": "generated",
+          "anchor": {
+            "file": true
+          },
+          "reason": "Regenerated by `vp run i18n:generate`: the fork drops upstream strings whose calls it removed (relaunch-command copy, npm registry lookup). Take upstream, then regenerate.",
+          "fingerprint": "sha256:1a872ccb29547e62"
+        }
+      ]
+    },
+    "apps/web/src/i18n/translations/ru.json": {
+      "delta": [0, 6],
+      "seams": [
+        {
+          "id": "generated.web-i18n-catalog-ru",
+          "feature": "generated",
+          "mechanism": "generated",
+          "anchor": {
+            "file": true
+          },
+          "reason": "Regenerated by `vp run i18n:generate`: the fork drops upstream strings whose calls it removed (relaunch-command copy, npm registry lookup). Take upstream, then regenerate.",
+          "fingerprint": "sha256:7ff809610838a432"
+        }
+      ]
+    },
+    "apps/web/src/i18n/translations/sv.json": {
+      "delta": [0, 6],
+      "seams": [
+        {
+          "id": "generated.web-i18n-catalog-sv",
+          "feature": "generated",
+          "mechanism": "generated",
+          "anchor": {
+            "file": true
+          },
+          "reason": "Regenerated by `vp run i18n:generate`: the fork drops upstream strings whose calls it removed (relaunch-command copy, npm registry lookup). Take upstream, then regenerate.",
+          "fingerprint": "sha256:47552a385241daf8"
+        }
+      ]
+    },
+    "apps/web/src/i18n/translations/zh.json": {
+      "delta": [0, 6],
+      "seams": [
+        {
+          "id": "generated.web-i18n-catalog-zh",
+          "feature": "generated",
+          "mechanism": "generated",
+          "anchor": {
+            "file": true
+          },
+          "reason": "Regenerated by `vp run i18n:generate`: the fork drops upstream strings whose calls it removed (relaunch-command copy, npm registry lookup). Take upstream, then regenerate.",
+          "fingerprint": "sha256:8f8db1609b8c31f0"
+        }
+      ]
+    },
     "apps/web/src/lib/bootError.test.ts": {
       "delta": [6, 6],
       "legacy": true
@@ -1549,15 +1634,15 @@
       "legacy": true
     },
     "apps/web/src/state/use-orchestration-command.ts": {
-      "delta": [2, 1],
+      "delta": [1, 1],
       "legacy": true
     },
     "apps/web/src/versionSkew.test.ts": {
-      "delta": [62, 7],
+      "delta": [66, 7],
       "legacy": true
     },
     "apps/web/src/versionSkew.ts": {
-      "delta": [14, 12],
+      "delta": [15, 12],
       "legacy": true
     },
     "apps/web/src/vite-env.d.ts": {
@@ -1874,7 +1959,7 @@
       "legacy": true
     },
     "packages/provider-acp/src/server/adapter.ts": {
-      "delta": [25, 0],
+      "delta": [24, 2],
       "legacy": true
     },
     "packages/provider-core/package.json": {
@@ -1924,11 +2009,11 @@
       "legacy": true
     },
     "packages/provider-core/src/server/runtimeInstructions.test.ts": {
-      "delta": [0, 55],
+      "delta": [0, 56],
       "legacy": true
     },
     "packages/provider-core/src/server/runtimeInstructions.ts": {
-      "delta": [9, 31],
+      "delta": [9, 32],
       "legacy": true
     },
     "packages/provider-core/src/server/snapshotProbe.test.ts": {
@@ -1940,15 +2025,15 @@
       "legacy": true
     },
     "packages/provider-core/src/server/usageLimits.test.ts": {
-      "delta": [0, 122],
+      "delta": [0, 146],
       "legacy": true
     },
     "packages/provider-core/src/server/usageLimits.ts": {
-      "delta": [14, 120],
+      "delta": [14, 131],
       "legacy": true
     },
     "packages/provider-cursor/src/server/adapter.ts": {
-      "delta": [37, 3],
+      "delta": [43, 6],
       "legacy": true
     },
     "packages/provider-cursor/src/server/driver.ts": {
@@ -1968,7 +2053,7 @@
       "legacy": true
     },
     "packages/provider-grok/src/server/usageLimits.ts": {
-      "delta": [19, 76],
+      "delta": [19, 75],
       "legacy": true
     },
     "packages/provider-muse/package.json": {
@@ -1996,11 +2081,11 @@
       "legacy": true
     },
     "packages/provider-opencode/src/server/driver.test.ts": {
-      "delta": [355, 4],
+      "delta": [365, 7],
       "legacy": true
     },
     "packages/provider-opencode/src/server/driver.ts": {
-      "delta": [94, 10],
+      "delta": [97, 14],
       "legacy": true
     },
     "packages/provider-opencode/src/server/usageLimits.ts": {
@@ -2008,7 +2093,7 @@
       "legacy": true
     },
     "packages/provider-opencode/src/server/v2/adapter.ts": {
-      "delta": [92, 5],
+      "delta": [90, 3],
       "legacy": true
     },
     "packages/provider-pi/package.json": {
@@ -2024,7 +2109,7 @@
       "legacy": true
     },
     "packages/provider-pi/src/server/driver.ts": {
-      "delta": [100, 6],
+      "delta": [108, 16],
       "legacy": true
     },
     "packages/provider-pi/src/server/mcpBridge.testkit.ts": {
@@ -2032,7 +2117,7 @@
       "legacy": true
     },
     "packages/provider-pi/src/server/mcpExtensionSource.test.ts": {
-      "delta": [308, 3],
+      "delta": [307, 2],
       "legacy": true
     },
     "packages/provider-pi/src/server/mcpExtensionSource.ts": {
@@ -2121,11 +2206,11 @@
       "legacy": true
     },
     "packages/shared/src/orchestrationV2PendingBackgroundWork.test.ts": {
-      "delta": [431, 0],
+      "delta": [435, 0],
       "legacy": true
     },
     "packages/shared/src/orchestrationV2PendingBackgroundWork.ts": {
-      "delta": [153, 32],
+      "delta": [152, 31],
       "legacy": true
     },
     "packages/shared/src/promptLinks.test.ts": {
@@ -2157,7 +2242,7 @@
       "legacy": true
     },
     "packages/shared/src/remote.ts": {
-      "delta": [6, 5],
+      "delta": [5, 5],
       "legacy": true
     },
     "packages/shared/src/serverSettings.ts": {
@@ -2179,6 +2264,21 @@
     "packages/source-control-github/src/server/driver.ts": {
       "delta": [31, 3],
       "legacy": true
+    },
+    "packages/ssh/src/tunnel.test.ts": {
+      "delta": [2, 1],
+      "seams": [
+        {
+          "id": "remote-ssh.download-url-test",
+          "feature": "remote-ssh",
+          "mechanism": "override",
+          "anchor": {
+            "text": "https://github.com/pingdotgg/t3code/releases/download"
+          },
+          "reason": "The assertion follows the fork's release download base from cliRelease instead of upstream's hard-coded URL.",
+          "fingerprint": "sha256:2cfd3e67284b852c"
+        }
+      ]
     },
     "packages/ssh/src/tunnel.ts": {
       "delta": [1, 1],
@@ -2206,17 +2306,17 @@
       "reason": "AUR packaging publishes pingdotgg's t3code-bin packages under credentials the fork does not hold. Deletions are intentional."
     },
     "packaging/aur/scripts/release.sh": {
-      "delta": [0, 91],
+      "delta": [0, 112],
       "legacy": true,
       "reason": "AUR packaging publishes pingdotgg's t3code-bin packages under credentials the fork does not hold. Deletions are intentional."
     },
     "packaging/aur/t3code-bin/PKGBUILD": {
-      "delta": [0, 104],
+      "delta": [0, 106],
       "legacy": true,
       "reason": "AUR packaging publishes pingdotgg's t3code-bin packages under credentials the fork does not hold. Deletions are intentional."
     },
     "packaging/aur/t3code-nightly-bin/PKGBUILD": {
-      "delta": [0, 105],
+      "delta": [0, 107],
       "legacy": true,
       "reason": "AUR packaging publishes pingdotgg's t3code-bin packages under credentials the fork does not hold. Deletions are intentional."
     },
@@ -2228,12 +2328,17 @@
       "delta": [2, 0],
       "legacy": true
     },
+    "scripts/aur-release.test.ts": {
+      "delta": [0, 127],
+      "legacy": true,
+      "reason": "Tests the AUR packaging under packaging/aur, which the fork deletes. Deletion is intentional."
+    },
     "scripts/build-cli-archive.ts": {
       "delta": [2, 0],
       "legacy": true
     },
     "scripts/build-desktop-artifact.test.ts": {
-      "delta": [287, 3],
+      "delta": [292, 4],
       "legacy": true
     },
     "scripts/build-desktop-artifact.ts": {
@@ -2265,7 +2370,7 @@
       "legacy": true
     },
     "scripts/lib/cached-tests.test.ts": {
-      "delta": [84, 78],
+      "delta": [89, 83],
       "legacy": true
     },
     "scripts/lib/server-compile-cache.test.ts": {
@@ -2291,7 +2396,7 @@
       "reason": "Discord release notifications post to pingdotgg's Discord webhook, which the fork does not hold. Deletions are intentional."
     },
     "scripts/release-smoke.ts": {
-      "delta": [406, 339],
+      "delta": [406, 295],
       "legacy": true
     },
     "scripts/resolve-previous-release-tag.test.ts": {
@@ -2311,7 +2416,7 @@
       "legacy": true
     },
     "vite.config.ts": {
-      "delta": [0, 2],
+      "delta": [2, 2],
       "legacy": true
     }
   },
@@ -2320,37 +2425,37 @@
       "feature": "usage-limits",
       "upstream": "packages/shared/src/usageLimits.ts",
       "plusplus": "packages/plusplus-extensions/src/usageReporting.ts",
-      "fingerprint": "sha256:10b370f19c67da55"
+      "fingerprint": "sha256:f8d6e7e21b99341a"
     },
     {
       "feature": "fork-docs",
       "upstream": "docs/user/install.md",
       "plusplus": "plusplus/docs/install.md",
-      "fingerprint": "sha256:af32e20536534045"
+      "fingerprint": "sha256:a0ba762f6274c46b"
     },
     {
       "feature": "fork-docs",
       "upstream": "docs/user/faq.md",
       "plusplus": "plusplus/docs/faq.md",
-      "fingerprint": "sha256:45cb6db67a7b15a8"
+      "fingerprint": "sha256:e18b94560d512f88"
     },
     {
       "feature": "release",
       "upstream": ".github/workflows/release.yml",
       "plusplus": ".github/workflows/plusplus-release.yml",
-      "fingerprint": "sha256:841f44a5b78ae7dc"
+      "fingerprint": "sha256:8658ad5d0327d091"
     },
     {
       "feature": "release",
       "upstream": ".github/workflows/release-desktop.yml",
       "plusplus": ".github/workflows/plusplus-release-desktop.yml",
-      "fingerprint": "sha256:f9d8b23c2a26afae"
+      "fingerprint": "sha256:969b2733b5ae721e"
     },
     {
       "feature": "release",
       "upstream": "docs/operations/release.md",
       "plusplus": "plusplus/docs/release.md",
-      "fingerprint": "sha256:78ef6c592c00a207"
+      "fingerprint": "sha256:ed476fe32f19d0b5"
     }
   ]
 }

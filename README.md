@@ -4,7 +4,7 @@ T3 Code ++ is a drop-in fork of [T3 Code](https://github.com/pingdotgg/t3code), 
 
 Releases are published on [GitHub Releases](https://github.com/WianVDM/t3code/releases).
 
-Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, OpenCode, Google Antigravity, and fx. If they're set up on your computer, T3 Code ++ can control them.
+Works with your subscriptions on Claude Code, Codex, Cursor, OpenCode, Grok Build, Google Antigravity, Kiro, Pi, Muse Code, fx, and any [ACP](./docs/user/providers-acp.md) agent. If they're set up on your computer, T3 Code ++ can control them.
 
 ## "Wait, what are you selling me?"
 
@@ -15,7 +15,7 @@ We wanted something performant, remote-ready, and truly open. If we ever go the 
 ## Installation
 
 > [!WARNING]
-> T3 Code currently supports Codex, Claude, Cursor, Grok Build, OpenCode, Antigravity, and fx. Install and authenticate at least one provider before use:
+> T3 Code currently supports Codex, Claude, Cursor, Grok Build, OpenCode, Antigravity, Kiro, Pi, Muse Code, fx, and any ACP agent. Install and authenticate at least one provider before use:
 >
 > - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
 > - Claude: install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`
@@ -24,6 +24,7 @@ We wanted something performant, remote-ready, and truly open. If we ever go the 
 > - OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
 > - Antigravity: enable it in Settings, then use **Install Antigravity** and **Sign in with Google**. No CLI is required.
 > - fx: install [fx](https://fx.sh) and run `fx login` on the machine running the T3 Code server ([setup guide](./docs/user/providers-fx.md))
+> - Kiro, Pi, Muse Code and other ACP agents: see [Provider setup](./docs/user/install.md#providers)
 
 ### Command line
 

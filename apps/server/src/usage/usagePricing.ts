@@ -7,6 +7,7 @@
 export {
   cacheSavingsUsd,
   createOverrideRateTable,
+  isUnlistedModel,
   lookupRate,
   type ModelRate,
   parseRateTable,

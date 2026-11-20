@@ -117,7 +117,9 @@ it("dispatches one grouped write plan when toggled", async () => {
   await using screen = await render(<TokenEfficiencySettings />);
   await act(async () => screen.container.querySelector<HTMLElement>('[role="switch"]')?.click());
   expect(state.run).toHaveBeenCalledTimes(1);
-  expect(state.run.mock.calls[0]?.[0].serverWrites).toEqual([
+  const [environments, planner] = state.run.mock.calls[0]!;
+  expect(environments).toBe(state.environments);
+  expect(planner(environments).serverWrites).toEqual([
     expect.objectContaining({
       environmentId,
       patch: {

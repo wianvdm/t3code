@@ -62,7 +62,12 @@ describe("resolveComposerProviderModelSelection", () => {
       ],
       settings: DEFAULT_UNIFIED_SETTINGS,
       activeProjectId: null,
-      draftModelState: { activeProvider: null, modelSelectionByProvider: {} },
+      draftModelState: {
+        activeProvider: null,
+        modelSelectionByProvider: {},
+        modelSelectionExplicit: false,
+      },
+      threadStarted: false,
       threadModelSelection: null,
       projectModelSelection: null,
       promptInjectionState: "none",

@@ -1,3 +1,4 @@
+import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import type { ScopedThreadRef } from "@t3tools/contracts";
 
 import { selectThreadRightPanelState, useRightPanelStore } from "../../rightPanelStore";
@@ -24,8 +25,8 @@ export function revealThreadTerminal(threadRef: ScopedThreadRef, terminalId: str
 
 /**
  * Reveal always targets the right side panel. A drawer terminal's UI ownership is released
- * with a filtered reconcile, never closeTerminal (which would suppress the id) and never a
- * session close or relaunch. The panel surface opens first so the terminal always has exactly
+ * with a reconcile against the drawer's last server observation minus the id, never
+ * closeTerminal (which would suppress the id) and never a session close or relaunch. The panel surface opens first so the terminal always has exactly
  * one owner and repeated reveals cannot duplicate the surface.
  */
 export function revealThreadTerminalInRightPanel(threadRef: ScopedThreadRef, terminalId: string) {
@@ -66,10 +67,13 @@ export function revealThreadTerminalInRightPanel(threadRef: ScopedThreadRef, ter
     drawer.terminalUiStateByThreadKey,
     threadRef,
   ).terminalIds;
-  if (drawerIds.includes(terminalId)) {
+  // Reconcile closes only ids the server listed under the same snapshot, so the release reuses it.
+  const observation = drawer.serverObservationsByThreadKey[scopedThreadKey(threadRef)];
+  if (drawerIds.includes(terminalId) && observation?.ids.includes(terminalId)) {
     drawer.reconcileTerminalIds(
       threadRef,
-      drawerIds.filter((id) => id !== terminalId),
+      observation.ids.filter((id) => id !== terminalId),
+      observation.snapshotId,
     );
   }
   focusTerminalOnNavigation(threadRef, terminalId);

@@ -41,6 +41,7 @@ import * as CheckpointService from "./CheckpointService.ts";
 import * as EventSink from "./EventSink.ts";
 import * as ProviderEventIngestor from "./ProviderEventIngestor.ts";
 import * as RunExecutionService from "./RunExecutionService.ts";
+import * as ThreadCommandExecutor from "./ThreadCommandExecutor.ts";
 import * as TurnItemPositionStore from "./TurnItemPositionStore.ts";
 
 const enabledProjectId = ProjectId.make("project-token-efficiency-enabled");
@@ -183,6 +184,7 @@ const makeLayer = (
           allocate: () => Effect.succeed(1),
         }),
         Layer.mock(EventSink.EventSinkV2)({}),
+        Layer.mock(ThreadCommandExecutor.ThreadCommandExecutor)({}),
         IdAllocator.layer,
         Layer.mock(ProviderEventIngestor.ProviderEventIngestorV2)({
           ingestNormalized: () => Effect.succeed([]),

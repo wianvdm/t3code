@@ -16,7 +16,7 @@ const INERT = [
 // CI's own detection files join explicitly: an edit to the detector must
 // exercise the full pipeline it selects for, not the filtering it changes.
 const RUNS_EVERYTHING = [
-  /^packages\/shared\/src\/(HostProcess|testing\/(longTempDir|providerEnv))\.ts$/,
+  /^packages\/shared\/src\/(HostProcess|testing\/(longTempDir|providerEnv|gitEnv|gitRepositoryEnv))\.ts$/,
   /^apps\/mobile\/deps\//,
   /^\.github\/workflows\/(ci|windows-tests)\.yml$/,
   /^\.github\/actions\/ci-changes\//,

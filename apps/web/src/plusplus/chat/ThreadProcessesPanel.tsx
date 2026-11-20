@@ -8,7 +8,7 @@ import {
 import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import type { KnownTerminalSession } from "@t3tools/client-runtime/state/terminal";
 import { deriveProviderSubagentStatus } from "@t3tools/client-runtime/state/thread-execution";
-import { resolveTerminalSessionLabel } from "@t3tools/shared/terminalLabels";
+import { resolveTerminalSessionLabel } from "@t3tools/shared/terminalLabelsCopy";
 import { deriveOngoingThreadBackgroundWork } from "@t3tools/shared/orchestrationV2PendingBackgroundWork";
 import {
   ActivityIcon,
@@ -169,8 +169,8 @@ function ProcessRowElapsed(props: { readonly startedAt: string | null }) {
 export function ThreadProcessesPanel(props: {
   readonly environmentId: EnvironmentId;
   readonly threadId: ThreadId;
-  readonly isStoppingBackgroundWork: boolean;
-  readonly onStopBackgroundWork: () => void;
+  readonly isStoppingBackgroundWork?: boolean | undefined;
+  readonly onStopBackgroundWork?: (() => void) | undefined;
 }) {
   const ref = scopeThreadRef(props.environmentId, props.threadId);
   const threadKey = scopedThreadKey(ref);
@@ -236,6 +236,7 @@ export function ThreadProcessesPanel(props: {
     ? "Stop the current turn and all background work"
     : "Stop all background work";
   const showStop =
+    props.onStopBackgroundWork !== undefined &&
     taskRows.length > 0 &&
     threadProcessesStopAvailable({
       providerNative: projection !== null && isProviderNativeSubagentThread(projection.thread),
@@ -273,7 +274,7 @@ export function ThreadProcessesPanel(props: {
                   part="icon"
                   tone="destructive"
                   aria-label={stopAriaLabel}
-                  disabled={!canOperate || props.isStoppingBackgroundWork}
+                  disabled={!canOperate || props.isStoppingBackgroundWork === true}
                   onClick={props.onStopBackgroundWork}
                 />
               }

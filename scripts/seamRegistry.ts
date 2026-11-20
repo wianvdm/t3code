@@ -25,7 +25,7 @@ const SEAM_ID_SUFFIX_PATTERN = /^[a-z0-9-]+$/;
 const GLOB_OR_BACKSLASH_PATTERN = /[*?[\]\\]/;
 const STRUCTURED_KEY_EXTENSION = /\.(json|ya?ml)$/;
 const CONTEXT_LINES = 2;
-const JSON_PRINT_WIDTH = 80;
+const JSON_PRINT_WIDTH = 100;
 const FINGERPRINT_HEX_LENGTH = 16;
 const BINARY_NUMSTAT = "-";
 
@@ -754,7 +754,7 @@ function formatJsonValue(value: unknown, depth: number, prefixWidth: number): st
   if (entries.length === 0) return "{}";
   const members = entries.map(([key, child]) => {
     const prefix = `${JSON.stringify(key)}: `;
-    return `${childIndent}${prefix}${formatJsonValue(child, depth + 1, childIndent.length + prefix.length)}`;
+    return `${childIndent}${prefix}${formatJsonValue(child, depth + 1, prefix.length)}`;
   });
   return `{\n${members.join(",\n")}\n${indent}}`;
 }

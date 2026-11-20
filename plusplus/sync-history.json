@@ -450,6 +450,611 @@
         "evals/README.md",
         "scripts/build-npm-launcher.test.ts"
       ]
+    },
+    {
+      "tag": "v0.1.11",
+      "upstreamRef": "59651c1761f6c63e9b6056839067066968e6a406",
+      "previousUpstreamRef": "24e77473ecf41bc1f7142529c7911c1c1aae1d76",
+      "conflicts": [
+        {
+          "path": ".agents/skills/contribution-triage/SKILL.md",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": ".github/VOUCHED.td",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": ".github/pull_request_template.md",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": ".github/scripts/check-nightly-release.cjs",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": ".github/scripts/check-nightly-release.test.cjs",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": ".github/workflows/agent-context-budget.yml",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "hunks": 4,
+          "features": []
+        },
+        {
+          "path": ".github/workflows/mobile-eas-preview.yml",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": ".github/workflows/mobile-fingerprint-check.yml",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": ".github/workflows/mobile-showcase-screenshots.yml",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": ".github/workflows/pr-vouch.yml",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": ".github/workflows/publish-aur.yml",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": ".github/workflows/windows-tests.yml",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": ".macroscope/check-run-agents/ui-consistency.md",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": "AGENTS.md",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "CONTRIBUTING.md",
+          "hunks": 3,
+          "features": []
+        },
+        {
+          "path": "README.md",
+          "hunks": 3,
+          "features": []
+        },
+        {
+          "path": "apps/desktop/src/app/DesktopCliShim.test.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "apps/desktop/src/app/DesktopLinuxUrlHandler.test.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "apps/desktop/src/app/DesktopPreReadyPlatform.test.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "apps/desktop/src/backend/DesktopBackendPool.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/desktop/src/main.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/desktop/src/settings/DesktopAppSettings.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/mobile/src/features/settings/SettingsProjectOverviewRouteScreen.tsx",
+          "hunks": 2,
+          "features": ["token-efficiency"]
+        },
+        {
+          "path": "apps/mobile/src/features/usage/ChatGptUsageSummary.tsx",
+          "hunks": 1,
+          "features": ["usage-limits"]
+        },
+        {
+          "path": "apps/mobile/src/features/usage/UsageLimitsPooled.tsx",
+          "hunks": 3,
+          "features": ["usage-limits"]
+        },
+        {
+          "path": "apps/mobile/src/features/usage/UsageLimitsSection.tsx",
+          "hunks": 1,
+          "features": ["usage-limits"]
+        },
+        {
+          "path": "apps/mobile/src/widgets/subscriptionUsageSnapshot.ts",
+          "hunks": 1,
+          "features": ["usage-limits"]
+        },
+        {
+          "path": "apps/server/package.json",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/cli/pair.test.ts",
+          "hunks": 1,
+          "features": ["fork-cli"]
+        },
+        {
+          "path": "apps/server/src/cli/pair.ts",
+          "hunks": 1,
+          "features": ["fork-cli"]
+        },
+        {
+          "path": "apps/server/src/cloud/servicePreflight.ts",
+          "hunks": 2,
+          "features": ["fork-installer"]
+        },
+        {
+          "path": "apps/server/src/httpCors.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/mcp/linkOrigin.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/mcp/toolkits/thread/handlers.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/orchestration-v2/Adapters/ClaudeAdapterV2.test.ts",
+          "hunks": 72,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/orchestration-v2/Adapters/ClaudeAdapterV2.ts",
+          "hunks": 10,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.test.ts",
+          "hunks": 29,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.testkit.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.ts",
+          "hunks": 7,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/orchestration-v2/ClaudeAutomaticDelivery.integration.test.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/persistence/Migrations.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/AgentContextBudget.test.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/CodexProvider.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/Drivers/AntigravityDriver.test.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/Drivers/AntigravityDriver.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/Drivers/AntigravitySkills.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/Drivers/ClaudeSkills.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/Drivers/CodexDriver.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/Drivers/antigravityUsageReader.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/GrokProvider.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/agentContextBudget.json",
+          "hunks": 1,
+          "features": ["generated"]
+        },
+        {
+          "path": "apps/server/src/provider/antigravityAuthSupport.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/antigravityUsageLimits.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/claudeUsageLimits.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/codexUsageLimits.test.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/codexUsageLimits.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/storageCleanup.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/usage/usagePricing.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/usage/usagePricing.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/ws.ts",
+          "hunks": 1,
+          "features": ["token-efficiency", "upstream-merge-access", "usage-limits"]
+        },
+        {
+          "path": "apps/web/src/components/InstallT3Commands.tsx",
+          "hunks": 2,
+          "features": ["fork-installer"]
+        },
+        {
+          "path": "apps/web/src/components/ServerUpdateAction.tsx",
+          "hunks": 3,
+          "features": []
+        },
+        {
+          "path": "apps/web/src/components/chat/ComposerUsageLimits.tsx",
+          "hunks": 1,
+          "features": ["usage-limits"]
+        },
+        {
+          "path": "apps/web/src/components/chat/OpenInPicker.browser.test.tsx",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/web/src/components/chat/ThreadDetailsUsage.tsx",
+          "hunks": 1,
+          "features": ["usage-limits"]
+        },
+        {
+          "path": "apps/web/src/components/chat/useComposerProviderModel.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "apps/web/src/components/settings/AboutVersionTitle.tsx",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "apps/web/src/components/settings/UpdateTrackSwitchDialog.tsx",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "apps/web/src/components/sidebar/updateEverything.logic.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/web/src/components/usage/UsageLimits.tsx",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/web/src/components/usage/UsageLimitsPooled.tsx",
+          "hunks": 3,
+          "features": ["usage-limits", "usage-vendor-icons"]
+        },
+        {
+          "path": "apps/web/src/state/desktopUpdate.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/web/src/state/use-orchestration-command.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/web/src/versionSkew.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/web/src/versionSkew.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "docs/user/updating.md",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "knip.jsonc",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/client-runtime/src/preview/serverBrowserStream.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/contracts/src/rpc.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/contracts/src/server.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/contracts/src/settings.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/contracts/src/terminal.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/provider-acp/src/server/adapter.ts",
+          "hunks": 4,
+          "features": []
+        },
+        {
+          "path": "packages/provider-core/src/server/runtimeInstructions.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/provider-core/src/server/snapshotProbe.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/provider-core/src/server/usageLimits.test.ts",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": "packages/provider-core/src/server/usageLimits.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/provider-cursor/src/server/adapter.ts",
+          "hunks": 5,
+          "features": []
+        },
+        {
+          "path": "packages/provider-grok/src/server/usageLimits.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/provider-opencode/src/server/adapter.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/provider-opencode/src/server/adapter.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/provider-opencode/src/server/driver.test.ts",
+          "hunks": 6,
+          "features": []
+        },
+        {
+          "path": "packages/provider-opencode/src/server/driver.ts",
+          "hunks": 4,
+          "features": []
+        },
+        {
+          "path": "packages/provider-opencode/src/server/v2/adapter.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "packages/provider-pi/src/server/adapter.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "packages/provider-pi/src/server/driver.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/provider-pi/src/server/driver.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/provider-pi/src/server/mcpBridge.testkit.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/provider-pi/src/server/mcpExtensionSource.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/provider-pi/src/server/mcpExtensionSource.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/shared/src/orchestrationV2PendingBackgroundWork.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/shared/src/orchestrationV2PendingBackgroundWork.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/shared/src/promptLinks.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/shared/src/promptLinks.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/shared/src/remote.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "packaging/aur/README.md",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": "packaging/aur/scripts/release.sh",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": "packaging/aur/t3code-bin/PKGBUILD",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": "packaging/aur/t3code-nightly-bin/PKGBUILD",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": "pnpm-lock.yaml",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "scripts/build-desktop-artifact.test.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "scripts/build-desktop-artifact.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "scripts/install.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "scripts/lib/cached-tests.test.ts",
+          "hunks": 3,
+          "features": []
+        },
+        {
+          "path": "scripts/release-smoke.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "scripts/update-release-package-versions.ts",
+          "hunks": 1,
+          "features": []
+        }
+      ],
+      "dropped": [
+        "apps/server/src/persistence/Migrations.test.ts",
+        "apps/server/src/persistence/Migrations/026_CanonicalizeModelSelectionOptions.ts",
+        "apps/server/src/persistence/Migrations/064_CanonicalizeThreadPullRequestLinks.test.ts",
+        "apps/server/src/persistence/Migrations/064_CanonicalizeThreadPullRequestLinks.ts",
+        "apps/server/src/persistence/Migrations/071_PeerLinkFence.ts",
+        "apps/server/src/persistence/Migrations/072_WaitingLinkRequestIndex.ts",
+        "apps/server/src/provider/GrokProvider.test.ts",
+        "apps/server/src/provider/codexUsageLimits.test.ts",
+        "apps/server/src/storageCleanup.ts",
+        "apps/server/src/usage/usagePricing.test.ts",
+        "apps/web/src/components/chat/OpenInPicker.browser.test.tsx"
+      ]
     }
   ]
 }

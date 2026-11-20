@@ -11,8 +11,8 @@ describe("Grok usage limits", () => {
   };
 
   it("shows zero usage for complete weekly and monthly periods with no percentage", () => {
-    for (const [currentPeriod, kind, label, resetsAt] of [
-      [weeklyPeriod, "weekly", "Weekly", "2026-09-18T03:10:30.159Z"],
+    for (const [currentPeriod, kind, label, resetsAt, windowDurationMins] of [
+      [weeklyPeriod, "weekly", "Weekly", "2026-09-18T03:10:30.159Z", 7 * 24 * 60],
       [
         {
           type: "USAGE_PERIOD_TYPE_MONTHLY",
@@ -22,12 +22,15 @@ describe("Grok usage limits", () => {
         "monthly",
         "Monthly",
         "2026-10-01T00:00:00.000Z",
+        30 * 24 * 60,
       ],
     ] as const) {
       const response = { config: { currentPeriod } };
       expect
         .soft(grokUsageResponseToLimits(response, checkedAt).windows)
-        .toEqual([{ id: "subscription", kind, label, usedPercent: 0, resetsAt }]);
+        .toEqual([
+          { id: "subscription", kind, label, usedPercent: 0, resetsAt, windowDurationMins },
+        ]);
     }
   });
 

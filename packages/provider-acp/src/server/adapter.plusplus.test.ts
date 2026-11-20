@@ -20,6 +20,7 @@ import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
+import { noCompatibilityPolicy } from "@t3tools/provider-core/server/compatibility";
 import type { ProjectInstructions } from "@t3tools/provider-core/server/projectInstructions";
 import { resolveSelfInvocation } from "@t3tools/shared/nodeRuntime";
 import * as DateTime from "effect/DateTime";
@@ -80,6 +81,7 @@ const layerHost = Layer.effect(
       shouldRunBackgroundWork: () => Effect.succeed(true),
       resolveAttachmentPath: () => null,
       credentials: () => Effect.die("Credentials are not used by this test"),
+      compatibility: noCompatibilityPolicy,
     });
   }),
 );

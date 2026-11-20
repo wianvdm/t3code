@@ -28,6 +28,7 @@ import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAda
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as CheckpointStore from "../checkpointing/CheckpointStore.ts";
 import * as ManagedEndpointRuntime from "../cloud/ManagedEndpointRuntime.ts";
+import * as DeviceService from "../device/DeviceService.ts";
 import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
 import * as ServerConfig from "../config.ts";
 import * as GitWorkflow from "../git/GitWorkflowService.ts";
@@ -38,6 +39,8 @@ import * as ProjectCloneTracker from "../project/ProjectCloneTracker.ts";
 import * as ProjectEnrichmentService from "../project/ProjectEnrichmentService.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as WorktreeSetupTracker from "../project/WorktreeSetupTracker.ts";
+import * as DocumentText from "../provider/DocumentText.ts";
+import * as ModelManifest from "../provider/ModelManifest.ts";
 import * as ProviderInstanceRegistry from "../provider/ProviderInstanceRegistry.ts";
 import * as ProviderRegistry from "../provider/ProviderRegistry.ts";
 import * as TerminalManager from "../terminal/Manager.ts";
@@ -88,6 +91,7 @@ const layerCheckpointStoreTest = CheckpointStore.layer.pipe(
 const layerGitWorkflowTest = Layer.mock(GitWorkflow.GitWorkflowService)({
   pruneWorktrees: () => Effect.void,
   createWorktree: () => Effect.succeed({} as never),
+  currentBranch: () => Effect.succeed(null),
 });
 
 const driver = ProviderDriverKind.make("codex");
@@ -150,6 +154,7 @@ const layerHandoverTest = Layer.mergeAll(
           repositoryIdentityResolved: false,
         }),
       invalidate: () => Effect.void,
+      refreshRepositoryIdentity: () => Effect.void,
       subscribeChanges: Effect.never,
     }),
   ),
@@ -168,6 +173,8 @@ const layerHandoverTest = Layer.mergeAll(
     Layer.mergeAll(
       Layer.mock(AgentSessionScanner.AgentSessionScanner)({}),
       Layer.mock(AnalyticsService.AnalyticsService)({}),
+      Layer.mock(DeviceService.DeviceService)({}),
+      Layer.mock(DocumentText.DocumentText)({}),
       Layer.mock(GitVcsDriver.GitVcsDriver)({}),
       Layer.mock(ManagedEndpointRuntime.CloudManagedEndpointRuntime)({}),
       Layer.mock(PreviewManager.PreviewManager)({}),
@@ -180,6 +187,7 @@ const layerHandoverTest = Layer.mergeAll(
       Layer.mock(TextGeneration.TextGeneration)({}),
       Layer.mock(VcsStatusBroadcaster.VcsStatusBroadcaster)({}),
       Layer.mock(WorktreeSetupTracker.WorktreeSetupTracker)({}),
+      ModelManifest.layerTest,
     ),
   ),
   Layer.provideMerge(layerPlatformTest),

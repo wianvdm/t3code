@@ -238,30 +238,32 @@ test("registry packages stay out of the Windows scope when the closure runs", ()
 });
 
 // The same invariant against the real workspace: the Windows closure is
-// exactly the Electron distribution surface, and full CI runs its eleven test
-// packages; the Windows workflow excludes only SSH's POSIX shell test files.
+// exactly the Electron distribution surface, and full CI runs its thirteen test
+// packages; the Windows workflow excludes only test files that need POSIX paths, sockets or shells.
 test("the real desktop closure is exactly the distribution surface", () => {
   assert.deepEqual([...desktopClosure(readWorkspace())].sort(), [
     "@t3tools/client-runtime",
     "@t3tools/contracts",
     "@t3tools/desktop",
+    "@t3tools/issue-tracker-linear",
     "@t3tools/plusplus",
     "@t3tools/provider-core",
     "@t3tools/secret-provider-core",
     "@t3tools/secret-provider-definitions",
     "@t3tools/secret-provider-onepassword",
     "@t3tools/shared",
+    "@t3tools/source-control-core",
     "@t3tools/ssh",
     "@t3tools/tailscale",
   ]);
 });
 
-test("a full run selects the eleven-package Windows surface", () => {
+test("a full run selects the thirteen-package Windows surface", () => {
   const { outputs } = decide([], readWorkspace(), true);
   assert.equal(outputs.windows, true);
   assert.equal(
     outputs.windows_packages,
-    "apps/desktop packages/client-runtime packages/contracts packages/plusplus packages/provider-core packages/secret-provider-core packages/secret-provider-onepassword packages/shared packages/ssh packages/tailscale scripts",
+    "apps/desktop packages/client-runtime packages/contracts packages/issue-tracker-linear packages/plusplus packages/provider-core packages/secret-provider-core packages/secret-provider-onepassword packages/shared packages/source-control-core packages/ssh packages/tailscale scripts",
   );
 });
 
@@ -773,13 +775,13 @@ test("windows-tests exposes replay inputs as all-or-none and a verification outp
   assert.match(windowsWorkflow, /if: \$\{\{ inputs\.dry_run_base_sha != '' \}\}\n\s+shell: bash/);
   assert.match(
     windowsWorkflow,
-    /if: \$\{\{ inputs\.dry_run_base_sha == '' \}\}\n\s+uses: actions\/checkout@v6/,
+    /if: \$\{\{ inputs\.dry_run_base_sha == '' \}\}\n\s+uses: actions\/checkout@[0-9a-f]{40} # v6\./,
   );
   // Existing CI/manual behavior is preserved.
   assert.match(windowsWorkflow, /was called without a package/);
   assert.match(windowsWorkflow, /files is only supported by manual runs/);
   assert.match(
     windowsWorkflow,
-    /test --exclude src\/tunnel\.test\.ts --exclude src\/tunnel\.plusplus\.test\.ts/,
+    /'packages\/ssh' = @\('src\/tunnel\.test\.ts', 'src\/tunnel\.plusplus\.test\.ts'\)/,
   );
 });

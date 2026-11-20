@@ -469,27 +469,144 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("checkGrokProvide
   );
 });
 
-// Parity: the ++ parser stays reachable through the provider-grok testing surface.
-describe("grok usage limits facade", () => {
-  it("maps a complete weekly period with no percentage to zero usage", () => {
-    const response = {
-      config: {
-        currentPeriod: {
-          type: "USAGE_PERIOD_TYPE_WEEKLY",
-          start: "2026-09-11T03:10:30.159171+00:00",
-          end: "2026-09-18T03:10:30.159171+00:00",
+describe("Grok usage limits", () => {
+  const checkedAt = "2026-09-16T00:00:00.000Z";
+  const weeklyPeriod = {
+    type: "USAGE_PERIOD_TYPE_WEEKLY",
+    start: "2026-09-11T03:10:30.159171+00:00",
+    end: "2026-09-18T03:10:30.159171+00:00",
+  };
+
+  it("shows zero usage for complete weekly and monthly periods with no percentage", () => {
+    for (const [currentPeriod, kind, label, resetsAt, windowDurationMins] of [
+      [weeklyPeriod, "weekly", "Weekly", "2026-09-18T03:10:30.159Z", 7 * 24 * 60],
+      [
+        {
+          type: "USAGE_PERIOD_TYPE_MONTHLY",
+          start: "2026-09-01T00:00:00.000Z",
+          end: "2026-10-01T00:00:00.000Z",
         },
-      },
-    };
-    expect(grokUsageResponseToLimits(response, "2026-09-16T00:00:00.000Z").windows).toEqual([
-      {
-        id: "subscription",
-        kind: "weekly",
-        label: "Weekly",
-        usedPercent: 0,
-        resetsAt: "2026-09-18T03:10:30.159Z",
-      },
-    ]);
+        "monthly",
+        "Monthly",
+        "2026-10-01T00:00:00.000Z",
+        30 * 24 * 60,
+      ],
+    ] as const) {
+      const response = { config: { currentPeriod } };
+      expect
+        .soft(grokUsageResponseToLimits(response, checkedAt).windows)
+        .toEqual([
+          { id: "subscription", kind, label, usedPercent: 0, resetsAt, windowDurationMins },
+        ]);
+    }
+  });
+
+  it("keeps incomplete, invalid, unordered, and unknown periods unreported", () => {
+    for (const currentPeriod of [
+      undefined,
+      { ...weeklyPeriod, type: undefined },
+      { ...weeklyPeriod, type: "USAGE_PERIOD_TYPE_DAILY" },
+      { ...weeklyPeriod, start: undefined },
+      { ...weeklyPeriod, end: undefined },
+      { ...weeklyPeriod, start: "invalid" },
+      { ...weeklyPeriod, end: "invalid" },
+      { ...weeklyPeriod, start: weeklyPeriod.end },
+      { ...weeklyPeriod, start: weeklyPeriod.end, end: weeklyPeriod.start },
+    ]) {
+      const response = { config: { currentPeriod } };
+      expect
+        .soft(grokUsageResponseToLimits(response, checkedAt).windows, JSON.stringify(response))
+        .toEqual([]);
+    }
+  });
+
+  // regression: #17061 show zero-use Grok billing periods
+  it("rejects impossible calendar dates at either period boundary", () => {
+    for (const [start, end] of [
+      ["2026-02-30T00:00:00.000Z", "2026-03-09T00:00:00.000Z"],
+      ["2026-02-23T00:00:00.000Z", "2026-02-30T00:00:00.000Z"],
+    ]) {
+      const response = { config: { currentPeriod: { ...weeklyPeriod, start, end } } };
+      expect
+        .soft(grokUsageResponseToLimits(response, checkedAt).windows, JSON.stringify(response))
+        .toEqual([]);
+    }
+  });
+
+  it("does not invent allowance or reset dates when billing omits them", () => {
+    for (const response of [{}, { config: {} }, { config: { creditUsagePercent: NaN } }]) {
+      const limits = grokUsageResponseToLimits(response, checkedAt);
+      expect(limits.windows).toEqual([]);
+      expect(limits.unavailable).toBeUndefined();
+    }
+    expect(
+      grokUsageResponseToLimits({ config: { creditUsagePercent: 0 } }, checkedAt).windows,
+    ).toEqual([{ id: "subscription", kind: "other", label: "Subscription", usedPercent: 0 }]);
+    expect(
+      grokUsageResponseToLimits(
+        {
+          config: {
+            creditUsagePercent: 120,
+            currentPeriod: { type: "USAGE_PERIOD_TYPE_MONTHLY", end: "invalid" },
+          },
+        },
+        checkedAt,
+      ).windows,
+    ).toEqual([{ id: "subscription", kind: "monthly", label: "Monthly", usedPercent: 100 }]);
+  });
+
+  it("measures the window from the reported period bounds", () => {
+    const window = (type: string, start: string, end: string) =>
+      grokUsageResponseToLimits(
+        { config: { creditUsagePercent: 4, currentPeriod: { type, start, end } } },
+        checkedAt,
+      ).windows[0];
+    expect(
+      window(
+        "USAGE_PERIOD_TYPE_WEEKLY",
+        "2026-10-14T20:51:37.352+00:00",
+        "2026-10-21T20:51:37.352+00:00",
+      ),
+    ).toEqual({
+      id: "subscription",
+      kind: "weekly",
+      label: "Weekly",
+      usedPercent: 4,
+      resetsAt: "2026-10-21T20:51:37.352Z",
+      windowDurationMins: 7 * 24 * 60,
+    });
+    expect(
+      window(
+        "USAGE_PERIOD_TYPE_MONTHLY",
+        "2026-02-01T00:00:00.000+00:00",
+        "2026-03-01T00:00:00.000+00:00",
+      )?.windowDurationMins,
+    ).toBe(28 * 24 * 60);
+  });
+
+  it("leaves the window length unknown when the period start is unusable", () => {
+    const end = "2026-10-21T20:51:37.352+00:00";
+    for (const start of [
+      undefined,
+      null,
+      42,
+      "invalid",
+      "2026-02-30T00:00:00.000Z",
+      end,
+      "2026-10-28T20:51:37.352+00:00",
+    ]) {
+      const [window] = grokUsageResponseToLimits(
+        {
+          config: {
+            creditUsagePercent: 4,
+            currentPeriod: { type: "USAGE_PERIOD_TYPE_WEEKLY", start, end },
+          },
+        },
+        checkedAt,
+      ).windows;
+      expect(window?.resetsAt).toBe("2026-10-21T20:51:37.352Z");
+      expect(window).not.toHaveProperty("windowDurationMins");
+    }
   });
 });
 
@@ -522,7 +639,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("readGrokAccount"
         ),
       );
       expect(limits.windows[0]?.usedPercent).toBe(37);
-    }).pipe(Effect.scoped),
+    }),
   );
 
   it.effect(
@@ -632,7 +749,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("readGrokAccount"
             message: "Grok could not read usage limits.",
           });
         }
-      }).pipe(Effect.scoped),
+      }),
   );
 
   it.effect("sanitizes HTTP failures and malformed billing responses, keeping the account", () =>

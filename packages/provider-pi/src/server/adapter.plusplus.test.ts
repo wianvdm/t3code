@@ -365,35 +365,37 @@ describe("PiAdapterV2 ++", () => {
     }).pipe(Effect.scoped, Effect.provide(layerTest)),
   );
 
-  it.effect("delivers only changes, withdraws once, and resends after a plain resume", () =>
-    Effect.gen(function* () {
-      const fake = yield* makeFakePi;
-      const adapter = yield* makeAdapter(fake);
-      const { runtime, takeEvent } = yield* openRuntime(adapter);
-      let providerThread = yield* ensureThread(runtime);
-      const first = { id: "first", text: "First π instructions\nSecond line" };
-      const updated = { id: "updated", text: "Updated instructions" };
+  it.effect(
+    "delivers only changes, withdraws once, and keeps delivery across a resume of the attached session",
+    () =>
+      Effect.gen(function* () {
+        const fake = yield* makeFakePi;
+        const adapter = yield* makeAdapter(fake);
+        const { runtime, takeEvent } = yield* openRuntime(adapter);
+        let providerThread = yield* ensureThread(runtime);
+        const first = { id: "first", text: "First π instructions\nSecond line" };
+        const updated = { id: "updated", text: "Updated instructions" };
 
-      yield* runTurn(fake, runtime, takeEvent, providerThread, 1, first);
-      yield* runTurn(fake, runtime, takeEvent, providerThread, 2, first);
-      assert.deepEqual(projectInstructionArguments(fake), [
-        Buffer.from(first.text, "utf8").toString("base64url"),
-      ]);
+        yield* runTurn(fake, runtime, takeEvent, providerThread, 1, first);
+        yield* runTurn(fake, runtime, takeEvent, providerThread, 2, first);
+        assert.deepEqual(projectInstructionArguments(fake), [
+          Buffer.from(first.text, "utf8").toString("base64url"),
+        ]);
 
-      providerThread = yield* runtime.resumeThread({ providerThread });
-      yield* runTurn(fake, runtime, takeEvent, providerThread, 3, first);
-      assert.equal(projectInstructionArguments(fake).length, 2);
+        // Resuming the attached session file keeps Pi's session and its extension state.
+        providerThread = yield* runtime.resumeThread({ providerThread });
+        yield* runTurn(fake, runtime, takeEvent, providerThread, 3, first);
+        assert.equal(projectInstructionArguments(fake).length, 1);
 
-      yield* runTurn(fake, runtime, takeEvent, providerThread, 4, updated);
-      yield* runTurn(fake, runtime, takeEvent, providerThread, 5);
-      yield* runTurn(fake, runtime, takeEvent, providerThread, 6);
-      assert.deepEqual(projectInstructionArguments(fake), [
-        Buffer.from(first.text, "utf8").toString("base64url"),
-        Buffer.from(first.text, "utf8").toString("base64url"),
-        Buffer.from(updated.text, "utf8").toString("base64url"),
-        "",
-      ]);
-    }).pipe(Effect.scoped, Effect.provide(layerTest)),
+        yield* runTurn(fake, runtime, takeEvent, providerThread, 4, updated);
+        yield* runTurn(fake, runtime, takeEvent, providerThread, 5);
+        yield* runTurn(fake, runtime, takeEvent, providerThread, 6);
+        assert.deepEqual(projectInstructionArguments(fake), [
+          Buffer.from(first.text, "utf8").toString("base64url"),
+          Buffer.from(updated.text, "utf8").toString("base64url"),
+          "",
+        ]);
+      }).pipe(Effect.scoped, Effect.provide(layerTest)),
   );
 
   it.effect("forgets delivered instructions when the Pi process restarts", () =>
