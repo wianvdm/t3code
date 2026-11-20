@@ -23,8 +23,10 @@ migration. Stop the stock server before starting T3 Code ++ against the same
 data directory.
 
 A data directory last used by a newer stock release is not supported: T3 Code
-++ still starts, but it may not understand data the newer release recorded, and
-`t3 service install` refuses such a directory. Use separate `--base-dir`
+++ still starts, but it may not understand data the newer release recorded.
+Neither `t3` nor `t3 service install` checks, so a server on an older build
+runs against that newer data; only an in-app update of a background-service
+install refuses a build older than the data. Use separate `--base-dir`
 directories to try both versions.
 
 ## Command line
@@ -146,8 +148,9 @@ The AppImage has to be executable (`chmod +x`) before the first run. Open the
 Linux ARM, or Windows ARM build, no mobile app, and no Homebrew, AUR, or Nix
 package.
 
-The macOS build is unsigned and has no updater feed. macOS may warn that it
-cannot verify the developer on first open; right-click the app and choose
+Every desktop build is unsigned (Windows shows SmartScreen; macOS asks you to
+confirm past Gatekeeper), and only the macOS build has no updater feed. macOS
+may warn that it cannot verify the developer on first open; right-click the app and choose
 **Open** to run it anyway, and expect the same after each update. To update,
 download the newer `.dmg` and replace the app yourself. On Windows and Linux
 the app installs its own updates from the same releases; see

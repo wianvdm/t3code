@@ -1,6 +1,6 @@
 # T3 Code ++
 
-T3 Code ++ is a drop-in fork of [T3 Code](https://github.com/pingdotgg/t3code), the "agent harness control surface" that lets you control the agents on your machine. It ships the Electron-based desktop app for Windows and Linux x64, plus an unsigned macOS arm64 build, along with the web client started by the `t3` CLI. A local install of upstream T3 Code can be reused when it was last run by a stock release no newer than your ++ build's upstream base: T3 Code ++ reads the existing projects, sessions, and data, so nothing has to be migrated. Newer stock homes are not supported; see [Install T3 Code ++](./plusplus/docs/install.md#reuse-an-upstream-installation).
+T3 Code ++ is a drop-in fork of [T3 Code](https://github.com/pingdotgg/t3code), the "agent harness control surface" that lets you control the agents on your machine. It ships the Electron-based desktop app for Windows and Linux x64 and macOS arm64, all unsigned (Windows shows SmartScreen warnings), along with the web client started by the `t3` CLI. A local install of upstream T3 Code can be reused when it was last run by a stock release no newer than your ++ build's upstream base: T3 Code ++ reads the existing projects, sessions, and data, so nothing has to be migrated. Newer stock homes are not supported; see [Install T3 Code ++](./plusplus/docs/install.md#reuse-an-upstream-installation).
 
 Releases are published on [GitHub Releases](https://github.com/WianVDM/t3code/releases).
 
@@ -41,7 +41,7 @@ Then run `t3` to start the server and open the local web app. `t3 service instal
 
 ### Desktop app
 
-Installers for Windows x64 (`.exe`) and Linux x64 (`.AppImage`) are published on [GitHub Releases](https://github.com/WianVDM/t3code/releases), alongside `.zip`/`.tar.gz` archives of the `t3` CLI for both platforms. An unsigned macOS arm64 `.dmg` manual download is published there too; it has no in-app updater and needs no Apple signing. There are no other ARM or package-registry builds.
+Installers for Windows x64 (`.exe`) and Linux x64 (`.AppImage`) are published on [GitHub Releases](https://github.com/WianVDM/t3code/releases), alongside `.zip`/`.tar.gz` archives of the `t3` CLI for both platforms. A macOS arm64 `.dmg` manual download is published there too; like every other build it is unsigned, and it is the only desktop build with no in-app updater. There are no other ARM or package-registry builds.
 
 ## Some notes
 
