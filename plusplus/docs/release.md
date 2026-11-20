@@ -126,9 +126,11 @@ than a fork-only version bump.
    gate, and a failed required check cannot block a preview, only a stable or nightly dispatch.
 6. **Publish GitHub Release.** Writes `SHA256SUMS` from the archives it uploads, refuses updater
    metadata on preview releases, drops any macOS updater files (`*-mac.yml`, the updater app zip,
-   the DMG blockmap) that no install is meant to follow, merges the per-arch Windows updater manifest
-   back into `latest.yml` or `nightly.yml`, and attaches every asset. A prerelease stays a draft
-   until all assets are attached.
+   the DMG blockmap) that no install is meant to follow, requires the channel's Windows and Linux
+   updater manifests, renames the per-arch Windows one back into `latest.yml` or `nightly.yml`, and
+   attaches every asset. A prerelease stays a draft until all assets are attached.
+7. **Check the update feed.** Nightly only: repoints the `update-feed` release at the newest nightly
+   (see [Update feed](#update-feed)).
 
 The release workflow builds no test matrix of its own; on stable and nightly the required checks are
 the gate. Dispatch a stable or nightly only once they are green on the commit you intend to ship.
@@ -203,6 +205,22 @@ a dry run.
 - It carries the `nightly` updater feed and blockmaps, so users who opted into nightly desktop builds
   receive it.
 - It commits nothing back to `main`. Retention for nightlies is in [Retention](#retention).
+
+## Update feed
+
+A nightly install finds the newest nightly in `releases.atom`, which lists the 10 newest git tags of
+any kind, and takes its first nightly. Preview and stable tags can sort above it, so ++ builds also
+read `releases/download/update-feed/nightly.json`, which names the newest nightly, and take the newer
+of the two. The `update-feed` prerelease holds that file and is never marked latest. Never delete it.
+
+Every nightly dispatch ends with **Check the update feed**, which rewrites a missing or outdated
+pointer and fails when the first nightly in the feed is not the newest one. The release is already
+public by then; the failure means installs that read only the feed cannot reach it. Delete the
+preview tags nothing needs with `git push origin :refs/tags/<tag>`.
+
+To pull a bad nightly, delete its release and tag, then run
+`gh release delete-asset update-feed nightly.json`. Installs fall back to the feed until the next
+nightly rewrites the pointer.
 
 ## Preview release
 
@@ -450,6 +468,9 @@ sidecar layout change costs one larger download and later releases keep small bl
   revision; do not delete the release or move the tag to force the old version through.
 - **`Preview releases must not carry updater metadata`** The packaging step emitted a feed for a
   preview version. Fix the publish-config condition; do not drop the guard.
+- **`Missing updater manifest release-assets/...`** A desktop job succeeded without emitting its
+  channel's feed. Publishing would strand that platform's installs; fix the publish config.
+- **`The first nightly in releases.atom is not ...`** See [Update feed](#update-feed).
 - **Windows verify job fails** The packaged natives, CLI archive, or resource monitor would not run
   for users. Treat the build as broken and fix it before publishing again.
 - **Linux AppImage launch check fails** The shipped backend or bundle cannot start. The database

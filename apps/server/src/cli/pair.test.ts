@@ -498,10 +498,9 @@ describe("t3 pair", () => {
           ]);
           assert.isTrue(Exit.isFailure(exit));
           if (Exit.isFailure(exit)) {
-            assert.include(
-              String(Cause.squash(exit.cause)),
-              `t3 update --base-dir ${baseDir} && t3 pair --base-dir ${baseDir}`,
-            );
+            const hint = String(Cause.squash(exit.cause));
+            assert.include(hint, `\`t3 update --base-dir ${baseDir}\``);
+            assert.include(hint, `\`t3 pair --base-dir ${baseDir}\``);
           }
         }),
       "127.0.0.1",
