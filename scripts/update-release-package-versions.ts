@@ -12,6 +12,8 @@ import * as Schema from "effect/Schema";
 import { Argument, Command, Flag } from "effect/cli";
 import { fromJsonStringPretty } from "@t3tools/shared/schemaJson";
 
+import { releasePackageFiles } from "./lib/tagged-source-version.ts";
+
 export class ReleasePackageManifestError extends Schema.TaggedError<ReleasePackageManifestError>()(
   "ReleasePackageManifestError",
   {
@@ -67,12 +69,7 @@ export const assertReleaseVersion = Effect.fn("assertReleaseVersion")(function* 
   return version;
 });
 
-export const releasePackageFiles = [
-  "apps/server/package.json",
-  "apps/desktop/package.json",
-  "apps/web/package.json",
-  "packages/contracts/package.json",
-] as const;
+export { releasePackageFiles };
 
 interface UpdateReleasePackageVersionsOptions {
   readonly rootDir?: string | undefined;

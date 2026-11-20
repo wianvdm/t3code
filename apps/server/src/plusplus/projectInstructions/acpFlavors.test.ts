@@ -246,6 +246,20 @@ describe("ACP flavor project instructions", () => {
           protocolEvents,
           wrapRuntime: (runtime) => ({
             ...runtime,
+            // Kiro offers compaction only when initialize lists its extension method.
+            start: () =>
+              runtime.start().pipe(
+                Effect.map((started) => ({
+                  ...started,
+                  initializeResult: {
+                    ...started.initializeResult,
+                    agentCapabilities: {
+                      ...started.initializeResult.agentCapabilities,
+                      _meta: { kiro: { extensionMethods: ["_kiro/session/compact"] } },
+                    },
+                  },
+                })),
+              ),
             request: (method, payload) =>
               method === "_kiro/session/compact"
                 ? Ref.update(compactRequests, (requests) => [...requests, payload]).pipe(
@@ -300,7 +314,7 @@ describe("ACP flavor project instructions", () => {
     }).pipe(Effect.provide(layerTest), Effect.scoped),
   );
 
-  it("Antigravity retains its version-gated PR-linking flag and no compaction", () => {
+  it("Antigravity keeps its capability-gated PR-linking flag and no compaction", () => {
     const flavor = makeAntigravityAcpAdapterFlavor({
       instanceId: ProviderInstanceId.make("antigravity-project-instructions"),
       random: undefined as never,
@@ -312,11 +326,12 @@ describe("ACP flavor project instructions", () => {
       withProcess: (_stop, task) => task,
       defaultModel: Effect.undefined,
     });
-    assert.isFalse(flavor.supportsCompaction);
+    assert.notStrictEqual(flavor.supportsCompaction, true);
+    assert.isUndefined(flavor.compactSession);
     assert.isTrue(
       flavor.sessionCarriesPullRequestLinking?.({
         protocolVersion: 1,
-        agentCapabilities: {},
+        agentCapabilities: { _meta: { antigravity: { systemPrompt: { append: true } } } },
         authMethods: [],
         agentInfo: { name: "antigravity", version: "1.4.5" },
       }),

@@ -34,6 +34,7 @@ import { stackedThreadToast, toastManager } from "../../components/ui/toast";
 import type { useNewThreadHandler } from "../../hooks/useHandleNewThread";
 import { useLiveRefresh } from "../../hooks/useLiveRefresh";
 import { getClientSettings, mergeEnvironmentSettings } from "../../hooks/useSettings";
+import { m } from "../../i18n/messages";
 import { newMessageId, newThreadId } from "../../lib/utils";
 import { appAtomRegistry } from "../../rpc/atomRegistry";
 import { readDesktopUpdateState } from "../../state/desktopUpdate";
@@ -182,7 +183,7 @@ async function startUpstreamMergeUnchecked(
       stackedThreadToast({
         type: "error",
         title: START_MERGE_FAILED_MESSAGE,
-        description: ORCHESTRATION_OPERATE_DENIED_MESSAGE,
+        description: m(ORCHESTRATION_OPERATE_DENIED_MESSAGE),
       }),
     );
     return;
@@ -249,6 +250,7 @@ async function startUpstreamMergeUnchecked(
     threadModelSelection: null,
     projectModelSelection: null,
     promptInjectionState: getComposerPromptInjectionState(composer.prompt),
+    threadStarted: false,
     candidateInstanceIds: [composer.activeProvider ?? null],
     lockedProvider: null,
     lockedInstanceId: null,

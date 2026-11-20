@@ -10,4 +10,5 @@ export {
   type ClaudeScopedLimitNames,
   makeClaudeScopedLimitNames,
   recordClaudeUsageResponse,
+  windowLimitsModel,
 } from "@t3tools/plusplus/claudeUsageLimits";

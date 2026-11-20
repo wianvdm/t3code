@@ -12,6 +12,7 @@ import { isProviderAvailable } from "@t3tools/contracts";
 import { readUsageAccounts } from "@t3tools/plusplus/contracts";
 import * as upstream from "@t3tools/shared/usageLimits";
 import type { LimitPresentations } from "@t3tools/shared/usageLimits";
+import * as upstreamCopy from "@t3tools/shared/usageLimitsCopy";
 import * as DateTime from "effect/DateTime";
 
 import { isMonetaryOnlyUsage, limitsNotice } from "./usageLimits.ts";
@@ -181,20 +182,28 @@ export function withUsageLimitsCommands(
     .filter((provider) => !expanded.syntheticParents.has(provider.instanceId));
 }
 
-export function collectExternalUsageLinks(presentations: LimitPresentations) {
+type MessageResolver = Parameters<typeof upstreamCopy.collectLimitNotices>[1];
+
+export function collectExternalUsageLinks(
+  presentations: LimitPresentations,
+  resolve?: MessageResolver,
+) {
   const { view } = expandPresentations(presentations, (parent, account) => ({
     displayName: `${parent.displayName ?? parent.instanceId} · ${accountLabel(account)}`,
     driver: account.driver,
   }));
-  return upstream.collectExternalUsageLinks(view);
+  return upstreamCopy.collectExternalUsageLinks(view, resolve);
 }
 
-export function collectLimitNotices(presentations: LimitPresentations): readonly string[] {
+export function collectLimitNotices(
+  presentations: LimitPresentations,
+  resolve?: MessageResolver,
+): readonly string[] {
   const { view } = expandPresentations(presentations, (parent, account) => ({
     displayName: `${parent.displayName?.trim() || String(parent.driver)} · ${accountLabel(account)}`,
     driver: account.driver,
   }));
-  return [...new Set(upstream.collectLimitNotices(withMonetaryPlaceholders(view)))];
+  return [...new Set(upstreamCopy.collectLimitNotices(withMonetaryPlaceholders(view), resolve))];
 }
 
 export function collectLimitAccounts(

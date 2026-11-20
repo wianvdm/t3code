@@ -547,6 +547,7 @@ describe("startUpstreamMerge", () => {
       activeProjectId: state.draft.projectId,
       draftModelState: freshComposer,
       threadModelSelection: null,
+      threadStarted: false,
       projectModelSelection: null,
       promptInjectionState: state.promptInjectionState,
       candidateInstanceIds: [null],

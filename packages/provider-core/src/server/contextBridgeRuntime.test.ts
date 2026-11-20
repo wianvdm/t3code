@@ -23,6 +23,7 @@ import {
   mergeBridgedSkillsForSnapshot,
 } from "./contextBridgeRuntime.ts";
 import * as ProviderHost from "./ProviderHost.ts";
+import { noCompatibilityPolicy } from "./compatibility.ts";
 
 const decodeContextBridge = Schema.decodeSync(ContextBridgeSettings);
 
@@ -57,6 +58,7 @@ function layerProviderHost(settings: typeof DEFAULT_SERVER_SETTINGS) {
       shouldRunBackgroundWork: () => Effect.succeed(true),
       resolveAttachmentPath: () => null,
       credentials: () => Effect.die("unused"),
+      compatibility: noCompatibilityPolicy,
     }),
   );
 }
@@ -85,6 +87,7 @@ const layerFailingSettings = Layer.succeed(
     shouldRunBackgroundWork: () => Effect.succeed(true),
     resolveAttachmentPath: () => null,
     credentials: () => Effect.die("unused"),
+    compatibility: noCompatibilityPolicy,
   }),
 );
 

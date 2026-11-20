@@ -139,7 +139,8 @@ export const PiDriver: ProviderDriver<PiSettings, PiDriverEnv, Path.Path> = {
     const httpClient = yield* HttpClient.HttpClient;
     const latestVersions = yield* ProviderLatestVersions.ProviderLatestVersions;
     const host = yield* ProviderHost.ProviderHost;
-    const { cwd } = host.paths;
+    // Pi runs extensions' session_start in its cwd; the server's cwd is $HOME on packaged desktop.
+    const probeCwd = pathService.join(host.paths.providerStatusCacheDir, "pi-status-probe");
     const processEnv = yield* mergeProviderInstanceEnvironment(environment);
     const continuationIdentity = defaultProviderContinuationIdentity({
       driverKind: DRIVER_KIND,
@@ -181,7 +182,11 @@ export const PiDriver: ProviderDriver<PiSettings, PiDriverEnv, Path.Path> = {
           }),
       ),
     );
-    const textGeneration = yield* makePiTextGeneration(effectiveConfig, processEnv);
+    const textGeneration = yield* makePiTextGeneration(
+      effectiveConfig,
+      processEnv,
+      host.compatibility,
+    );
 
     const home = yield* HostProcess.HomeDirectory;
     const agentDir = processEnv.PI_CODING_AGENT_DIR?.trim();
@@ -205,7 +210,11 @@ export const PiDriver: ProviderDriver<PiSettings, PiDriverEnv, Path.Path> = {
       Effect.provideService(HttpClient.HttpClient, httpClient),
     );
 
-    const checkProvider = checkPiProviderStatus(effectiveConfig, processEnv, cwd).pipe(
+    const checkProvider = fileSystem.makeDirectory(probeCwd, { recursive: true }).pipe(
+      Effect.ignore,
+      Effect.andThen(
+        checkPiProviderStatus(effectiveConfig, processEnv, probeCwd, host.compatibility),
+      ),
       Effect.flatMap((draft) =>
         Effect.gen(function* () {
           if (!draft.enabled || !draft.installed || draft.auth.status !== "authenticated") {

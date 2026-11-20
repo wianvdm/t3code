@@ -121,11 +121,15 @@ const makeHarness = Effect.fn("OpenCode2ProjectInstructions.makeHarness")(functi
     events: Effect.succeed(Stream.fromQueue(nativeEvents)),
     imageJobs: () => Effect.succeed([]),
     readImage: () => Effect.die("not used"),
+    usageLimits: () => Effect.undefined,
     url: "http://test.invalid",
     version: "2.0.18",
     external: true,
   } satisfies OpenCode2Server.OpenCode2Connection;
-  const server = OpenCode2Server.OpenCode2Server.of({ withConnection: (use) => use(connection) });
+  const server = OpenCode2Server.OpenCode2Server.of({
+    withConnection: (use) => use(connection),
+    forget: Effect.void,
+  });
   const adapter = yield* OpenCode2Adapter.make(INSTANCE_ID).pipe(
     Effect.provideService(OpenCode2Server.OpenCode2Server, server),
   );

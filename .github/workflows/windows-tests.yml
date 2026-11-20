@@ -136,7 +136,7 @@ jobs:
 
       - name: Checkout
         if: ${{ inputs.dry_run_base_sha == '' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           sparse-checkout: |
             /*
@@ -159,7 +159,7 @@ jobs:
 
       - name: Cache packages
         if: steps.validate.outputs.replay != 'true'
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ steps.package_cache_path.outputs.path }}
           key: windows-tests-packages-v1-${{ hashFiles('pnpm-lock.yaml') }}
@@ -204,7 +204,7 @@ jobs:
 
       - name: Cache replayed packages
         if: steps.validate.outputs.replay == 'true'
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ steps.package_cache_path.outputs.path }}
           key: windows-tests-replay-v1-${{ hashFiles('pnpm-lock.yaml') }}
@@ -233,12 +233,24 @@ jobs:
           $package = '${{ inputs.package }}'
           $files = '${{ inputs.files }}'
           $dirs = @($package -split '\s+' | Where-Object { $_ -ne '' })
+          # Upstream tests that assume POSIX paths, sockets or shells; Linux CI still runs them.
+          $windowsExcludes = @{
+            'packages/ssh' = @('src/tunnel.test.ts', 'src/tunnel.plusplus.test.ts')
+            'apps/desktop' = @('src/preview/BrowserSession.test.ts', 'src/preview/LoopbackTunnel.test.ts', 'src/updates/DesktopUpdates.test.ts')
+            'packages/provider-core' = @('src/server/maintenanceResolver.test.ts')
+            'scripts' = @('dev-runner.test.ts')
+          }
           function Invoke-PackageTests($dir) {
-            if ($dir -eq 'packages/ssh') {
-              vp run --filter "./$dir" test --exclude src/tunnel.test.ts --exclude src/tunnel.plusplus.test.ts
-            } else {
-              vp run --filter "./$dir" test
+            if ($dir -eq 'apps/desktop') {
+              # Desktop's vitest projects set their own exclude, which ignores --exclude, so pass the kept files.
+              Push-Location $dir
+              $kept = @(vp test list --filesOnly | ForEach-Object { $_ -replace '^\[[^\]]+\]\s+', '' } | Where-Object { $_ -match '\.test\.' -and $windowsExcludes[$dir] -notcontains $_ } | Sort-Object -Unique)
+              vp test run --passWithNoTests @kept
+              Pop-Location
+              return
             }
+            $excludeArgs = @($windowsExcludes[$dir] | Where-Object { $_ } | ForEach-Object { '--exclude'; $_ })
+            vp run --filter "./$dir" test @excludeArgs
           }
           if ($dirs.Count -eq 0) {
             vp run --parallel --concurrency-limit 4 --filter '!t3' --filter '!@t3tools/monorepo' --filter '!@t3tools/ssh' test

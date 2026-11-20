@@ -14,7 +14,7 @@ import * as SqlClient from "effect/sql/SqlClient";
 import { parseRateTable, priceUsage } from "../../usage/usagePricing.ts";
 
 import {
-  antigravityRateModel,
+  antigravityTierRateModel,
   makeAntigravityUsageCache,
   readAntigravityUsage,
 } from "./antigravityUsageReader.ts";
@@ -591,27 +591,38 @@ describe("readAntigravityUsage", () => {
     }).pipe(Effect.provide(NodeServices.layer)),
   );
 
-  it.effect("reads Antigravity step-only stores and reports malformed databases", () =>
-    Effect.gen(function* () {
-      const fileSystem = yield* FileSystem.FileSystem;
-      const path = yield* Path.Path;
-      const dir = yield* tempDir;
-      yield* seedDatabase(path.join(dir, "steps.db"), (db) =>
-        Effect.gen(function* () {
-          yield* db.exec("CREATE TABLE steps (idx INTEGER, metadata BLOB)");
-          const usage = [...protoNumber(1, 246), ...protoNumber(2, 10), ...protoNumber(3, 5)];
-          yield* db.run("INSERT INTO steps VALUES (?, ?)", [
-            0,
-            new Uint8Array([...protoBytes(9, usage), ...protoBytes(8, protoNumber(1, 1780000000))]),
-          ]);
-        }),
-      );
-      yield* fileSystem.writeFileString(path.join(dir, "broken.db"), "not a sqlite database");
-      const result = yield* readAntigravityUsage(dir, 0);
-      assert.strictEqual(result.errors.length, 1);
-      assert.strictEqual(records(result)[0]?.model, "gemini-2.5-pro");
-      assert.strictEqual(records(result)[0]?.totals.outputTokens, 5);
-    }).pipe(Effect.provide(NodeServices.layer)),
+  it.effect(
+    "reads Antigravity step-only stores, skips index files and reports malformed databases",
+    () =>
+      Effect.gen(function* () {
+        const fileSystem = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const dir = yield* tempDir;
+        // agy 1.5.x keeps this index beside its conversations; it is not a conversation store.
+        yield* seedDatabase(path.join(dir, "conversation_summaries.db"), (db) =>
+          db.exec(
+            "CREATE TABLE conversation_summaries (conversation_id TEXT PRIMARY KEY, title TEXT, step_count INTEGER)",
+          ),
+        );
+        yield* seedDatabase(path.join(dir, "steps.db"), (db) =>
+          Effect.gen(function* () {
+            yield* db.exec("CREATE TABLE steps (idx INTEGER, metadata BLOB)");
+            const usage = [...protoNumber(1, 246), ...protoNumber(2, 10), ...protoNumber(3, 5)];
+            yield* db.run("INSERT INTO steps VALUES (?, ?)", [
+              0,
+              new Uint8Array([
+                ...protoBytes(9, usage),
+                ...protoBytes(8, protoNumber(1, 1780000000)),
+              ]),
+            ]);
+          }),
+        );
+        yield* fileSystem.writeFileString(path.join(dir, "broken.db"), "not a sqlite database");
+        const result = yield* readAntigravityUsage(dir, 0);
+        assert.deepStrictEqual(result.errors, [path.join(dir, "broken.db")]);
+        assert.strictEqual(records(result)[0]?.model, "gemini-2.5-pro");
+        assert.strictEqual(records(result)[0]?.totals.outputTokens, 5);
+      }).pipe(Effect.provide(NodeServices.layer)),
   );
 
   it.effect("ignores large values in unused Antigravity protobuf fields", () =>
@@ -699,29 +710,29 @@ describe("readAntigravityUsage", () => {
   );
 });
 
-describe("antigravityRateModel", () => {
+describe("antigravityTierRateModel", () => {
   it("strips high, medium, low, minimal, and trial effort/trial tier suffixes", () => {
-    assert.strictEqual(antigravityRateModel("gemini-3.8-flash-high"), "gemini-3.8-flash");
-    assert.strictEqual(antigravityRateModel("gemini-3.8-flash-medium"), "gemini-3.8-flash");
-    assert.strictEqual(antigravityRateModel("gemini-3.8-flash-low"), "gemini-3.8-flash");
-    assert.strictEqual(antigravityRateModel("gemini-3.8-flash-minimal"), "gemini-3.8-flash");
-    assert.strictEqual(antigravityRateModel("gemini-3.8-flash-trial"), "gemini-3.8-flash");
-    assert.strictEqual(antigravityRateModel("claude-sonnet-4-5-high"), "claude-sonnet-4-5");
-    assert.strictEqual(antigravityRateModel("claude-opus-4-6-medium"), "claude-opus-4-6");
+    assert.strictEqual(antigravityTierRateModel("gemini-3.8-flash-high"), "gemini-3.8-flash");
+    assert.strictEqual(antigravityTierRateModel("gemini-3.8-flash-medium"), "gemini-3.8-flash");
+    assert.strictEqual(antigravityTierRateModel("gemini-3.8-flash-low"), "gemini-3.8-flash");
+    assert.strictEqual(antigravityTierRateModel("gemini-3.8-flash-minimal"), "gemini-3.8-flash");
+    assert.strictEqual(antigravityTierRateModel("gemini-3.8-flash-trial"), "gemini-3.8-flash");
+    assert.strictEqual(antigravityTierRateModel("claude-sonnet-4-5-high"), "claude-sonnet-4-5");
+    assert.strictEqual(antigravityTierRateModel("claude-opus-4-6-medium"), "claude-opus-4-6");
   });
 
   it("maps stripped gemini-4-argon to gemini/gemini-4-argon", () => {
-    assert.strictEqual(antigravityRateModel("gemini-4-argon-high"), "gemini/gemini-4-argon");
-    assert.strictEqual(antigravityRateModel("gemini-4-argon-trial"), "gemini/gemini-4-argon");
-    assert.strictEqual(antigravityRateModel("gemini-4-argon-medium"), "gemini/gemini-4-argon");
+    assert.strictEqual(antigravityTierRateModel("gemini-4-argon-high"), "gemini/gemini-4-argon");
+    assert.strictEqual(antigravityTierRateModel("gemini-4-argon-trial"), "gemini/gemini-4-argon");
+    assert.strictEqual(antigravityTierRateModel("gemini-4-argon-medium"), "gemini/gemini-4-argon");
   });
 
   it("returns undefined for -n, unknown, bare, or unmatched model identifiers", () => {
-    assert.isUndefined(antigravityRateModel("gemini-3.8-flash-n"));
-    assert.isUndefined(antigravityRateModel("antigravity-unknown"));
-    assert.isUndefined(antigravityRateModel("gemini-3.8-flash"));
-    assert.isUndefined(antigravityRateModel("gemini-4-argon"));
-    assert.isUndefined(antigravityRateModel("flash"));
-    assert.isUndefined(antigravityRateModel(""));
+    assert.isUndefined(antigravityTierRateModel("gemini-3.8-flash-n"));
+    assert.isUndefined(antigravityTierRateModel("antigravity-unknown"));
+    assert.isUndefined(antigravityTierRateModel("gemini-3.8-flash"));
+    assert.isUndefined(antigravityTierRateModel("gemini-4-argon"));
+    assert.isUndefined(antigravityTierRateModel("flash"));
+    assert.isUndefined(antigravityTierRateModel(""));
   });
 });

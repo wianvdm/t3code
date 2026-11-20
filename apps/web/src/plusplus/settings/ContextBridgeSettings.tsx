@@ -25,7 +25,7 @@ import {
   type ContextBridgeFeature,
 } from "./contextBridgeSettings.logic";
 import { SettingsRow, SettingsSection } from "~/components/settings/settingsLayout";
-import { searchableSetting } from "~/components/settings/settingsSearch";
+import { useSearchableSetting } from "~/components/settings/settingsSearch";
 
 function useAvailableBridgeDrivers(environmentId: EnvironmentId) {
   const serverProviders = useAtomValue(providersIgnoringCheckedAtAtom(environmentId));
@@ -39,6 +39,7 @@ export function ContextBridgeSettingsSection({
   readonly environmentId: EnvironmentId;
   readonly readOnly?: boolean;
 }) {
+  const searchableSetting = useSearchableSetting();
   const settings = useEnvironmentSettings(environmentId);
   const updateSettings = useUpdateEnvironmentSettings(environmentId);
   const availableDrivers = useAvailableBridgeDrivers(environmentId);

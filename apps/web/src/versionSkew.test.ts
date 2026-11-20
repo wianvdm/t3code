@@ -32,6 +32,24 @@ describe("versionSkew", () => {
   ] as const)("returns no command for the $kind installation", (installation) => {
     expect(manualServerUpdateCommand("0.0.45", installation)).toBeNull();
   });
+
+  it("updates a launcher install through its own launcher and safely quotes its paths", () => {
+    expect(
+      manualServerUpdateCommand("0.0.45", {
+        kind: "t3-launcher",
+        launcher: "t3",
+        baseDir: "/home/u/.t3",
+      }),
+    ).toBe("'t3' update --base-dir '/home/u/.t3' 0.0.45");
+    expect(
+      manualServerUpdateCommand("0.0.45", {
+        kind: "t3-launcher",
+        launcher: "/opt/maria's bin/t3",
+        baseDir: "/data/t3 home",
+      }),
+    ).toBe("'/opt/maria'\\''s bin/t3' update --base-dir '/data/t3 home' 0.0.45");
+  });
+
   beforeEach(() => {
     branding.APP_VERSION = "0.0.34";
   });

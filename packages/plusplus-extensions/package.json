@@ -14,6 +14,10 @@
     "./usageReporting": {
       "types": "./src/usageReporting.ts",
       "import": "./src/usageReporting.ts"
+    },
+    "./usageReportingCopy": {
+      "types": "./src/usageReportingCopy.ts",
+      "import": "./src/usageReportingCopy.ts"
     }
   },
   "scripts": {

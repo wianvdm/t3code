@@ -199,9 +199,23 @@ describe("Codex project instruction delivery", () => {
             { type: "expect_outbound", label: "initialized", frame: { method: "initialized" } },
             {
               type: "expect_outbound",
-              label: "thread/start",
+              label: "config/read",
               frame: {
                 id: 2,
+                method: "config/read",
+                params: { cwd: "/workspace", includeLayers: false },
+              },
+            },
+            {
+              type: "emit_inbound",
+              label: "config/read",
+              frame: { id: 2, result: { config: {}, origins: {} } },
+            },
+            {
+              type: "expect_outbound",
+              label: "thread/start",
+              frame: {
+                id: 3,
                 method: "thread/start",
                 params: { config: CodexAdapterV2.CODEX_THREAD_CONFIG },
               },
@@ -210,7 +224,7 @@ describe("Codex project instruction delivery", () => {
               type: "emit_inbound",
               label: "thread/start",
               frame: {
-                id: 2,
+                id: 3,
                 result: {
                   thread: {
                     id: nativeThreadId,
@@ -250,14 +264,35 @@ describe("Codex project instruction delivery", () => {
               type: "expect_outbound",
               label: "compact",
               frame: {
-                id: 3,
+                id: 4,
                 method: "thread/compact/start",
                 params: { threadId: nativeThreadId },
               },
             },
+            { type: "emit_inbound", label: "compact response", frame: { id: 4, result: {} } },
             {
               type: "emit_inbound",
-              label: "compacted before compact response",
+              label: "compaction turn started",
+              frame: {
+                method: "turn/started",
+                params: {
+                  threadId: nativeThreadId,
+                  turn: {
+                    id: "compact-turn",
+                    items: [],
+                    itemsView: "notLoaded",
+                    status: "inProgress",
+                    error: null,
+                    startedAt: 1782622440,
+                    completedAt: null,
+                    durationMs: null,
+                  },
+                },
+              },
+            },
+            {
+              type: "emit_inbound",
+              label: "compacted",
               frame: {
                 method: "item/completed",
                 params: {
@@ -268,10 +303,30 @@ describe("Codex project instruction delivery", () => {
               },
             },
             {
+              type: "emit_inbound",
+              label: "compaction turn completed",
+              frame: {
+                method: "turn/completed",
+                params: {
+                  threadId: nativeThreadId,
+                  turn: {
+                    id: "compact-turn",
+                    items: [],
+                    itemsView: "notLoaded",
+                    status: "completed",
+                    error: null,
+                    startedAt: 1782622440,
+                    completedAt: 1782622450,
+                    durationMs: null,
+                  },
+                },
+              },
+            },
+            {
               type: "expect_outbound",
               label: "restore refreshed instructions",
               frame: {
-                id: 4,
+                id: 5,
                 method: "thread/inject_items",
                 params: {
                   threadId: nativeThreadId,
@@ -290,8 +345,7 @@ describe("Codex project instruction delivery", () => {
                 },
               },
             },
-            { type: "emit_inbound", label: "restored", frame: { id: 4, result: {} } },
-            { type: "emit_inbound", label: "compact response", frame: { id: 3, result: {} } },
+            { type: "emit_inbound", label: "restored", frame: { id: 5, result: {} } },
           ],
         };
         const driver = yield* CodexReplay.makeReplayDriver(transcript);
