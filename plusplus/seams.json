@@ -230,7 +230,7 @@
       "legacy": true
     },
     "README.md": {
-      "delta": [13, 64],
+      "delta": [13, 65],
       "legacy": true
     },
     "apps/desktop/package.json": {
@@ -1569,7 +1569,7 @@
       "legacy": true
     },
     "docs/README.md": {
-      "delta": [0, 1],
+      "delta": [6, 1],
       "legacy": true
     },
     "docs/internals/effect-services.md": {

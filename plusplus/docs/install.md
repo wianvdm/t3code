@@ -14,6 +14,21 @@ You need an installed, authenticated provider before starting a thread. You can
 launch T3 Code and configure providers afterwards. See
 [provider setup](../../docs/user/install.md#providers).
 
+## Reuse an upstream installation
+
+T3 Code ++ can reuse an existing upstream T3 Code home when that home was last
+run by a stock T3 Code release no newer than your ++ build's upstream base. Your
+projects, sessions, and settings remain available without an export or manual
+migration. Stop the stock server before starting T3 Code ++ against the same
+data directory.
+
+A data directory last used by a newer stock release is not supported: T3 Code
+++ still starts, but it may not understand data the newer release recorded.
+Neither `t3` nor `t3 service install` checks, so a server on an older build
+runs against that newer data; only an in-app update of a background-service
+install refuses a build older than the data. Use separate `--base-dir`
+directories to try both versions.
+
 ## Command line
 
 ```bash
@@ -29,8 +44,9 @@ irm https://raw.githubusercontent.com/WianVDM/t3code/main/scripts/install.ps1 | 
 The installer downloads the release archive for your platform and links `t3`
 into `~/.local/bin` (`%USERPROFILE%\.local\bin` on Windows). If your shell
 reports `command not found` afterwards, that directory is not on your `PATH`
-yet; the installer prints the line to add. Set `T3CODE_CHANNEL=nightly` to
-install the nightly train, or `T3CODE_VERSION` to pin an exact version.
+yet; the installer prints the line to add. Stable is the only public release
+channel with published builds; the Nightly track has nothing to install. Set
+`T3CODE_VERSION` to pin an exact stable version.
 
 | Task                                             | Command                                                                               |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------- |
@@ -132,8 +148,9 @@ The AppImage has to be executable (`chmod +x`) before the first run. Open the
 Linux ARM, or Windows ARM build, no mobile app, and no Homebrew, AUR, or Nix
 package.
 
-The macOS build is unsigned and has no updater feed. macOS may warn that it
-cannot verify the developer on first open; right-click the app and choose
+Every desktop build is unsigned (Windows shows SmartScreen; macOS asks you to
+confirm past Gatekeeper), and only the macOS build has no updater feed. macOS
+may warn that it cannot verify the developer on first open; right-click the app and choose
 **Open** to run it anyway, and expect the same after each update. To update,
 download the newer `.dmg` and replace the app yourself. On Windows and Linux
 the app installs its own updates from the same releases; see
