@@ -32,7 +32,7 @@ import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } fr
 
 import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
 import * as ServerConfig from "../config.ts";
-import { cliCommandText } from "../plusplus/cliCommandName.ts";
+import { cliCommandText, protocolMismatchHint } from "../plusplus/cliCommandName.ts";
 import * as ManagedLimits from "../policy/managedLimits.ts";
 import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
 import { resolveBaseDir } from "../os-jank.ts";
@@ -94,7 +94,7 @@ export class IncompatibleServerProtocolError extends Schema.TaggedError<Incompat
   override get message(): string {
     return [
       `The running T3 Code server (${this.serverVersion}) speaks orchestration protocol ${String(this.serverProtocolVersion)}, but this CLI speaks protocol ${String(ORCHESTRATION_PROTOCOL_VERSION)}.`,
-      `Pair with the matching CLI instead: \`${this.pairCommand}\`.`,
+      protocolMismatchHint(this.pairCommand),
     ].join("\n");
   }
 }
@@ -560,7 +560,7 @@ export const pairCommand = Command.make("pair", {
         return yield* new IncompatibleServerProtocolError({
           serverVersion: target.descriptor.serverVersion,
           serverProtocolVersion,
-          pairCommand: `${cliCommandText(`update${baseDirArgs}`)} && ${cliCommandText(`pair${baseDirArgs}`)}`,
+          pairCommand: cliCommandText(`pair${baseDirArgs}`),
         });
       }
 

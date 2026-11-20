@@ -653,7 +653,7 @@
       ]
     },
     "apps/server/src/cli/pair.test.ts": {
-      "delta": [1, 1],
+      "delta": [3, 4],
       "seams": [
         {
           "id": "fork-cli.pair-protocol-hint-test",
@@ -668,7 +668,7 @@
       ]
     },
     "apps/server/src/cli/pair.ts": {
-      "delta": [2, 1],
+      "delta": [3, 2],
       "seams": [
         {
           "id": "fork-cli.pair-protocol-hint",
@@ -680,6 +680,17 @@
           },
           "reason": "The hint names the fork's plain command (keeping upstream's --base-dir), and an added line cannot replace the upstream command text.",
           "fingerprint": "sha256:cb9a72c6bfcb3816"
+        },
+        {
+          "id": "fork-cli.pair-protocol-message",
+          "feature": "fork-cli",
+          "mechanism": "override",
+          "anchor": {
+            "symbol": "IncompatibleServerProtocolError",
+            "text": "Pair with the matching CLI instead:"
+          },
+          "reason": "The fork has no npm package to pin, so the message tells the user to update and restart before pairing, in commands Windows PowerShell 5.1 can run.",
+          "fingerprint": "sha256:5c86d208018b4aeb"
         }
       ]
     },
