@@ -5068,6 +5068,58 @@
   "84f8481f49bd28ec": "Preparing",
   "cd5d90cbbfae32f6": "Recording {time}",
   "6236e2f587bc4eb4": "Transcribing",
+  "0282ffbc3c8f5146": "Upstream CORE",
+  "706084d25f85dd5a": "Repository",
+  "188383e350daf9e1": "Full playbook",
+  "1932b29c61860db6": "MIT license",
+  "18383d62691bf4e9": "Never",
+  "d740ba635a1fdffd": "Refresh failed. {detail} {source} revision {revision} stays active.",
+  "b0a029ac8c279cf5": "Refresh failed. {source} revision {revision} stays active.",
+  "cf146654c3e8faea": "Loading token-efficiency provenance on {environment}…",
+  "80ebcaed67f5445c": "Not supported on {environment}",
+  "9492d5a6d43e53b3": "Unavailable on {environment}",
+  "943e00c4e733d237": "{source} · Revision {revision} · Pinned {pinned}",
+  "8f9a366d9f44a14d": "{source} · Revision {revision}",
+  "a2bded0a93096ada": "Refreshing…",
+  "015f325d30ad6192": "Refresh now",
+  "4236bb08618527f3": "Token-efficiency instructions",
+  "5bf4ff621a4697e6": [
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " ",
+    "ago"
+  ],
+  "1585864d5005ce2d": [
+    "Last successful check:",
+    " ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "aeddf4420f291989": "Agent instructions",
+  "573b5ee9ae1a24c6": "Token efficiency",
+  "d9a1b1ac9fb559ce": [
+    "Give agents a short checklist for reducing unnecessary context and tool output. Adapted from",
+    " ",
+    {
+      "t": "Text",
+      "i": 1,
+      "c": {
+        "i": 2,
+        "k": "_gt_value_2",
+        "v": "v"
+      }
+    },
+    ". Disabled by default."
+  ],
+  "20e58d2c3bc5ee66": "{amount} used",
+  "081dc1461c04211b": "{amount} left",
+  "d985b6d9bce69299": "{amount} limit",
   "86798f07ba2d7f4d": "Search issues",
   "484cd83bb303bab8": "Search pull requests",
   "75ed31fcea4f741a": "Filter issues",

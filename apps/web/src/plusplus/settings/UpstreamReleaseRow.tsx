@@ -1,3 +1,4 @@
+import { T, useGT } from "gt-react";
 import { useState } from "react";
 
 import { APP_VERSION } from "../../branding";
@@ -18,6 +19,7 @@ import {
 import { SettingsRow } from "~/components/settings/settingsLayout";
 
 function UpstreamReleaseRowContent() {
+  const gt = useGT();
   const eligible = useUpstreamMergeEligible();
   const newThread = useNewThreadHandler();
   const updateState = useDesktopUpdateState();
@@ -35,12 +37,12 @@ function UpstreamReleaseRowContent() {
     };
     return (
       <SettingsRow
-        title="Upstream release"
-        description="Upstream release status is unavailable."
-        status="The release check failed. Retry to check again."
+        title={gt("Upstream release")}
+        description={gt("Upstream release status is unavailable.")}
+        status={gt("The release check failed. Retry to check again.")}
         control={
           <Button size="sm" variant="outline" disabled={isChecking} onClick={handleRetry}>
-            {isChecking ? "Checking…" : "Check again"}
+            {isChecking ? gt("Checking…") : gt("Check again")}
           </Button>
         }
       />
@@ -54,16 +56,16 @@ function UpstreamReleaseRowContent() {
 
   return (
     <SettingsRow
-      title="Upstream release"
-      description={`${result.tag} is ready to merge`}
+      title={gt("Upstream release")}
+      description={gt("{tag} is ready to merge", { tag: result.tag })}
       status={
         deferMerge
-          ? "Update the fork app first, then create the merge draft."
-          : "Creates a local merge draft thread in your fork checkout. Nothing is pushed."
+          ? gt("Update the fork app first, then create the merge draft.")
+          : gt("Creates a local merge draft thread in your fork checkout. Nothing is pushed.")
       }
       control={
         <Button size="sm" variant="outline" disabled={deferMerge} onClick={handleStartMerge}>
-          Create local upstream merge draft
+          <T>Create local upstream merge draft</T>
         </Button>
       }
     />
@@ -71,6 +73,7 @@ function UpstreamReleaseRowContent() {
 }
 
 export function UpstreamReleaseRow() {
+  const gt = useGT();
   if (!isUpstreamReleaseNotificationBuild) {
     return null;
   }
@@ -79,7 +82,7 @@ export function UpstreamReleaseRow() {
 
   return (
     <>
-      <SettingsRow title="Upstream base" description={upstreamBaseTag} />
+      <SettingsRow title={gt("Upstream base")} description={upstreamBaseTag} />
       <UpstreamReleaseRowContent />
     </>
   );

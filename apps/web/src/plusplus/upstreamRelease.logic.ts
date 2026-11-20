@@ -70,6 +70,7 @@ export function isUpstreamCacheEntryFresh(entry: UpstreamReleaseCacheEntry, now:
 }
 
 export function buildUpstreamMergePrompt(tag: string): string {
+  // oxlint-disable-next-line t3code/no-untranslated-copy -- agent prompt; agents get English
   return `Merge upstream release ${tag} (https://github.com/pingdotgg/t3code/releases/tag/${tag}) into this fork.
 
 1. Run \`node scripts/upstream-sync.ts --tag ${tag} prepare\`. Let the script create \`sync/upstream-${tag}\` and handle the \`git merge ${tag}\` mechanics; the final commit must be a real merge commit (no squash, no rebase).

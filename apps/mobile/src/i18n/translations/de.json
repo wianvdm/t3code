@@ -5067,6 +5067,58 @@
   "84f8481f49bd28ec": "Wird vorbereitet",
   "cd5d90cbbfae32f6": "Aufnahme {time}",
   "6236e2f587bc4eb4": "Wird transkribiert",
+  "0282ffbc3c8f5146": "Upstream-CORE",
+  "706084d25f85dd5a": "Repository",
+  "188383e350daf9e1": "Vollständiges Playbook",
+  "1932b29c61860db6": "MIT-Lizenz",
+  "18383d62691bf4e9": "Nie",
+  "d740ba635a1fdffd": "Aktualisierung fehlgeschlagen. {detail} {source}, Revision {revision}, bleibt aktiv.",
+  "b0a029ac8c279cf5": "Aktualisierung fehlgeschlagen. {source}, Revision {revision}, bleibt aktiv.",
+  "cf146654c3e8faea": "Token-Effizienz-Herkunft wird auf {environment} geladen…",
+  "80ebcaed67f5445c": "Auf {environment} nicht unterstützt",
+  "9492d5a6d43e53b3": "Auf {environment} nicht verfügbar",
+  "943e00c4e733d237": "{source} · Revision {revision} · Fixiert {pinned}",
+  "8f9a366d9f44a14d": "{source} · Revision {revision}",
+  "a2bded0a93096ada": "Wird aktualisiert…",
+  "015f325d30ad6192": "Jetzt aktualisieren",
+  "4236bb08618527f3": "Token-Effizienz-Anweisungen",
+  "5bf4ff621a4697e6": [
+    "vor",
+    " ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "1585864d5005ce2d": [
+    "Letzte erfolgreiche Prüfung:",
+    " ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "aeddf4420f291989": "Agent-Anweisungen",
+  "573b5ee9ae1a24c6": "Token-Effizienz",
+  "d9a1b1ac9fb559ce": [
+    "Gib Agents eine kurze Checkliste, um unnötigen Kontext und Tool-Ausgaben zu reduzieren. Adaptiert von",
+    " ",
+    {
+      "t": "Text",
+      "i": 1,
+      "c": {
+        "i": 2,
+        "k": "_gt_value_2",
+        "v": "v"
+      }
+    },
+    ". Standardmäßig deaktiviert."
+  ],
+  "20e58d2c3bc5ee66": "{amount} verbraucht",
+  "081dc1461c04211b": "{amount} übrig",
+  "d985b6d9bce69299": "{amount} Limit",
   "86798f07ba2d7f4d": "Issues durchsuchen",
   "484cd83bb303bab8": "Pull Requests durchsuchen",
   "75ed31fcea4f741a": "Issues filtern",

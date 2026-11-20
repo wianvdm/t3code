@@ -1,4 +1,5 @@
 import type { OrchestrationV2ProjectedTurnItem, ScopedThreadRef } from "@t3tools/contracts";
+import { useGT } from "gt-react";
 
 import type { ToolCallDiffTarget } from "~/diffPanelStore";
 import { appAtomRegistry } from "~/rpc/atomRegistry";
@@ -42,6 +43,7 @@ export function ProcessDetailsDialogHost(props: {
   readonly workspaceRoot: string | undefined;
   readonly onOpenToolDiff: (target: ToolCallDiffTarget) => void;
 }) {
+  const gt = useGT();
   const state = useThreadOverlay(processDetailsDialogAtom, props.threadKey);
   const visibleTurnItems = useThreadVisibleTurnItems(state === null ? null : props.threadRef);
   const live =
@@ -62,7 +64,9 @@ export function ProcessDetailsDialogHost(props: {
     >
       <DialogPopup>
         <DialogHeader>
-          <DialogTitle>{state?.title ?? "Process"}</DialogTitle>
+          <DialogTitle>
+            {state?.title ?? gt("Process", { $context: "dialog title for a background process" })}
+          </DialogTitle>
         </DialogHeader>
         <DialogPanel>
           {state !== null && projectedItem !== null && props.threadRef !== null ? (

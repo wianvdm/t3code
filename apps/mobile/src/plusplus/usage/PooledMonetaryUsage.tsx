@@ -5,6 +5,7 @@ import {
   type LimitAccount,
   type LimitPool,
 } from "@t3tools/plusplus-extensions/usageReporting";
+import { useMessages } from "gt-react-native";
 import { View } from "react-native";
 
 import { AppText as Text } from "../../components/ui/AppText";
@@ -15,7 +16,8 @@ export function AccountMonetaryUsage({
 }: {
   readonly limits: NonNullable<ServerProvider["usageLimits"]>;
 }) {
-  const text = monetaryUsageText(readMonetaryUsage(limits));
+  const m = useMessages();
+  const text = monetaryUsageText(readMonetaryUsage(limits), m);
   return text ? (
     <Text className="text-xs tabular-nums text-foreground-tertiary">{text}</Text>
   ) : null;
@@ -35,8 +37,9 @@ export function PoolMonetaryAccounts({
   readonly pool: LimitPool;
   readonly accountName: (account: LimitAccount) => string;
 }) {
+  const m = useMessages();
   const rows = pool.accounts.flatMap((account) => {
-    const text = monetaryUsageText(readMonetaryUsage(account.limits));
+    const text = monetaryUsageText(readMonetaryUsage(account.limits), m);
     return text !== null ? [{ account, text }] : [];
   });
   if (rows.length === 0) return null;

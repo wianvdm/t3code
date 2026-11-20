@@ -5061,6 +5061,58 @@
   "84f8481f49bd28ec": "Preparando",
   "cd5d90cbbfae32f6": "Grabando {time}",
   "6236e2f587bc4eb4": "Transcribiendo",
+  "0282ffbc3c8f5146": "CORE de upstream",
+  "706084d25f85dd5a": "Repositorio",
+  "188383e350daf9e1": "Guía completa",
+  "1932b29c61860db6": "Licencia MIT",
+  "18383d62691bf4e9": "Nunca",
+  "d740ba635a1fdffd": "Error al actualizar. {detail} {source}, revisión {revision}, sigue activa.",
+  "b0a029ac8c279cf5": "Error al actualizar. {source}, revisión {revision}, sigue activa.",
+  "cf146654c3e8faea": "Cargando el origen de eficiencia de tokens en {environment}…",
+  "80ebcaed67f5445c": "No compatible en {environment}",
+  "9492d5a6d43e53b3": "No disponible en {environment}",
+  "943e00c4e733d237": "{source} · Revisión {revision} · Fijada {pinned}",
+  "8f9a366d9f44a14d": "{source} · Revisión {revision}",
+  "a2bded0a93096ada": "Actualizando…",
+  "015f325d30ad6192": "Actualizar ahora",
+  "4236bb08618527f3": "Instrucciones de eficiencia de tokens",
+  "5bf4ff621a4697e6": [
+    "hace",
+    " ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "1585864d5005ce2d": [
+    "Última comprobación correcta:",
+    " ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "aeddf4420f291989": "Instrucciones para agentes",
+  "573b5ee9ae1a24c6": "Eficiencia de tokens",
+  "d9a1b1ac9fb559ce": [
+    "Da a los agentes una lista breve para reducir el contexto y la salida de herramientas innecesarios. Adaptado de",
+    " ",
+    {
+      "t": "Text",
+      "i": 1,
+      "c": {
+        "i": 2,
+        "k": "_gt_value_2",
+        "v": "v"
+      }
+    },
+    ". Desactivado de forma predeterminada."
+  ],
+  "20e58d2c3bc5ee66": "{amount} usados",
+  "081dc1461c04211b": "{amount} restantes",
+  "d985b6d9bce69299": "Límite de {amount}",
   "86798f07ba2d7f4d": "Buscar issues",
   "484cd83bb303bab8": "Buscar pull requests",
   "75ed31fcea4f741a": "Filtrar issues",

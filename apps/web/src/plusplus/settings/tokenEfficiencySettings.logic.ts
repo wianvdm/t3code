@@ -3,6 +3,9 @@ import {
   withProjectTokenEfficiency,
 } from "@t3tools/plusplus-extensions/tokenEfficiency";
 
+import { msg } from "gt-react";
+
+import { m } from "../../i18n/messages";
 import {
   projectOverrideWrites,
   type ScopedSettingsTarget,
@@ -46,6 +49,10 @@ export function planTokenEfficiencyPatch(
     unavailableReason:
       serverWrites.length > 0
         ? null
-        : "Connect the selected checkouts, or update their environments, to save a project override.",
+        : m(
+            msg(
+              "Connect the selected checkouts, or update their environments, to save a project override.",
+            ),
+          ),
   };
 }

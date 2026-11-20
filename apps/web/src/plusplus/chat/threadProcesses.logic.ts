@@ -16,6 +16,9 @@ import {
   readPendingBackgroundTaskStartedAt,
 } from "@t3tools/shared/orchestrationV2PendingBackgroundWork";
 import * as DateTime from "effect/DateTime";
+import { msg } from "gt-react";
+
+import { m, type MessageResolver } from "~/i18n/messages";
 
 /**
  * Processes shows only live work: a starting session, or a shell with a running subprocess.
@@ -31,10 +34,10 @@ export function isActiveProcessTerminal(
 }
 
 const TASK_KIND_LABELS: Record<OrchestrationV2PendingBackgroundTask["kind"], string> = {
-  command: "Command",
-  monitor: "Monitor",
-  background_task: "Background task",
-  subagent: "Subagent",
+  command: msg("Command", { $context: "background process kind, a shell command" }),
+  monitor: msg("Monitor", { $context: "background process kind, a watcher" }),
+  background_task: msg("Background task"),
+  subagent: msg("Subagent"),
 };
 
 // The run statuses thread-level Stop interrupts: it picks up the active run, holds the queue,
@@ -80,9 +83,12 @@ export function threadProcessesStopAvailable(input: {
   return !(input.providerNative && input.runCount === 0);
 }
 
-export function threadProcessTaskLabel(task: OrchestrationV2PendingBackgroundTask): string {
+export function threadProcessTaskLabel(
+  task: OrchestrationV2PendingBackgroundTask,
+  resolve: MessageResolver = m,
+): string {
   const description = task.description?.trim();
-  return description && description.length > 0 ? description : TASK_KIND_LABELS[task.kind];
+  return description && description.length > 0 ? description : resolve(TASK_KIND_LABELS[task.kind]);
 }
 
 /**
@@ -98,27 +104,32 @@ export function isPullRequestWatchTask(
 /** Kind label for the hover detail; forward-compatible unknown kinds read as background tasks. */
 export function threadProcessTaskKindLabel(
   kind: OrchestrationV2PendingBackgroundTask["kind"],
+  resolve: MessageResolver = m,
 ): string {
-  return (
-    TASK_KIND_LABELS[kind as keyof typeof TASK_KIND_LABELS] ?? TASK_KIND_LABELS.background_task
+  return resolve(
+    TASK_KIND_LABELS[kind as keyof typeof TASK_KIND_LABELS] ?? TASK_KIND_LABELS.background_task,
   );
 }
 
 const TASK_STATUS_LABELS: Partial<Record<OrchestrationV2TurnItemStatus, string>> = {
-  pending: "Pending",
-  running: "Running",
-  waiting: "Waiting",
+  pending: msg("Pending", { $context: "background process status" }),
+  running: msg("Running", { $context: "background process status" }),
+  waiting: msg("Waiting", { $context: "background process status" }),
 };
 
 /**
  * Linked rows report their projected item's status; opaque roster-only rows only know the work
  * exists, so they get the generic label instead of a fabricated one.
  */
-export function threadProcessTaskStatusLabel(row: ThreadProcessTaskRow): string {
+export function threadProcessTaskStatusLabel(
+  row: ThreadProcessTaskRow,
+  resolve: MessageResolver = m,
+): string {
   const item = row.item?.item;
+  const active = msg("Active", { $context: "background process status" });
   // Forward-compatible union members without a known type carry no status to report.
-  if (item === undefined || item === null || !("status" in item)) return "Active";
-  return TASK_STATUS_LABELS[item.status] ?? "Active";
+  if (item === undefined || item === null || !("status" in item)) return resolve(active);
+  return resolve(TASK_STATUS_LABELS[item.status] ?? active);
 }
 
 export interface ThreadProcessTaskRow {
@@ -179,13 +190,16 @@ export function threadProcessTaskPreview(row: ThreadProcessTaskRow): string | nu
     : lastLine;
 }
 
-export function deriveThreadProcessTaskRows<Item extends PendingBackgroundWorkTurnItem>(input: {
-  readonly threadId: ThreadId;
-  readonly tasks: ReadonlyArray<OrchestrationV2PendingBackgroundTask>;
-  readonly turnItems: ReadonlyArray<Item>;
-  readonly runs: ReadonlyArray<Pick<OrchestrationV2Run, "id" | "ordinal" | "status">>;
-  readonly visibleTurnItems: ReadonlyArray<OrchestrationV2ProjectedTurnItem>;
-}): ReadonlyArray<ThreadProcessTaskRow> {
+export function deriveThreadProcessTaskRows<Item extends PendingBackgroundWorkTurnItem>(
+  input: {
+    readonly threadId: ThreadId;
+    readonly tasks: ReadonlyArray<OrchestrationV2PendingBackgroundTask>;
+    readonly turnItems: ReadonlyArray<Item>;
+    readonly runs: ReadonlyArray<Pick<OrchestrationV2Run, "id" | "ordinal" | "status">>;
+    readonly visibleTurnItems: ReadonlyArray<OrchestrationV2ProjectedTurnItem>;
+  },
+  resolve: MessageResolver = m,
+): ReadonlyArray<ThreadProcessTaskRow> {
   const candidatesByTaskId = pendingBackgroundTurnItemsByTaskId({
     turnItems: input.turnItems,
     runs: input.runs,
@@ -204,7 +218,7 @@ export function deriveThreadProcessTaskRows<Item extends PendingBackgroundWorkTu
           ) ?? null);
     rows.push({
       task,
-      label: threadProcessTaskLabel(task),
+      label: threadProcessTaskLabel(task, resolve),
       item,
       startedAt:
         candidate?.startedAt != null

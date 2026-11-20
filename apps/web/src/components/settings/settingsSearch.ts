@@ -291,26 +291,23 @@ export const SETTINGS_SEARCH_ITEMS = [
   },
   {
     id: "context-bridge",
-    // oxlint-disable-next-line t3code/no-untranslated-copy -- ++ copy predates i18n; wrapped in the ++ i18n follow-up
-    title: "Context bridge",
+    title: msg("Context bridge"),
     to: "/settings/providers",
-    searchTerms: ["context bridge instructions skills hooks bridging routes"],
+    searchTerms: [msg("context bridge instructions skills hooks bridging routes")],
     providerSettingsOnly: true,
   },
   {
     id: "context-bridge-enabled",
-    // oxlint-disable-next-line t3code/no-untranslated-copy -- ++ copy predates i18n; wrapped in the ++ i18n follow-up
-    title: "Enable context bridge",
+    title: msg("Enable context bridge"),
     to: "/settings/providers",
-    searchTerms: ["enable context bridge toggle switch instructions skills hooks"],
+    searchTerms: [msg("enable context bridge toggle switch instructions skills hooks")],
     providerSettingsOnly: true,
   },
   {
     id: "context-bridge-default-source",
-    // oxlint-disable-next-line t3code/no-untranslated-copy -- ++ copy predates i18n; wrapped in the ++ i18n follow-up
-    title: "Default source",
+    title: msg("Default source"),
     to: "/settings/providers",
-    searchTerms: ["default source context bridge fallback provider driver"],
+    searchTerms: [msg("default source context bridge fallback provider driver")],
     providerSettingsOnly: true,
   },
   {

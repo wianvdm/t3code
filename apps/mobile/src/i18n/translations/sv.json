@@ -5067,6 +5067,60 @@
   "84f8481f49bd28ec": "Förbereder",
   "cd5d90cbbfae32f6": "Spelar in {time}",
   "6236e2f587bc4eb4": "Transkriberar",
+  "0282ffbc3c8f5146": "Uppströms CORE",
+  "706084d25f85dd5a": "Repo",
+  "188383e350daf9e1": "Fullständig handbok",
+  "1932b29c61860db6": "MIT-licens",
+  "18383d62691bf4e9": "Aldrig",
+  "d740ba635a1fdffd": "Uppdateringen misslyckades. {detail} {source}, revision {revision}, förblir aktiv.",
+  "b0a029ac8c279cf5": "Uppdateringen misslyckades. {source}, revision {revision}, förblir aktiv.",
+  "cf146654c3e8faea": "Läser in ursprung för tokeneffektivitet på {environment}…",
+  "80ebcaed67f5445c": "Stöds inte på {environment}",
+  "9492d5a6d43e53b3": "Inte tillgänglig på {environment}",
+  "943e00c4e733d237": "{source} · Revision {revision} · Fäst {pinned}",
+  "8f9a366d9f44a14d": "{source} · Revision {revision}",
+  "a2bded0a93096ada": "Uppdaterar…",
+  "015f325d30ad6192": "Uppdatera nu",
+  "4236bb08618527f3": "Instruktioner för tokeneffektivitet",
+  "5bf4ff621a4697e6": [
+    "för",
+    " ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " ",
+    "sedan"
+  ],
+  "1585864d5005ce2d": [
+    "Senaste lyckade kontroll:",
+    " ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "aeddf4420f291989": "Agentinstruktioner",
+  "573b5ee9ae1a24c6": "Tokeneffektivitet",
+  "d9a1b1ac9fb559ce": [
+    "Ge agenter en kort checklista för att minska onödig kontext och verktygsutdata. Baserad på",
+    " ",
+    {
+      "t": "Text",
+      "i": 1,
+      "c": {
+        "i": 2,
+        "k": "_gt_value_2",
+        "v": "v"
+      }
+    },
+    ". Avstängd som standard."
+  ],
+  "20e58d2c3bc5ee66": "{amount} använt",
+  "081dc1461c04211b": "{amount} kvar",
+  "d985b6d9bce69299": "{amount} gräns",
   "86798f07ba2d7f4d": "Sök ärenden",
   "484cd83bb303bab8": "Sök pull requests",
   "75ed31fcea4f741a": "Filtrera ärenden",
