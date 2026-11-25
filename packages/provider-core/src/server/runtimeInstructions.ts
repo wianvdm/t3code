@@ -4,6 +4,8 @@
  * import path.
  */
 export {
+  AGENT_FEEDBACK_INSTRUCTIONS,
   buildRuntimeInstructions,
+  buildWorkspaceInstructions,
   PULL_REQUEST_LINKING_INSTRUCTIONS,
 } from "@t3tools/plusplus/runtimeInstructions";

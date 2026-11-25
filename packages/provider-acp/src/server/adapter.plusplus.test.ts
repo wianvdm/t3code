@@ -226,6 +226,7 @@ function makeTurnInput(input: {
 
 const makeDeliveryHarness = Effect.fnUntraced(function* (
   environment: Readonly<Record<string, string>> = {},
+  restartRuntimeAfterPromptError?: () => boolean,
 ) {
   const childProcessSpawner = yield* ChildProcessSpawner.ChildProcessSpawner;
   const path = yield* Path.Path;
@@ -243,6 +244,7 @@ const makeDeliveryHarness = Effect.fnUntraced(function* (
       capabilities: AcpProviderCapabilitiesV2,
       supportsCompaction: true,
       interruptPromptOnCancel: true,
+      ...(restartRuntimeAfterPromptError === undefined ? {} : { restartRuntimeAfterPromptError }),
       makeRuntime: makeMockRuntime({
         childProcessSpawner,
         mockAgentPath,
@@ -496,6 +498,23 @@ describe("ACP project instructions delivery", () => {
       yield* harness.replaceSession;
       const blocks = yield* harness.runTurn({
         text: "New session",
+        projectInstructions: INSTRUCTIONS_V1,
+      });
+      assertDelivered(blocks, INSTRUCTIONS_V1);
+    }).pipe(Effect.provide(layerTest), Effect.scoped),
+  );
+
+  it.live("resends unchanged instructions to a runtime restarted after teardown", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeDeliveryHarness({ T3_ACP_FAIL_PROMPT_ORDINAL: "2" }, () => true);
+      yield* harness.runTurn({ text: "First", projectInstructions: INSTRUCTIONS_V1 });
+      yield* harness.runTurn({
+        text: "Fails and tears the runtime down",
+        projectInstructions: INSTRUCTIONS_V1,
+        expectedStatus: "failed",
+      });
+      const blocks = yield* harness.runTurn({
+        text: "On the restarted runtime",
         projectInstructions: INSTRUCTIONS_V1,
       });
       assertDelivered(blocks, INSTRUCTIONS_V1);

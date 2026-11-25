@@ -1,4 +1,4 @@
-import { isAppLinkProtocol } from "./appLinks.ts";
+import { isAppLinkProtocol } from "./appLinkSchemes.ts";
 import { isLoopbackHost } from "./preview.ts";
 
 export function providerAuthReturnUrl(value: string | undefined): string | undefined {

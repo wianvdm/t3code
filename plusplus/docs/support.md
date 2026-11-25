@@ -1,5 +1,7 @@
 # Support and releases
 
+T3 Code ++ is an unofficial fork of [T3 Code](https://github.com/pingdotgg/t3code). It is not affiliated with, endorsed by, or maintained by T3 Tools, Inc. See [TRADEMARK.md](../../TRADEMARK.md).
+
 T3 Code ++ is maintained separately from upstream by one person. Support and fixes are best effort, and only the latest stable release receives fixes.
 
 ## Release channel

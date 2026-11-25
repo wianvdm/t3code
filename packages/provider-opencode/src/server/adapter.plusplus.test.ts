@@ -214,14 +214,19 @@ describe("OpenCode 1.x project instructions", () => {
       });
 
       yield* harness.startTurn("hello", PROJECT_INSTRUCTIONS);
-      const snapshot = yield* harness.runtime.readThreadSnapshot({
-        providerThread: harness.providerThread,
-      });
+      const turnEvent = yield* harness.runtime.events.pipe(
+        Stream.filter((event) => event.type === "provider_turn.updated"),
+        Stream.runHead,
+      );
+      const providerTurnId =
+        turnEvent._tag === "Some" && turnEvent.value.type === "provider_turn.updated"
+          ? turnEvent.value.providerTurn.id
+          : assert.fail("the turn emitted no provider_turn.updated event");
       yield* harness.runtime.steerTurn({
         threadId: harness.threadId,
         runId: RunId.make("run-opencode-enabled"),
         providerThread: harness.providerThread,
-        providerTurnId: snapshot.providerTurns.at(-1)!.id,
+        providerTurnId,
         message: {
           messageId: MessageId.make("message-opencode-enabled-steer"),
           text: "steer",

@@ -10,7 +10,7 @@ import * as Scope from "effect/Scope";
 
 import type * as Electron from "electron";
 
-import { isAppLinkProtocol } from "@t3tools/shared/appLinks";
+import { isAppLinkProtocol } from "@t3tools/shared/appLinkSchemes";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";

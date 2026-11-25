@@ -129,6 +129,7 @@ const makeHarness = Effect.fn("OpenCode2ProjectInstructions.makeHarness")(functi
   const server = OpenCode2Server.OpenCode2Server.of({
     withConnection: (use) => use(connection),
     forget: Effect.void,
+    connections: Stream.empty,
   });
   const adapter = yield* OpenCode2Adapter.make(INSTANCE_ID).pipe(
     Effect.provideService(OpenCode2Server.OpenCode2Server, server),

@@ -324,17 +324,30 @@ export function collectProviderUsageLimits(
   providers: readonly ServerProvider[],
   sources: UsageLimitSourceSnapshots,
   now: number,
+  model: string | null = null,
 ): UsageLimitsReport | null {
   const selected = providers.find((provider) => provider.instanceId === instanceId);
-  if (!selected || !hasProviderUsageLimits(selected.driver, providers, sources)) return null;
+  if (!selected) return null;
+  if (
+    !hasProviderUsageLimits(selected.driver, providers, sources) &&
+    !upstream.collectProviderUsageLimits(instanceId, providers, sources, now, model)
+  ) {
+    return null;
+  }
   const sourcesWithSentinel = monetarySources(sources);
-  const report = upstreamReport(instanceId, monetaryProviders(providers), sourcesWithSentinel, now);
+  const report = upstreamReport(
+    instanceId,
+    monetaryProviders(providers),
+    sourcesWithSentinel,
+    now,
+    model,
+  );
   // The sentinel window makes upstream drop a hub row that shares a login with a monetary-only
   // native one. Hub rows come from a run that leaves those native limits as they are.
   const hubReport = providers.some(
     (provider) => provider.usageLimits && isMonetaryOnlyUsage(provider.usageLimits),
   )
-    ? upstreamReport(instanceId, providers, sourcesWithSentinel, now)
+    ? upstreamReport(instanceId, providers, sourcesWithSentinel, now, model)
     : report;
   const nativeRows = report.accounts.filter((account) => account.instanceId !== undefined);
   const hubRows = hubReport.accounts.filter((account) => account.instanceId === undefined);
@@ -353,9 +366,10 @@ function upstreamReport(
   providers: readonly ServerProvider[],
   sources: UsageLimitSourceSnapshots,
   now: number,
+  model: string | null,
 ): UsageLimitsReport {
   return (
-    upstream.collectProviderUsageLimits(instanceId, providers, sources, now) ?? {
+    upstream.collectProviderUsageLimits(instanceId, providers, sources, now, model) ?? {
       createdAt: DateTime.formatIso(DateTime.makeUnsafe(now)),
       accounts: [],
       notices: [],
