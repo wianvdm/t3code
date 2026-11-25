@@ -1,6 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import {
+  CheckpointId,
   MessageId,
   NodeId,
   ProjectId,
@@ -479,5 +480,97 @@ describe("CursorAdapterV2 project instructions ++", () => {
       assert.lengthOf(sent, 2);
       assert.notInclude(sent[1], FIRST.text);
     }).pipe(Effect.scoped, Effect.provide(testLayer)),
+  );
+
+  it.effect(
+    "resends changed instructions after a rollback discards the turn that delivered them",
+    () =>
+      Effect.gen(function* () {
+        const sent: string[] = [];
+        const adapter = yield* makeCursorAdapterV2({ instanceId, environment: {} }).pipe(
+          Effect.provideService(CursorAgentSdk.CursorAgentSdkRunner, {
+            assertComplete: Effect.void,
+            open: () =>
+              Effect.succeed({
+                agentId: "native-cursor-project-instructions",
+                listMessages: Effect.succeed([]),
+                close: Effect.void,
+                rewindAfterRun: () => Effect.void,
+                send: (input) =>
+                  Effect.sync(() => {
+                    sent.push(
+                      typeof input.message === "string" ? input.message : input.message.text,
+                    );
+                    const runId = `native-cursor-project-run-${sent.length}`;
+                    return {
+                      agentId: "native-cursor-project-instructions",
+                      runId,
+                      wait: Effect.succeed({
+                        id: runId,
+                        requestId: `native-cursor-project-request-${sent.length}`,
+                        status: "finished" as const,
+                        model: { id: "composer-2.5" },
+                        durationMs: 1,
+                      }),
+                      cancel: Effect.void,
+                    };
+                  }),
+              }),
+          }),
+        );
+        const runtime = yield* adapter.openSession({
+          threadId,
+          providerSessionId: ProviderSessionId.make("cursor-project-instructions-rollback"),
+          modelSelection,
+          runtimePolicy,
+        });
+        const providerThread = yield* runtime.ensureThread({
+          threadId,
+          modelSelection,
+          runtimePolicy,
+        });
+        const emitted = yield* Queue.unbounded<ProviderAdapter.ProviderAdapterV2Event>();
+        yield* runtime.events.pipe(
+          Stream.runForEach((event) => Queue.offer(emitted, event)),
+          Effect.forkScoped,
+        );
+        const send = Effect.fnUntraced(function* (
+          runOrdinal: number,
+          projectInstructions: ProjectInstructions,
+        ) {
+          yield* runtime.startTurn(
+            yield* makeTurnInput({
+              providerThread,
+              runOrdinal,
+              text: `Request ${runOrdinal}`,
+              projectInstructions,
+            }),
+          );
+          let providerTurn: OrchestrationV2ProviderTurn | undefined;
+          while (true) {
+            const event = yield* Queue.take(emitted);
+            if (event.type === "provider_turn.updated") providerTurn = event.providerTurn;
+            if (event.type === "turn.terminal") return providerTurn!;
+          }
+        });
+
+        const keptTurn = yield* send(1, FIRST);
+        yield* send(2, SECOND);
+        yield* runtime.rollbackThread({
+          providerThread,
+          target: {
+            type: "provider_turn",
+            checkpointId: CheckpointId.make("cursor-project-kept-checkpoint"),
+            appRunOrdinal: 1,
+            providerTurn: keptTurn,
+          },
+          providerThreadTurns: [keptTurn],
+        });
+        yield* send(3, SECOND);
+        assert.isTrue(
+          sent[2]!.endsWith(SECOND.text),
+          "the rewound agent never saw the second block",
+        );
+      }).pipe(Effect.scoped, Effect.provide(testLayer)),
   );
 });

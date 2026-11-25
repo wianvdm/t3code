@@ -1,4 +1,4 @@
-import { APP_LINK_SCHEME, isAppLinkProtocol } from "./appLinks.ts";
+import { APP_LINK_SCHEME, isAppLinkProtocol } from "./appLinkSchemes.ts";
 import { DEFAULT_HOSTED_APP_URL } from "./connectAuth.ts";
 import { parseUrl } from "./url.ts";
 

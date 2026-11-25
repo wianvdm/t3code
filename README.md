@@ -1,5 +1,8 @@
 # T3 Code ++
 
+> [!NOTE]
+> T3 Code ++ is an unofficial fork of [T3 Code](https://github.com/pingdotgg/t3code). It is not affiliated with, endorsed by, or maintained by T3 Tools, Inc. See [TRADEMARK.md](./TRADEMARK.md).
+
 T3 Code ++ is a drop-in fork of [T3 Code](https://github.com/pingdotgg/t3code), the "agent harness control surface" that lets you control the agents on your machine. It ships the Electron-based desktop app for Windows and Linux x64 and macOS arm64, all unsigned (Windows shows SmartScreen warnings), along with the web client started by the `t3` CLI. A local install of upstream T3 Code can be reused when it was last run by a stock release no newer than your ++ build's upstream base: T3 Code ++ reads the existing projects, sessions, and data, so nothing has to be migrated. Newer stock homes are not supported; see [Install T3 Code ++](./plusplus/docs/install.md#reuse-an-upstream-installation).
 
 Releases are published on [GitHub Releases](https://github.com/WianVDM/t3code/releases).
@@ -69,7 +72,7 @@ Full docs live in [docs/](./docs). There's no docs site yet.
 - Multiple accounts: [Codex](./docs/user/providers-codex.md) · [Claude](./docs/user/providers-claude.md)
 - [Run T3 Code as a background service](./docs/user/background-service.md)
 
-Building from source? Start at [docs/internals/overview.md](./docs/internals/overview.md).
+Building from source? Start at [docs/internals/01_architecture.md](./docs/internals/01_architecture.md).
 
 ## If you REALLY want to contribute still.... read this first
 

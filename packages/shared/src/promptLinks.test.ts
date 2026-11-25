@@ -1,7 +1,7 @@
 import { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { APP_LINK_SCHEME } from "./appLinks.ts";
+import { APP_LINK_SCHEME } from "./appLinkSchemes.ts";
 import {
   buildNewThreadLink,
   parseNewThreadLink,

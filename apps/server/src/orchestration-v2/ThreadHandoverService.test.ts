@@ -19,6 +19,7 @@ import {
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as Stream from "effect/Stream";
@@ -28,6 +29,7 @@ import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAda
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as CheckpointStore from "../checkpointing/CheckpointStore.ts";
 import * as ManagedEndpointRuntime from "../cloud/ManagedEndpointRuntime.ts";
+import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
 import * as DeviceService from "../device/DeviceService.ts";
 import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
 import * as ServerConfig from "../config.ts";
@@ -37,6 +39,7 @@ import * as PreviewManager from "../preview/Manager.ts";
 import * as AgentSessionScanner from "../project/AgentSessionScanner.ts";
 import * as ProjectCloneTracker from "../project/ProjectCloneTracker.ts";
 import * as ProjectEnrichmentService from "../project/ProjectEnrichmentService.ts";
+import * as ProjectSetupScriptRunner from "../project/ProjectSetupScriptRunner.ts";
 import * as ProjectService from "../project/ProjectService.ts";
 import * as WorktreeSetupTracker from "../project/WorktreeSetupTracker.ts";
 import * as DocumentText from "../provider/DocumentText.ts";
@@ -46,6 +49,7 @@ import * as ProviderRegistry from "../provider/ProviderRegistry.ts";
 import * as TerminalManager from "../terminal/Manager.ts";
 import * as AnalyticsService from "../telemetry/AnalyticsService.ts";
 import * as TextGeneration from "../textGeneration/TextGeneration.ts";
+import * as WorkflowForge from "../workflows/WorkflowForge.ts";
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
@@ -58,6 +62,7 @@ import * as EffectOutbox from "./EffectOutbox.ts";
 import * as EventSink from "./EventSink.ts";
 import * as Orchestrator from "./Orchestrator.ts";
 import * as ProjectStore from "./ProjectStore.ts";
+import { layerNoTaskFolders } from "./ProviderTurnStartService.testkit.ts";
 import * as RuntimeLayer from "./runtimeLayer.ts";
 import * as ThreadHandoverService from "./ThreadHandoverService.ts";
 
@@ -187,6 +192,11 @@ const layerHandoverTest = Layer.mergeAll(
       Layer.mock(TextGeneration.TextGeneration)({}),
       Layer.mock(VcsStatusBroadcaster.VcsStatusBroadcaster)({}),
       Layer.mock(WorktreeSetupTracker.WorktreeSetupTracker)({}),
+      Layer.mock(ProjectSetupScriptRunner.ProjectSetupScriptRunner)({}),
+      Layer.mock(ServerEnvironment.ServerEnvironment)({}),
+      Layer.succeed(WorkflowForge.WorkflowForge, WorkflowForge.unavailable),
+      layerNoTaskFolders,
+      FetchHttpClient.layer,
       ModelManifest.layerTest,
     ),
   ),

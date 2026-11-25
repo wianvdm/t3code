@@ -12,7 +12,7 @@ import * as Scope from "effect/Scope";
 
 import * as Electron from "electron";
 
-import { APP_LINK_SCHEME, appLinkScheme } from "@t3tools/shared/appLinks";
+import { APP_LINK_SCHEME, appLinkScheme } from "@t3tools/shared/appLinkSchemes";
 
 export const DESKTOP_HOST = "app";
 
@@ -20,7 +20,7 @@ export function getDesktopScheme(isDevelopment: boolean): string {
   return appLinkScheme(isDevelopment);
 }
 
-function getDesktopOrigin(isDevelopment: boolean): string {
+export function getDesktopOrigin(isDevelopment: boolean): string {
   return `${getDesktopScheme(isDevelopment)}://${DESKTOP_HOST}`;
 }
 

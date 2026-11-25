@@ -77,6 +77,7 @@ const workspaceFiles = [
   "packages/source-control-gitcafe/package.json",
   "packages/source-control-github/package.json",
   "packages/source-control-gitlab/package.json",
+  "packages/source-control-tanstack-source/package.json",
   "packages/source-control-testing/package.json",
   "packages/effect-acp/package.json",
   "packages/effect-codex-app-server/package.json",
@@ -264,6 +265,14 @@ function copyWorkspaceManifestFixture(targetRoot: string): void {
     const destinationPath = NodePath.resolve(targetRoot, relativePath);
     NodeFS.mkdirSync(NodePath.dirname(destinationPath), { recursive: true });
     NodeFS.cpSync(sourcePath, destinationPath);
+  }
+
+  // Fork tarballs that file: dependencies install from.
+  for (const forks of ["apps/mobile/deps", "apps/web/deps"]) {
+    const source = NodePath.resolve(repoRoot, forks);
+    if (NodeFS.existsSync(source)) {
+      NodeFS.cpSync(source, NodePath.resolve(targetRoot, forks), { recursive: true });
+    }
   }
 
   const patchesDirectory = NodePath.resolve(repoRoot, "patches");

@@ -1121,6 +1121,31 @@ describe("/usage-limits", () => {
     });
   });
 
+  it("reports hub accounts of another driver for an instance sent to that hub", () => {
+    const hubOrigin = "https://hub.example.com";
+    const viaHub = provider({
+      driver: ProviderDriverKind.make("opencode"),
+      instanceId: ProviderInstanceId.make("opencode-hub"),
+      auth: { status: "authenticated", endpoint: hubOrigin },
+    });
+    const hub = [
+      {
+        ...sources[0]!,
+        origin: hubOrigin,
+        accounts: [
+          {
+            id: "oss",
+            driver: ProviderDriverKind.make("codex"),
+            models: ["gpt-5"],
+            usageLimits: limits,
+          },
+        ],
+      },
+    ];
+    const report = collectProviderUsageLimits(viaHub.instanceId, [viaHub], hub, now, "gpt-5");
+    expect(report?.accounts.map((account) => account.id)).toEqual(["hub:oss"]);
+  });
+
   it("gives a hub credit to no native row when its email is signed in to two workspaces", () => {
     const workspaces = ["ws-a", "ws-b"].map((workspaceId) =>
       provider({

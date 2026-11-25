@@ -1055,6 +1055,330 @@
         "apps/server/src/usage/usagePricing.test.ts",
         "apps/web/src/components/chat/OpenInPicker.browser.test.tsx"
       ]
+    },
+    {
+      "tag": "v0.1.12",
+      "upstreamRef": "ca81b7b97a1c4b91e5ac25768d0f6629f37732fd",
+      "previousUpstreamRef": "59651c1761f6c63e9b6056839067066968e6a406",
+      "conflicts": [
+        {
+          "path": ".coderabbit.config.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": ".github/VOUCHED.td",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": ".github/workflows/mobile-eas-preview-fork.yml",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": ".github/workflows/pr-vouch.yml",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": ".macroscope/check-run-agents/effect-service-conventions.md",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": ".macroscope/check-run-agents/test-signal.md",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": "AGENTS.md",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "CONTRIBUTING.md",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "README.md",
+          "hunks": 4,
+          "features": []
+        },
+        {
+          "path": "apps/mobile/src/features/usage/UsageLimitsPooled.tsx",
+          "hunks": 1,
+          "features": ["usage-limits"]
+        },
+        {
+          "path": "apps/mobile/src/i18n/translations/de.json",
+          "hunks": 3,
+          "features": ["generated"]
+        },
+        {
+          "path": "apps/mobile/src/i18n/translations/en.json",
+          "hunks": 2,
+          "features": ["generated"]
+        },
+        {
+          "path": "apps/mobile/src/i18n/translations/es.json",
+          "hunks": 3,
+          "features": ["generated"]
+        },
+        {
+          "path": "apps/mobile/src/i18n/translations/fr.json",
+          "hunks": 3,
+          "features": ["generated"]
+        },
+        {
+          "path": "apps/mobile/src/i18n/translations/ja.json",
+          "hunks": 3,
+          "features": ["generated"]
+        },
+        {
+          "path": "apps/mobile/src/i18n/translations/ko.json",
+          "hunks": 3,
+          "features": ["generated"]
+        },
+        {
+          "path": "apps/mobile/src/i18n/translations/pt-BR.json",
+          "hunks": 3,
+          "features": ["generated"]
+        },
+        {
+          "path": "apps/mobile/src/i18n/translations/ru.json",
+          "hunks": 2,
+          "features": ["generated"]
+        },
+        {
+          "path": "apps/mobile/src/i18n/translations/sv.json",
+          "hunks": 2,
+          "features": ["generated"]
+        },
+        {
+          "path": "apps/mobile/src/i18n/translations/zh.json",
+          "hunks": 3,
+          "features": ["generated"]
+        },
+        {
+          "path": "apps/mobile/vite.config.ts",
+          "hunks": 1,
+          "features": ["token-efficiency"]
+        },
+        {
+          "path": "apps/server/src/cli/config.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/mcp/toolkits/thread/tools.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/orchestration-v2/Adapters/AcpAdapterV2.test.ts",
+          "hunks": 4,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/orchestration-v2/Adapters/ClaudeAdapterV2.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/orchestration-v2/Adapters/ClaudeAdapterV2.ts",
+          "hunks": 4,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.ts",
+          "hunks": 5,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/orchestration-v2/ProjectionMaintenance.ts",
+          "hunks": 4,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/orchestration-v2/runtimeLayer.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/peer/PeerForwarding.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/persistence/DatabaseStorage.test.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/Drivers/AntigravitySkills.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/Drivers/AntigravityUsage.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/Drivers/ClaudeSkills.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/Drivers/antigravityUsageReader.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/server/src/provider/agentContextBudget.json",
+          "hunks": 1,
+          "features": ["generated"]
+        },
+        {
+          "path": "apps/server/src/provider/antigravityAuthSupport.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/web/src/components/chat/ThreadDetailsPanel.tsx",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/web/src/components/files/AttachmentFilePreview.browser.test.tsx",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/web/src/components/settings/ProjectSettingsPanel.tsx",
+          "hunks": 1,
+          "features": ["token-efficiency"]
+        },
+        {
+          "path": "apps/web/src/components/usage/UsageLimitsPooled.browser.test.tsx",
+          "hunks": 3,
+          "features": []
+        },
+        {
+          "path": "apps/web/src/components/usage/UsageLimitsPooled.tsx",
+          "hunks": 1,
+          "features": ["usage-limits", "usage-vendor-icons"]
+        },
+        {
+          "path": "apps/web/src/vite-env.d.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "apps/web/vite.config.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "docs/README.md",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "docs/internals/remote.md",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": "docs/operations/connect-setup.md",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": "docs/operations/development.md",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": "docs/operations/relay-observability.md",
+          "hunks": 0,
+          "features": []
+        },
+        {
+          "path": "evals/package.json",
+          "hunks": 1,
+          "features": ["token-efficiency"]
+        },
+        {
+          "path": "package.json",
+          "hunks": 1,
+          "features": ["plusplus-workspace"]
+        },
+        {
+          "path": "packages/provider-acp/src/server/adapter.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "packages/provider-core/src/server/runtimeInstructions.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/provider-cursor/src/server/adapter.ts",
+          "hunks": 4,
+          "features": []
+        },
+        {
+          "path": "packages/provider-muse/src/server/adapter.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "packages/provider-opencode/src/server/adapter.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "packages/provider-opencode/src/server/v2/adapter.ts",
+          "hunks": 3,
+          "features": []
+        },
+        {
+          "path": "packages/provider-pi/src/server/adapter.ts",
+          "hunks": 2,
+          "features": []
+        },
+        {
+          "path": "packages/shared/src/appLinks.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "packages/shared/src/codexAuthHandoff.ts",
+          "hunks": 1,
+          "features": []
+        },
+        {
+          "path": "scripts/release-smoke.ts",
+          "hunks": 1,
+          "features": []
+        }
+      ],
+      "dropped": [
+        "apps/web/src/components/files/AttachmentFilePreview.browser.test.tsx",
+        "docs/internals/remote.md",
+        "docs/operations/connect-setup.md",
+        "docs/operations/development.md",
+        "docs/operations/relay-observability.md"
+      ]
     }
   ]
 }

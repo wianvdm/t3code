@@ -32,4 +32,4 @@ Follow the [verification expectations](../AGENTS.md#verifying) and report vulner
 
 ## Inherited upstream policies
 
-Upstream's vouching and automatic closure of outside PRs, [release process](../docs/operations/release.md), and upstream's hosted deploy pipeline (`app.t3.codes` aliases) do not govern this fork. Leave those policies in inherited upstream files.
+Upstream's vouching and automatic closure of outside PRs, [release process](../docs/operations/03_release.md), and upstream's hosted deploy pipeline (`app.t3.codes` aliases) do not govern this fork. Leave those policies in inherited upstream files.

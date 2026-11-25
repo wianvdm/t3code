@@ -1,6 +1,6 @@
 import * as Schema from "effect/Schema";
 
-import { APP_LINK_SCHEME, isAppLinkProtocol } from "./appLinks.ts";
+import { APP_LINK_SCHEME, isAppLinkProtocol } from "./appLinkSchemes.ts";
 import { parseUrl } from "./url.ts";
 
 const PAIRING_TOKEN_PARAM = "token";

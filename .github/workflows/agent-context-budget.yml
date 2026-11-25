@@ -4,8 +4,8 @@ name: Agent Context Budget
 # keeps that file equal to the measured context, so the context cannot grow by editing the file.
 # To accept growth on purpose, a maintainer adds the agent-context-increase label.
 # Pushes to main run this too, only to publish the `Agent context budget` check that
-# plusplus-release.yml verify_ci requires on the squash-merged commit. There the committed file
-# is already main's reference, so the comparison passes.
+# plusplus-release.yml verify_ci requires on the merged commit. The comparison is skipped there:
+# the pushed file is main's new reference, and HEAD^1 would read a merged increase as growth.
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
@@ -31,15 +31,20 @@ jobs:
         with:
           sparse-checkout: apps/server/src/provider/agentContextBudget.json
           sparse-checkout-cone-mode: false
+          fetch-depth: 2
 
+      # The checkout is the PR merged onto main; compare with that merge's main parent. A fresh
+      # fetch of main can be newer and lower, which reports the PR as growing what main just cut.
       - name: Compare with main
+        if: github.event_name == 'pull_request'
+        # HEAD is the PR merge commit; its first parent is the main it was built on. A freshly
+        # fetched main can hold lower values the PR never saw, which would read as growth.
         run: |
-          git fetch --quiet --depth=1 origin main
-          if ! git cat-file -e "FETCH_HEAD:$BUDGET" 2>/dev/null; then
+          if ! git cat-file -e "HEAD^1:$BUDGET" 2>/dev/null; then
             echo "main has no agent context budget yet."
             exit 0
           fi
-          git show "FETCH_HEAD:$BUDGET" > "$RUNNER_TEMP/main.json"
+          git show "HEAD^1:$BUDGET" > "$RUNNER_TEMP/main.json"
           grown=$(jq -r --slurpfile main "$RUNNER_TEMP/main.json" '
             to_entries[]
             | select($main[0][.key] != null and .value > $main[0][.key])
